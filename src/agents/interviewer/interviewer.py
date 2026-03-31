@@ -142,6 +142,13 @@ class Interviewer(BaseAgent, Participant):
         
         return quantified_question
 
+    _INTAKE_OPENING = (
+        "Hi, thanks so much for taking the time to chat today. "
+        "The way this will go is pretty simple: I'll ask you some questions, "
+        "but feel free to pause or ask me to clarify anything at any point. "
+        "To get started, could you tell me a bit about your professional background?"
+    )
+
     async def on_message(self, message: Message):
 
         if message:
@@ -151,7 +158,16 @@ class Interviewer(BaseAgent, Participant):
             )
             self.add_event(sender=message.role, tag="message",
                            content=message.content)
-        
+
+        # Opening turn of a fresh intake session: send fixed greeting, skip LLM
+        is_weekly = getattr(self.interview_session, "session_type", "intake") == "weekly"
+        if message is None and not is_weekly:
+            last_summary = self.interview_session.session_agenda.get_last_meeting_summary_str()
+            if not last_summary:
+                await self._handle_response(self._INTAKE_OPENING)
+                self.add_event(sender=self.name, tag="message", content=self._INTAKE_OPENING)
+                return
+
         self._turn_to_respond = True
         iterations = 0
 
@@ -203,8 +219,8 @@ class Interviewer(BaseAgent, Participant):
             [{"sender": "Interviewer", "tag": "message"}],
             as_list=True
         )
-        recent_interviewer_messages = all_interviewer_messages[-5:] if \
-            len(all_interviewer_messages) >= 5 else all_interviewer_messages
+        recent_interviewer_messages = all_interviewer_messages[-15:] if \
+            len(all_interviewer_messages) >= 15 else all_interviewer_messages
 
         # Start with all available tools
         tools_set = set(self.tools.keys())

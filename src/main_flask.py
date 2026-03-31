@@ -340,6 +340,12 @@ def unified_chat():
     """Unified chat interface"""
     return render_template('chat.html', username=current_user.username)
 
+@app.route('/visualizer')
+@login_required
+def visualizer():
+    """Live interview + session state visualizer"""
+    return render_template('visualizer.html', username=current_user.username)
+
 # =============================================================================
 # API ENDPOINTS - PROTECTED (REQUIRE LOGIN)
 # All endpoints that handle interview data need @login_required
@@ -472,6 +478,33 @@ def send_voice():
         if temp_audio_path.exists():
             temp_audio_path.unlink()
 
+def _prestart_tts(session_token: str, message_id: str, text: str, wrapper) -> None:
+    """Kick off TTS generation in background immediately when a message is delivered."""
+    cache = session_audio_cache.setdefault(session_token, {})
+    if message_id in cache:
+        return  # Already started or done
+    cache[message_id] = {'status': 'pending', 'data': None, 'error': None, 'timestamp': time.time()}
+
+    async def _synth():
+        try:
+            def _blocking():
+                out = Path(f"temp_speech_{uuid.uuid4().hex}.mp3")
+                try:
+                    tts_engine.text_to_speech(text=text, output_path=str(out))
+                    return out.read_bytes()
+                finally:
+                    if out.exists():
+                        out.unlink(missing_ok=True)
+            data = await wrapper.loop.run_in_executor(None, _blocking)
+            cache[message_id] = {'status': 'ready', 'data': data, 'error': None, 'timestamp': time.time()}
+            app.logger.info(f"TTS pre-generated {len(data)} bytes for message {message_id}")
+        except Exception as e:
+            cache[message_id] = {'status': 'failed', 'data': None, 'error': str(e), 'timestamp': time.time()}
+            app.logger.error(f"TTS pre-generation failed for {message_id}: {e}")
+
+    asyncio.run_coroutine_threadsafe(_synth(), wrapper.loop)
+
+
 @app.route('/api/get-messages', methods=['GET'])
 @login_required  # PROTECTED
 def get_messages():
@@ -502,7 +535,7 @@ def get_messages():
             messages = session.user.get_and_clear_messages() or []
 
     is_session_done = session.session_completed
-    
+
     if not is_session_done:
         current_turns = getattr(session, 'turns', 0)
         max_turns = getattr(session, 'max_turns', float('inf'))
@@ -520,6 +553,14 @@ def get_messages():
                 'content': "Session has been completed! Thank you for your participation in our interview! Your responses have been recorded!",
                 'timestamp': time.time()
             })
+
+    # Pre-start TTS generation for interviewer messages as soon as they are delivered,
+    # so audio is ready (or nearly ready) by the time the client explicitly requests it.
+    wrapper = get_session_wrapper(session_token)
+    if wrapper and hasattr(wrapper, 'loop'):
+        for msg in messages:
+            if msg.get('role') in ('Interviewer', 'assistant') and msg.get('id') and msg.get('content'):
+                _prestart_tts(session_token, msg['id'], msg['content'], wrapper)
 
     return jsonify({
         'success': True,
@@ -610,8 +651,8 @@ def get_voice_response():
         # Legacy format support
         return ('', 202)
 
-    # No cache entry exists - start generation
-    cache[message_id] = {'status': 'pending', 'data': None, 'error': None, 'timestamp': time.time()}
+    # No cache entry exists — start generation (also triggered from get_messages,
+    # but guard here in case the client requests TTS before the next poll cycle).
     wrapper = get_session_wrapper(session_token)
 
     if not wrapper or not hasattr(wrapper, 'loop'):
@@ -625,53 +666,7 @@ def get_voice_response():
             'error': 'Session not properly initialized'
         }), 500
 
-    async def _synth_and_cache():
-        try:
-            text = target_msg.content
-            app.logger.info(f"Starting TTS generation for message {message_id}")
-
-            def _blocking_tts():
-                out_path = Path(f"temp_speech_{uuid.uuid4().hex}.mp3")
-                try:
-                    tts_engine.text_to_speech(text=text, output_path=str(out_path))
-                    data = out_path.read_bytes()
-                    app.logger.info(f"TTS generated {len(data)} bytes for message {message_id}")
-                    return data
-                finally:
-                    if out_path.exists():
-                        out_path.unlink(missing_ok=True)
-
-            audio_bytes = await wrapper.loop.run_in_executor(None, _blocking_tts)
-
-            # Update cache with success
-            cache[message_id] = {
-                'status': 'ready',
-                'data': audio_bytes,
-                'error': None,
-                'timestamp': time.time()
-            }
-            app.logger.info(f"TTS cached successfully for message {message_id}")
-
-        except Exception as e:
-            error_msg = str(e)
-            app.logger.error(f"TTS error for message {message_id}: {error_msg}", exc_info=True)
-
-            # Update cache with failure
-            cache[message_id] = {
-                'status': 'failed',
-                'data': None,
-                'error': error_msg,
-                'timestamp': time.time()
-            }
-
-    # Schedule async TTS generation
-    future = asyncio.run_coroutine_threadsafe(_synth_and_cache(), wrapper.loop)
-
-    # Log if scheduling failed
-    try:
-        future.result(timeout=0.1)  # Quick check if it errored immediately
-    except Exception:
-        pass  # Will complete async
+    _prestart_tts(session_token, message_id, target_msg.content, wrapper)
 
     return ('', 202)  # Tell client to poll again
 
@@ -741,6 +736,141 @@ def session_status():
         'message_count': len(session.chat_history),
         'session_id': session.session_id,
         'user_id': session.user_id
+    })
+
+@app.route('/api/session-state', methods=['GET'])
+@login_required
+def session_state():
+    """Return serialized live session state for the visualizer"""
+    session_token = request.args.get('session_token')
+    wrapper = get_session_wrapper(session_token)
+    if not wrapper:
+        return jsonify({'success': False, 'error': 'Invalid or expired session'}), 400
+
+    iv = wrapper.interview_session
+    agenda = getattr(iv, 'session_agenda', None)
+    memory_bank = getattr(iv, 'memory_bank', None)
+
+    # --- Topics & subtopics ---
+    topics = []
+    if agenda and agenda.interview_topic_manager:
+        for topic in agenda.interview_topic_manager:
+            subtopics = []
+            for st in topic.required_subtopics.values():
+                subtopics.append({
+                    'id': st.subtopic_id,
+                    'description': st.description,
+                    'is_covered': st.is_covered,
+                    'notes_count': len(st.notes),
+                    'questions_count': len(st.questions),
+                    'emergent_insights_count': len(st.emergent_insights),
+                    'final_summary': st.final_summary[:200] if st.final_summary else '',
+                    'is_emergent': False,
+                })
+            for st in topic.emergent_subtopics.values():
+                subtopics.append({
+                    'id': st.subtopic_id,
+                    'description': st.description,
+                    'is_covered': st.is_covered,
+                    'notes_count': len(st.notes),
+                    'questions_count': len(st.questions),
+                    'emergent_insights_count': len(st.emergent_insights),
+                    'final_summary': st.final_summary[:200] if st.final_summary else '',
+                    'is_emergent': True,
+                })
+            topics.append({
+                'id': topic.topic_id,
+                'description': topic.description,
+                'subtopics': subtopics,
+            })
+
+    # --- Recent memories (last 20) ---
+    memories = []
+    memory_count = 0
+    if memory_bank:
+        all_mems = memory_bank.memories
+        memory_count = len(all_mems)
+        for mem in all_mems[-20:]:
+            memories.append({
+                'id': mem.id,
+                'title': mem.title,
+                'text': mem.text[:250],
+                'timestamp': mem.timestamp.isoformat() if hasattr(mem.timestamp, 'isoformat') else str(mem.timestamp),
+                'subtopic_links': mem.subtopic_links,
+            })
+
+    # --- Chat history as lightweight turn list ---
+    turns = []
+    for msg in iv.chat_history:
+        turns.append({
+            'id': getattr(msg, 'id', ''),
+            'role': getattr(msg, 'role', ''),
+            'content': getattr(msg, 'content', '')[:300],
+            'timestamp': getattr(msg, 'timestamp', None).isoformat() if getattr(msg, 'timestamp', None) else '',
+        })
+
+    # --- Strategic priorities ---
+    strategic_priorities = {}
+    if agenda:
+        raw = agenda.strategic_priorities or {}
+        # Truncate nested content to avoid huge payloads
+        for k, v in raw.items():
+            if isinstance(v, dict):
+                strategic_priorities[k] = {sk: (str(sv)[:150] if isinstance(sv, str) else sv)
+                                            for sk, sv in v.items()}
+            else:
+                strategic_priorities[k] = v
+
+    # --- Rollout predictions (simulated exchanges) ---
+    rollout_predictions = []
+    strategic_planner = getattr(iv, 'strategic_planner', None)
+    if strategic_planner:
+        strategic_state = getattr(strategic_planner, 'strategic_state', None)
+        if strategic_state:
+            for rollout in (strategic_state.rollout_predictions or []):
+                rollout_predictions.append({
+                    'rollout_id': rollout.rollout_id,
+                    'utility_score': round(rollout.utility_score, 3),
+                    'expected_coverage_delta': round(rollout.expected_coverage_delta, 3),
+                    'emergence_potential': round(rollout.emergence_potential, 3),
+                    'cost_estimate': rollout.cost_estimate,
+                    'predicted_turns': [
+                        {
+                            'turn_number': t.get('turn_number', '?'),
+                            'question': str(t.get('question', ''))[:300],
+                            'predicted_response': str(t.get('predicted_response', ''))[:300],
+                            'subtopics_covered': t.get('subtopics_covered', []),
+                            'emergence_potential': t.get('emergence_potential', 0.0),
+                            'strategic_rationale': str(t.get('strategic_rationale', ''))[:200],
+                        }
+                        for t in rollout.predicted_turns
+                    ],
+                })
+
+    # --- Emergent insights ---
+    emergent_insights = []
+    if agenda:
+        for ins in (agenda.emergent_insights or []):
+            if isinstance(ins, dict):
+                emergent_insights.append(ins)
+            else:
+                emergent_insights.append(ins.to_dict() if hasattr(ins, 'to_dict') else str(ins))
+
+    return jsonify({
+        'success': True,
+        'topics': topics,
+        'memories': memories,
+        'memory_count': memory_count,
+        'turns': turns,
+        'turn_count': len(iv.chat_history),
+        'user_portrait': agenda.user_portrait if agenda else {},
+        'strategic_priorities': strategic_priorities,
+        'rollout_predictions': rollout_predictions,
+        'emergent_insights': emergent_insights,
+        'session_type': getattr(iv, 'session_type', 'intake'),
+        'session_completed': getattr(iv, 'session_completed', False),
+        'session_in_progress': getattr(iv, 'session_in_progress', False),
+        'timestamp': __import__('datetime').datetime.now().isoformat(),
     })
 
 @app.route('/api/debug-session', methods=['GET'])
@@ -904,25 +1034,19 @@ def transcribe_audio_to_text(audio_path: Path) -> str:
     return stt_engine.transcribe(str(audio_path))
 
 def wait_for_agent_response(session, timeout: float = 60.0, poll_interval: float = 0.5):
-    """Wait for the Interviewer/Agent to produce an output"""
-    start_time = None
-    try:
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            start_time = None
-        else:
-            start_time = loop.time()
-    except Exception:
-        start_time = None
-
+    """Wait for the Interviewer/Agent to produce an output by peeking at the buffer
+    without consuming it, so the frontend polling still receives the message."""
     elapsed = 0.0
     import time as _time
 
     while elapsed < timeout:
         try:
-            msgs = []
-            if hasattr(session.user, 'get_and_clear_messages'):
-                msgs = session.user.get_and_clear_messages() or []
+            lock = getattr(session.user, '_lock', None)
+            if lock:
+                with lock:
+                    msgs = list(getattr(session.user, '_message_buffer', []))
+            else:
+                msgs = list(getattr(session.user, '_message_buffer', []))
             interviewer_msgs = [m for m in msgs if m.get('role') == 'Interviewer']
             if interviewer_msgs:
                 return interviewer_msgs[-1].get('content')

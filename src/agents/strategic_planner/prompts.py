@@ -510,7 +510,10 @@ Generate {num_rollouts} diverse interview conversation rollout strategies, each 
 
 For EACH rollout, reason step-by-step. For EACH turn, specify:
 1. Question: The interviewer's next question.
-2. Predicted Response: A brief, realistic summary of how the candidate would likely respond (not verbatim).
+2. Predicted Response: A realistic simulation of how the candidate would likely respond, matching their linguistic style as observed in the recent conversation. Capture:
+   - Tone (e.g., casual, precise, hedging, enthusiastic)
+   - Voice (e.g., first-person narrative, technical, reflective)
+   - Length (e.g., brief and direct vs. verbose with examples)
 3. Subtopics Covered: List subtopic ID(s) addressed in this turn. Only newly introduced subtopics count toward coverage improvement.
 4. Emergence Potential: A score between 0 and 1 indicating the likelihood of eliciting emergent signal, including:
    - Subtopic emergence (new relevant subtopics), and/or
@@ -528,6 +531,7 @@ Guidelines:
 - Condition later turns on earlier predicted responses.
 - Avoid superficial rephrasing; each rollout should reflect a genuinely different interview strategy.
 - Do not invent novelty—emergent insights should arise plausibly from the candidate's background, constraints, or prior answers.
+- Mirror the candidate's linguistic style (tone, voice, response length) as inferred from the recent conversation. If the candidate tends to give short answers, do not predict long ones.
 </instructions>
 """
 
@@ -558,7 +562,7 @@ Return a JSON object with the following structure:
         {{
           "turn_number": 1,
           "question": "Interviewer question text",
-          "predicted_response": "Brief, realistic summary of the candidate's likely response",
+          "predicted_response": "Realistic simulation of the candidate's likely response, matching their tone, voice, and length",
           "subtopics_covered": ["1.1", "2.3"],
           "emergence_potential": 0.3,
           "strategic_rationale": "Why this turn is strategically useful given prior turns and the rollout strategy"

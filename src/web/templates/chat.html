@@ -130,20 +130,9 @@
             line-height: 1.8;
         }
 
-        .message .avatar {
-            width: 36px; height: 36px;
-            border-radius: 50%;
-            flex-shrink: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px;
-            font-weight: 600;
-            margin-top: 2px;
+        .message.user {
+            justify-content: flex-end;
         }
-
-        .message.bot .avatar { background: #374151; color: #fff; }
-        .message.user .avatar { background: #e0e7ff; color: #4338ca; }
 
         .message .content { flex: 1; min-width: 0; }
         .message .content p {
@@ -151,7 +140,19 @@
             color: #1f2937;
         }
 
-        .message.user .content p { color: #374151; }
+        .message.user .content {
+            flex: unset;
+            max-width: 70%;
+        }
+
+        .message.user .content p {
+            background: #e5e7eb;
+            color: #111827;
+            padding: 10px 16px;
+            border-radius: 20px 20px 4px 20px;
+            display: inline-block;
+            word-wrap: break-word;
+        }
 
         /* ---- Status ---- */
         #status {
@@ -264,14 +265,6 @@
             font-size: 15px;
             line-height: 1.8;
         }
-        .typing-indicator .avatar {
-            width: 36px; height: 36px;
-            border-radius: 50%; flex-shrink: 0;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 14px; font-weight: 600;
-            background: #374151; color: #fff;
-            margin-top: 2px;
-        }
         .typing-dots {
             display: flex; align-items: center; gap: 5px;
             padding: 12px 0;
@@ -291,11 +284,6 @@
 
         /* ---- Message fade-in ---- */
         .message {
-            display: flex;
-            align-items: flex-start;
-            gap: 24px;
-            font-size: 15px;
-            line-height: 1.8;
             animation: fadeInUp 0.3s ease-out;
         }
 
@@ -416,11 +404,6 @@
             contentDiv.className = 'content';
             contentDiv.appendChild(contentP);
 
-            const avatarDiv = document.createElement('div');
-            avatarDiv.className = 'avatar';
-            avatarDiv.textContent = isUser ? 'Y' : 'S';
-
-            div.appendChild(avatarDiv);
             div.appendChild(contentDiv);
             box.appendChild(div);
 
@@ -519,16 +502,30 @@
             updateStatus('');
         }
 
-        async function playMessageAudio(messageId, retries = 10) {
+        async function playMessageAudio(messageId, retries = 20) {
             if (!messageId || !ttsEnabled) return;
             for (let i = 0; i < retries; i++) {
                 try {
                     const res = await fetch(`/api/get-voice-response?session_token=${sessionToken}&message_id=${messageId}`);
-                    if (res.status === 202) { await new Promise(r => setTimeout(r, 400)); continue; }
+                    if (res.status === 202) { await new Promise(r => setTimeout(r, 300)); continue; }
                     if (!res.ok) { console.warn(`TTS fetch failed: ${res.status}`); return; }
                     const arrayBuffer = await res.arrayBuffer();
                     const ctx = getAudioContext();
                     const decoded = await ctx.decodeAudioData(arrayBuffer);
+
+                    // Sync typewriter speed to audio duration (1.0x multiplier)
+                    const tw = typewriterRegistry[messageId];
+                    if (tw && decoded.duration > 0) {
+                        const remaining = tw.charsLeft();
+                        if (remaining > 0) {
+                            const msPerChar = (decoded.duration * 1000) / remaining;
+                            tw.setSpeed(msPerChar);
+                        } else {
+                            // Text already done — finish instantly
+                            tw.finish && tw.finish();
+                        }
+                    }
+
                     stopCurrentAudio();
                     const source = ctx.createBufferSource();
                     source.buffer = decoded;
@@ -552,7 +549,8 @@
                     sessionToken = data.session_token;
                     sessionStartTime = Date.now();
                     updateStatus('');
-                    if (!pollingInterval) pollingInterval = setInterval(pollForMessages, 800);
+                    showTyping();
+                    if (!pollingInterval) pollingInterval = setInterval(pollForMessages, 400);
                     setInterval(updateEndSessionButton, 1000);
                     pollForMessages();
                 } else updateStatus('Failed to start session');
@@ -649,7 +647,7 @@
             const div = document.createElement('div');
             div.className = 'typing-indicator';
             div.id = 'typing-indicator';
-            div.innerHTML = '<div class="avatar">S</div><div class="typing-dots"><span></span><span></span><span></span></div>';
+            div.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>';
             box.appendChild(div);
             scrollToBottom();
         }
