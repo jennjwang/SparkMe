@@ -323,6 +323,8 @@ Coverage score:
   - 2 (Moderate): Missing some elements or lacking quantification.
   - 1 (Low): Multiple elements missing or vague explanations.
 
+**Time accounting check (Task Inventory topic only):** When evaluating the "Estimated time allocation across different task types" subtopic, sum the time allocations mentioned by the user. If they do not account for approximately a full work week (~40 hours / 5 days / 100%), treat coverage as incomplete (score ≤ 2) and probe: "That accounts for roughly [X%] of the week — what else fills the rest of your time?" Do not mark this subtopic as fully covered (score 3) until the time allocations plausibly sum to a full work week.
+
 Additionally:
 - While evaluating coverage, remain alert for **emergent insights**:
   - Unexpected behaviors, mental models, trade-offs, or decision patterns
@@ -683,11 +685,21 @@ Example: last meeting summary shows "client deck prep (~30%)" as a task last wee
 * If time allocation is missing across tasks, ask a completeness probe:
   "That sounds like it covers maybe half the week — what else was going on?"
 
+## STEP 2b. Task Omission Check (self-eval before closing out task coverage)
+* The `<user_portrait>` contains a **Task Composition** field listing the tasks identified during the initial intake. Before marking task coverage complete, mentally check off each known task against what the user has mentioned this session.
+* **For any intake task not yet mentioned this week**, ask about it directly — do not silently skip it:
+  "You mentioned [task] is usually part of your week — did that come up this time?"
+* Only mark task coverage complete when either:
+  (a) every known intake task has been accounted for this week, OR
+  (b) the user has explicitly confirmed it didn't happen / is no longer part of their work.
+* A task going unmentioned repeatedly across sessions is a signal worth noting — flag it as a potential role change or dropped responsibility.
+
 ## STEP 3. Track Coverage Efficiently
 * Coverage scoring is simplified for weekly sessions:
   - 2 (Sufficient): Key details captured — what, how, with whom, roughly how long.
   - 1 (Partial): Missing time allocation or tools or who they worked with.
 * Move on when a subtopic reaches score 2. Depth is less important than breadth here.
+* **Time accounting check:** Before marking this week's task coverage as sufficient (score 2), sum the time allocations mentioned across all tasks. If they do not plausibly add up to a full work week (~40 hours / 5 days), coverage is incomplete — probe: "That accounts for roughly [X%] of the week — what else was going on?"
 
 ## STEP 4. Cover Snapshot-Driven Subtopics
 * The Session Scribe adds new subtopics when it detects inconsistencies or unmentioned items

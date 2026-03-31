@@ -98,6 +98,21 @@
     }
     .btn-end:hover { background: rgba(239,68,68,0.1); }
 
+    .btn-ctrl {
+      padding: 5px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      color: var(--text);
+      background: var(--surface2);
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .btn-ctrl:hover { background: var(--surface3, #2a2a3a); border-color: var(--accent); }
+    .btn-ctrl:disabled { opacity: 0.35; cursor: default; }
+    .btn-ctrl.active { border-color: var(--amber); color: var(--amber); }
+    #agent-controls { display: none; gap: 6px; align-items: center; }
+
     /* =========================================================
        MAIN LAYOUT: CHAT  |  VISUALIZER
     ========================================================= */
@@ -348,14 +363,19 @@
     }
     .subtopic-row {
       display: flex;
-      align-items: center;
-      gap: 10px;
+      flex-direction: column;
+      gap: 6px;
       padding: 7px 10px;
       border-radius: 7px;
       background: var(--bg);
       border: 1px solid var(--border);
       transition: border-color 0.3s, background 0.3s;
       animation: fadeUp 0.4s ease;
+    }
+    .subtopic-row-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
     .subtopic-row.covered {
       border-color: var(--green);
@@ -379,6 +399,39 @@
       display: flex;
       gap: 6px;
       flex-shrink: 0;
+    }
+    .subtopic-notes {
+      padding: 4px 8px;
+      border-left: 2px solid var(--amber);
+      background: rgba(245,158,11,0.04);
+      border-radius: 0 4px 4px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .subtopic-note-item {
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+    .subtopic-rationale {
+      padding: 4px 8px;
+      border-left: 2px solid var(--green);
+      background: rgba(34,197,94,0.04);
+      border-radius: 0 4px 4px 0;
+    }
+    .subtopic-rationale-label {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--green);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 2px;
+    }
+    .subtopic-rationale-text {
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.4;
     }
     .meta-chip {
       font-size: 10px;
@@ -753,7 +806,7 @@
      TOP BAR
 ================================================================ -->
 <div class="topbar">
-  <div class="brand">AI Interviewer <span>/ Live Session</span></div>
+  <div class="brand">AI Interviewer <span id="brand-mode">/ Live Session</span></div>
 
   <div class="stats-row">
     <div class="stat-pill">
@@ -781,6 +834,11 @@
   </div>
 
   <div class="topbar-right">
+    <div id="agent-controls">
+      <button class="btn-ctrl" id="btn-pause" title="Pause after next user response">⏸ Pause</button>
+      <button class="btn-ctrl" id="btn-resume" title="Resume automatic simulation" disabled>▶ Resume</button>
+      <button class="btn-ctrl" id="btn-step" title="Advance one user response, then pause" disabled>⏭ Step</button>
+    </div>
     <span style="font-size:12px;color:var(--muted)">{{ username }}</span>
     <button class="btn-end" id="btn-end-session">End Session</button>
   </div>
@@ -809,9 +867,12 @@
       </div>
     </div>
 
-    <div class="chat-input-area">
+    <div class="chat-input-area" id="chat-input-area">
       <textarea id="chat-input" placeholder="Type your response… (Enter to send)" rows="1"></textarea>
       <button class="btn-send" id="btn-send">Send</button>
+    </div>
+    <div id="agent-mode-banner" style="display:none;padding:8px 14px;background:var(--surface2);border-top:1px solid var(--border);color:var(--muted);font-size:12px;text-align:center;">
+      🤖 Simulated user is responding automatically
     </div>
   </div>
 
@@ -925,11 +986,27 @@ let lastTurnCount     = 0;
 window.addEventListener('DOMContentLoaded', initSession);
 
 async function initSession() {
+  const params = new URLSearchParams(window.location.search);
+  const agentMode = params.get('mode') === 'agent';
+  const simUserId = params.get('sim_user_id') || null;
+
+  if (agentMode) {
+    document.getElementById('brand-mode').textContent = '/ Agent Simulation';
+    document.getElementById('chat-input-area').style.display = 'none';
+    document.getElementById('agent-mode-banner').style.display = 'block';
+    document.getElementById('agent-controls').style.display = 'flex';
+    syncAgentButtons();
+  }
+
   try {
-    const res = await fetch('/api/start-session', {
+    const endpoint = agentMode ? '/api/start-agent-session' : '/api/start-session';
+    const body = agentMode && simUserId
+      ? JSON.stringify({ sim_user_id: simUserId })
+      : JSON.stringify({});
+    const res = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({})
+      body,
     });
     const data = await res.json();
     if (!data.success) { alert('Failed to start session: ' + (data.error || '?')); return; }
@@ -1051,7 +1128,7 @@ function renderState(data) {
 
 /* ── Coverage ── */
 function renderCoverage(topics) {
-  const hash = JSON.stringify(topics.map(t => t.subtopics.map(s => s.is_covered + s.notes_count)));
+  const hash = JSON.stringify(topics.map(t => t.subtopics.map(s => s.is_covered + '|' + (s.notes||[]).join('|') + '|' + (s.final_summary||''))));
   if (hash === lastTopicHash) return;
   lastTopicHash = hash;
 
@@ -1092,11 +1169,21 @@ function renderCoverage(topics) {
         st.is_emergent ? `<span class="meta-chip purple">emergent</span>` : '',
         st.is_covered ? `<span class="meta-chip green">covered</span>` : '',
       ].filter(Boolean).join('');
+      const notesHtml = (st.notes && st.notes.length > 0)
+        ? `<div class="subtopic-notes">${st.notes.map(n => `<div class="subtopic-note-item">• ${escHtml(n)}</div>`).join('')}</div>`
+        : '';
+      const rationaleHtml = (st.is_covered && st.final_summary)
+        ? `<div class="subtopic-rationale"><div class="subtopic-rationale-label">Covered — rationale</div><div class="subtopic-rationale-text">${escHtml(st.final_summary)}</div></div>`
+        : '';
       return `
         <div class="subtopic-row ${stateClass}">
-          <div class="subtopic-icon">${icon}</div>
-          <div class="subtopic-desc">${escHtml(st.description)}</div>
-          <div class="subtopic-meta">${chips}</div>
+          <div class="subtopic-row-header">
+            <div class="subtopic-icon">${icon}</div>
+            <div class="subtopic-desc">${escHtml(st.description)}</div>
+            <div class="subtopic-meta">${chips}</div>
+          </div>
+          ${notesHtml}
+          ${rationaleHtml}
         </div>`;
     }).join('');
 
@@ -1347,6 +1434,48 @@ async function sendMessage() {
     });
   } catch(e) { console.error('sendMessage error', e); }
 }
+
+/* ================================================================
+   AGENT CONTROLS (pause / resume / step)
+================================================================ */
+let agentPaused = false;
+
+async function agentControl(action) {
+  if (!sessionToken) return;
+  try {
+    const res = await fetch('/api/agent-control', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ session_token: sessionToken, action }),
+    });
+    const data = await res.json();
+    if (!data.success) return;
+    agentPaused = data.paused;
+    syncAgentButtons();
+  } catch(e) { console.error('agentControl error', e); }
+}
+
+function syncAgentButtons() {
+  const btnPause  = document.getElementById('btn-pause');
+  const btnResume = document.getElementById('btn-resume');
+  const btnStep   = document.getElementById('btn-step');
+  if (!btnPause) return;
+  if (agentPaused) {
+    btnPause.disabled  = true;
+    btnPause.classList.remove('active');
+    btnResume.disabled = false;
+    btnStep.disabled   = false;
+  } else {
+    btnPause.disabled  = false;
+    btnPause.classList.add('active');
+    btnResume.disabled = true;
+    btnStep.disabled   = true;
+  }
+}
+
+document.getElementById('btn-pause') .addEventListener('click', () => agentControl('pause'));
+document.getElementById('btn-resume').addEventListener('click', () => agentControl('resume'));
+document.getElementById('btn-step')  .addEventListener('click', () => agentControl('step'));
 
 /* ================================================================
    END SESSION

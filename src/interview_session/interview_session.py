@@ -264,7 +264,10 @@ class InterviewSession:
 
         # Shutdown signal handler - only for agent mode
         if interaction_mode == 'agent':
-            self._setup_signal_handlers()
+            try:
+                self._setup_signal_handlers()
+            except Exception:
+                pass  # Signal handlers unavailable in threaded/Flask contexts
         
         SessionLogger.log_to_file(
             "execution_log", f"[INIT] Interview session initialized")

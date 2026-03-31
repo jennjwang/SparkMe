@@ -63,6 +63,10 @@ class UserAgent(BaseAgent, User):
         else:
             self.conversational_style = ""
 
+        # Pause/step control (for visualizer agent mode)
+        self._paused = False
+        self._step_requested = False
+
     async def on_message(self, message: Message):
         """Handle incoming messages by generating a response and notifying 
         the interview session"""
@@ -72,7 +76,12 @@ class UserAgent(BaseAgent, User):
         # Add the interviewer's message to our event stream
         self.add_event(sender=message.role, tag="message",
                        content=message.content)
-        
+
+        # If paused, wait until resumed or a step is requested
+        while self._paused and not self._step_requested:
+            await asyncio.sleep(0.2)
+        self._step_requested = False  # consume step token
+
         # Score the interviewer's question for potential feedback
         # if os.getenv("EVAL_MODE") == "true":
         #     score_prompt = self._get_prompt(prompt_type="score_question")
@@ -97,8 +106,9 @@ class UserAgent(BaseAgent, User):
         self.add_event(sender=self.name,
                        tag="message", content=response)
 
-        # Wait to mimic natural response time
-        await asyncio.sleep(10)
+        # Wait to mimic natural response time (skip delay when paused/stepping)
+        if not self._paused:
+            await asyncio.sleep(10)
         print(f"{ORANGE}User Agent:\n{response}{RESET}")
 
         self.interview_session.add_message_to_chat_history(

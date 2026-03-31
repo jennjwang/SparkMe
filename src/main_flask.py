@@ -6,6 +6,7 @@ Supports both text and voice input/output with authentication
 from flask import Flask, request, jsonify, render_template, Response, redirect, url_for, flash
 from flask_cors import CORS
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+from functools import wraps
 import traceback
 import asyncio
 import threading
@@ -166,13 +167,17 @@ class SessionWrapper:
 active_sessions: Dict[str, SessionWrapper] = {}
 last_messages_by_session: Dict[str, Dict[str, str]] = {}
 session_audio_cache: Dict[str, Dict[str, object]] = {}
+# Tracks how many chat_history entries have been delivered for agent-mode sessions
+chat_history_offsets: Dict[str, int] = {}
 
-def create_interview_session(user_id: str, session_type: str = "intake") -> tuple[InterviewSession, str]:
+def create_interview_session(user_id: str, session_type: str = "intake",
+                             interaction_mode: str = 'api') -> tuple[InterviewSession, str]:
     """Create interview session with authenticated user_id.
 
     Args:
-        user_id: Authenticated user identifier.
+        user_id: User identifier (for agent mode, use the sample profile user_id).
         session_type: "intake" for initial profiling, "weekly" for recurring check-ins.
+        interaction_mode: 'api' for human-via-web, 'agent' for simulated user.
     """
     session_token = str(uuid.uuid4())
 
@@ -189,7 +194,7 @@ def create_interview_session(user_id: str, session_type: str = "intake") -> tupl
         )
 
     interview_session = InterviewSession(
-        interaction_mode='api',
+        interaction_mode=interaction_mode,
         user_config={
             "user_id": user_id,
             "enable_voice": False,
@@ -233,6 +238,19 @@ def get_session(session_token: str) -> Optional[InterviewSession]:
 
 def get_session_wrapper(session_token: str) -> Optional[SessionWrapper]:
     return active_sessions.get(session_token)
+
+def agent_or_login_required(f):
+    """Allow access if logged in OR if a valid session_token is present (agent mode)."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if current_user.is_authenticated:
+            return f(*args, **kwargs)
+        token = (request.args.get('session_token') or
+                 (request.get_json(silent=True) or {}).get('session_token'))
+        if token and token in active_sessions:
+            return f(*args, **kwargs)
+        return jsonify({'success': False, 'error': 'Authentication required'}), 401
+    return decorated
 
 # =============================================================================
 # AUTHENTICATION ROUTES (NO @login_required)
@@ -341,10 +359,10 @@ def unified_chat():
     return render_template('chat.html', username=current_user.username)
 
 @app.route('/visualizer')
-@login_required
 def visualizer():
     """Live interview + session state visualizer"""
-    return render_template('visualizer.html', username=current_user.username)
+    username = current_user.username if current_user.is_authenticated else 'agent'
+    return render_template('visualizer.html', username=username)
 
 # =============================================================================
 # API ENDPOINTS - PROTECTED (REQUIRE LOGIN)
@@ -395,6 +413,83 @@ def start_session():
         'message': 'Session started successfully',
         'was_existing': False
     })
+
+@app.route('/api/start-agent-session', methods=['POST'])
+def start_agent_session():
+    """Start an autonomous session with a simulated user (UserAgent) for testing/visualization."""
+    data = request.get_json(silent=True) or {}
+    session_type = data.get("session_type", os.getenv("SESSION_TYPE", "intake"))
+
+    viewer = current_user.username if current_user.is_authenticated else 'agent'
+
+    # sim_user_id must come from the request body; fall back to logged-in user id only if authenticated
+    sim_user_id = data.get("sim_user_id") or (current_user.id if current_user.is_authenticated else None)
+    if not sim_user_id:
+        return jsonify({'success': False, 'error': 'sim_user_id is required'}), 400
+
+    # Check if there's already an active agent session for this sim_user_id
+    for token, wrapper in active_sessions.items():
+        if wrapper.user_id == sim_user_id:
+            app.logger.info(f"Returning existing agent session {token} for sim_user {sim_user_id}")
+            return jsonify({
+                'success': True,
+                'session_token': token,
+                'session_id': wrapper.interview_session.session_id,
+                'user_id': sim_user_id,
+                'username': viewer,
+                'message': 'Using existing agent session',
+                'was_existing': True,
+                'agent_mode': True,
+            })
+
+    interview_session, session_token = create_interview_session(
+        user_id=sim_user_id,
+        session_type=session_type,
+        interaction_mode='agent',
+    )
+
+    app.logger.info(f"Agent session created: {session_token} | sim_user: {sim_user_id} | watcher: {viewer}")
+    print(f"[AgentSession] Created agent session {session_token} simulating user {sim_user_id}")
+
+    return jsonify({
+        'success': True,
+        'session_token': session_token,
+        'session_id': interview_session.session_id,
+        'user_id': sim_user_id,
+        'username': viewer,
+        'message': 'Agent session started successfully',
+        'was_existing': False,
+        'agent_mode': True,
+    })
+
+@app.route('/api/agent-control', methods=['POST'])
+@agent_or_login_required
+def agent_control():
+    """Pause, resume, or step the simulated user agent."""
+    data = request.get_json(silent=True) or {}
+    session_token = data.get('session_token')
+    action = data.get('action')  # 'pause' | 'resume' | 'step'
+
+    session = get_session(session_token)
+    if not session:
+        return jsonify({'success': False, 'error': 'Invalid or expired session'}), 400
+
+    user = session.user
+    if not hasattr(user, '_paused'):
+        return jsonify({'success': False, 'error': 'Session is not in agent mode'}), 400
+
+    if action == 'pause':
+        user._paused = True
+    elif action == 'resume':
+        user._paused = False
+        user._step_requested = False
+    elif action == 'step':
+        user._paused = True   # stay paused after this step
+        user._step_requested = True
+    else:
+        return jsonify({'success': False, 'error': f'Unknown action: {action}'}), 400
+
+    return jsonify({'success': True, 'paused': user._paused})
 
 @app.route('/api/send-message', methods=['POST'])
 @login_required  # PROTECTED
@@ -506,7 +601,7 @@ def _prestart_tts(session_token: str, message_id: str, text: str, wrapper) -> No
 
 
 @app.route('/api/get-messages', methods=['GET'])
-@login_required  # PROTECTED
+@agent_or_login_required
 def get_messages():
     """Get new messages from the session (polling endpoint)"""
     session_token = request.args.get('session_token')
@@ -521,7 +616,12 @@ def get_messages():
         }), 400
 
     messages = []
-    if session.user:
+    has_user_buffer = session.user and (
+        hasattr(session.user, 'get_new_messages') or
+        hasattr(session.user, '_message_buffer') or
+        hasattr(session.user, 'get_and_clear_messages')
+    )
+    if has_user_buffer:
         if hasattr(session.user, 'get_new_messages'):
             messages = session.user.get_new_messages() or []
         elif hasattr(session.user, '_message_buffer'):
@@ -533,6 +633,22 @@ def get_messages():
                 messages = list(getattr(session.user, '_message_buffer', []))
         elif hasattr(session.user, 'get_and_clear_messages'):
             messages = session.user.get_and_clear_messages() or []
+    else:
+        # Agent mode: UserAgent has no buffer — serve new messages directly from chat_history
+        offset = chat_history_offsets.get(session_token, 0)
+        new_msgs = session.chat_history[offset:]
+        chat_history_offsets[session_token] = offset + len(new_msgs)
+        messages = [
+            {
+                'id': m.id,
+                'role': m.role,
+                'content': m.content,
+                'type': m.type,
+                'timestamp': m.timestamp.isoformat(),
+            }
+            for m in new_msgs
+            if m.type == 'conversation'
+        ]
 
     is_session_done = session.session_completed
 
@@ -570,7 +686,7 @@ def get_messages():
     })
 
 @app.route('/api/acknowledge-messages', methods=['POST'])
-@login_required  # PROTECTED
+@agent_or_login_required
 def acknowledge_messages():
     """Mark messages as acknowledged by the client"""
     data = request.json
@@ -671,7 +787,7 @@ def get_voice_response():
     return ('', 202)  # Tell client to poll again
 
 @app.route('/api/end-session', methods=['POST'])
-@login_required  # PROTECTED
+@agent_or_login_required
 def end_session():
     """End the interview session - background tasks will complete gracefully"""
     data = request.json
@@ -739,7 +855,7 @@ def session_status():
     })
 
 @app.route('/api/session-state', methods=['GET'])
-@login_required
+@agent_or_login_required
 def session_state():
     """Return serialized live session state for the visualizer"""
     session_token = request.args.get('session_token')
@@ -761,10 +877,11 @@ def session_state():
                     'id': st.subtopic_id,
                     'description': st.description,
                     'is_covered': st.is_covered,
+                    'notes': list(st.notes),
                     'notes_count': len(st.notes),
                     'questions_count': len(st.questions),
                     'emergent_insights_count': len(st.emergent_insights),
-                    'final_summary': st.final_summary[:200] if st.final_summary else '',
+                    'final_summary': st.final_summary,
                     'is_emergent': False,
                 })
             for st in topic.emergent_subtopics.values():
@@ -772,10 +889,11 @@ def session_state():
                     'id': st.subtopic_id,
                     'description': st.description,
                     'is_covered': st.is_covered,
+                    'notes': list(st.notes),
                     'notes_count': len(st.notes),
                     'questions_count': len(st.questions),
                     'emergent_insights_count': len(st.emergent_insights),
-                    'final_summary': st.final_summary[:200] if st.final_summary else '',
+                    'final_summary': st.final_summary,
                     'is_emergent': True,
                 })
             topics.append({
@@ -805,21 +923,12 @@ def session_state():
         turns.append({
             'id': getattr(msg, 'id', ''),
             'role': getattr(msg, 'role', ''),
-            'content': getattr(msg, 'content', '')[:300],
+            'content': getattr(msg, 'content', ''),
             'timestamp': getattr(msg, 'timestamp', None).isoformat() if getattr(msg, 'timestamp', None) else '',
         })
 
     # --- Strategic priorities ---
-    strategic_priorities = {}
-    if agenda:
-        raw = agenda.strategic_priorities or {}
-        # Truncate nested content to avoid huge payloads
-        for k, v in raw.items():
-            if isinstance(v, dict):
-                strategic_priorities[k] = {sk: (str(sv)[:150] if isinstance(sv, str) else sv)
-                                            for sk, sv in v.items()}
-            else:
-                strategic_priorities[k] = v
+    strategic_priorities = agenda.strategic_priorities or {} if agenda else {}
 
     # --- Rollout predictions (simulated exchanges) ---
     rollout_predictions = []
@@ -837,11 +946,11 @@ def session_state():
                     'predicted_turns': [
                         {
                             'turn_number': t.get('turn_number', '?'),
-                            'question': str(t.get('question', ''))[:300],
-                            'predicted_response': str(t.get('predicted_response', ''))[:300],
+                            'question': str(t.get('question', '')),
+                            'predicted_response': str(t.get('predicted_response', '')),
                             'subtopics_covered': t.get('subtopics_covered', []),
                             'emergence_potential': t.get('emergence_potential', 0.0),
-                            'strategic_rationale': str(t.get('strategic_rationale', ''))[:200],
+                            'strategic_rationale': str(t.get('strategic_rationale', '')),
                         }
                         for t in rollout.predicted_turns
                     ],
