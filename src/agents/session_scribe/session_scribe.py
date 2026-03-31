@@ -7,11 +7,12 @@ import os
 from src.agents.base_agent import BaseAgent
 from src.agents.session_scribe.prompts import get_prompt
 from src.agents.session_scribe.tools import UpdateSessionNote, UpdateSubtopicNotes, UpdateSubtopicCoverage, FeedbackSubtopicCoverage, \
-    UpdateMemoryBankAndSession, AddHistoricalQuestion, IdentifyEmergentInsights
+    UpdateMemoryBankAndSession, AddHistoricalQuestion, IdentifyEmergentInsights, AddSnapshotSubtopic
 from src.agents.shared.memory_tools import Recall
 from src.agents.shared.note_tools import AddInterviewQuestion
 from src.agents.shared.feedback_prompts import SIMILAR_QUESTIONS_WARNING, QUESTION_WARNING_OUTPUT_FORMAT
 from src.content.question_bank.question import QuestionSearchResult, SimilarQuestionsGroup
+from src.content.weekly_snapshot.snapshot_manager import SnapshotManager
 from src.utils.data_process import read_from_pdf
 from src.utils.llm.prompt_utils import format_prompt
 from src.utils.llm.xml_formatter import extract_tool_arguments, extract_tool_calls_xml
@@ -55,6 +56,7 @@ class SessionScribe(BaseAgent, Participant):
         self._pending_tasks = 0             # Track number of pending tasks
         self._notes_lock = asyncio.Lock()   # Lock for _write_notes_and_questions
         self._session_agenda_lock = asyncio.Lock()  # Lock for session agenda
+        self._snapshot_lock = asyncio.Lock()  # Lock for snapshot comparison findings
         self._tasks_lock = asyncio.Lock()   # Lock for updating task counter
 
         # Tools agent can use
@@ -97,6 +99,9 @@ class SessionScribe(BaseAgent, Participant):
             ),
             "recall": Recall(
                 memory_bank=self.interview_session.memory_bank
+            ),
+            "add_snapshot_subtopic": AddSnapshotSubtopic(
+                session_agenda=self.interview_session.session_agenda
             ),
         }
 
@@ -155,6 +160,31 @@ class SessionScribe(BaseAgent, Participant):
             await self._update_list_of_subtopics(additional_context=additional_context)
             await self._update_subtopic_coverage()
 
+        # For weekly check-ins: load the previous snapshot for turn-by-turn comparison
+        if self.interview_session.session_type == "weekly":
+            await self._load_last_week_snapshot()
+
+    async def _load_last_week_snapshot(self):
+        """Load the previous weekly snapshot onto the session agenda.
+        The Scribe compares user responses against this turn-by-turn."""
+        user_id = self.interview_session.user_id
+        manager = SnapshotManager(user_id)
+        prev_snapshot = manager.load_latest_snapshot()
+
+        if prev_snapshot is None:
+            SessionLogger.log_to_file(
+                "execution_log",
+                "[SNAPSHOT] No previous snapshot found — skipping."
+            )
+            return
+
+        self.interview_session.session_agenda.last_week_snapshot = prev_snapshot.model_dump()
+
+        SessionLogger.log_to_file(
+            "execution_log",
+            f"[SNAPSHOT] Loaded week {prev_snapshot.week_number} snapshot onto session agenda."
+        )
+
     def _add_question_to_session_agenda(self):
         if self._last_interviewer_message:
             subtopic_id = str(self._last_interviewer_message.metadata.get('subtopic_id', ""))
@@ -198,8 +228,18 @@ class SessionScribe(BaseAgent, Participant):
             #         interviewer_message, user_message), # Technically this should have lock for session agenda but ... we'll see
             #     # self._locked_identify_emergent_insights(interviewer_message, user_message) # Quick analysis for emergent insights
             # )
-            await self._locked_write_memory_notes_and_question_bank( interviewer_message, user_message),
-            await self._locked_update_subtopic_coverage(interviewer_message, user_message)
+            await self._locked_write_memory_notes_and_question_bank(interviewer_message, user_message)
+
+            # Run subtopic coverage and snapshot comparison in parallel (separate locks)
+            parallel_tasks = [
+                self._locked_update_subtopic_coverage(interviewer_message, user_message)
+            ]
+            if (getattr(self.interview_session, "session_type", "intake") == "weekly"
+                    and self.interview_session.session_agenda.last_week_snapshot):
+                parallel_tasks.append(
+                    self._locked_compare_against_snapshot(interviewer_message, user_message)
+                )
+            await asyncio.gather(*parallel_tasks)
         finally:
             await self._decrement_pending_tasks()
 
@@ -246,6 +286,36 @@ class SessionScribe(BaseAgent, Participant):
                         tag="agenda_lock_message",
                         content=user_message.content)
             await self._identify_emergent_insights()
+
+    async def _locked_compare_against_snapshot(self, interviewer_message: Message, user_message: Message) -> None:
+        """Wrapper to handle snapshot comparison with its own lock (separate from session agenda)"""
+        async with self._snapshot_lock:
+            self.add_event(sender=interviewer_message.role,
+                        tag="snapshot_lock_message",
+                        content=interviewer_message.content)
+            self.add_event(sender=user_message.role,
+                        tag="snapshot_lock_message",
+                        content=user_message.content)
+            await self._compare_against_snapshot()
+
+    async def _compare_against_snapshot(self) -> None:
+        """Compare the latest user response against last week's snapshot.
+        Uses an LLM call to detect inconsistencies, confirmations, and unmentioned items."""
+        prompt = self._get_formatted_prompt("compare_against_snapshot")
+        self.add_event(
+            sender=self.name,
+            tag="compare_against_snapshot_prompt",
+            content=prompt
+        )
+        response = await self.call_engine_async(prompt)
+        self.add_event(
+            sender=self.name,
+            tag="compare_against_snapshot_response",
+            content=response
+        )
+
+        # Handle tool calls (LLM decides whether to call add_snapshot_finding or not)
+        self.handle_tool_calls(response)
 
     async def _identify_emergent_insights(self) -> None:
         """
@@ -683,6 +753,24 @@ class SessionScribe(BaseAgent, Participant):
                 "user_portrait": self.interview_session.session_agenda.user_portrait,
                 "additional_context": kwargs.get("additional_context"),
                 "interview_description": self.interview_session.session_agenda.interview_description,
+            })
+        elif prompt_type == "compare_against_snapshot":
+            events = self.get_event_stream_str(
+                filter=[{"tag": "snapshot_lock_message"}], as_list=True)
+            current_qa = events[-2:] if len(events) >= 2 else []
+
+            snapshot_str = self.interview_session.session_agenda.get_last_week_snapshot_str()
+            coverage_str = self.interview_session.session_agenda.get_questions_and_notes_str(
+                hide_answered="all", active_topics_only=True
+            )
+
+            return format_prompt(prompt, {
+                "current_qa": "\n".join(current_qa),
+                "last_week_snapshot": snapshot_str,
+                "topic_coverage": coverage_str,
+                "tool_descriptions": self.get_tools_description(
+                    selected_tools=["add_snapshot_subtopic", "recall"]
+                )
             })
         elif prompt_type == "identify_emergent_insights":
             events = self.get_event_stream_str(

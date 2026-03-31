@@ -26,16 +26,16 @@ class SpeechToTextBase(ABC):
 
 class OpenAISTT(SpeechToTextBase):
     """OpenAI's speech-to-text implementation using Whisper"""
-    
+
     def __init__(self):
         self.client = OpenAI()
         self.chunk = 1024
-        self.format = pyaudio.paInt16
         self.channels = 1
         self.rate = 44100
         self.recording = False
         self.audio_available = PYAUDIO_AVAILABLE
         if self.audio_available:
+            self.format = pyaudio.paInt16
             self.p = pyaudio.PyAudio()
         
     def record_audio(self, output_path: str, duration: Optional[int] = None):
@@ -118,10 +118,6 @@ class OpenAISTT(SpeechToTextBase):
 def create_stt_engine() -> Optional[SpeechToTextBase]:
     """Factory function to create STT engine"""
     if not PYAUDIO_AVAILABLE:
-        print("Warning: Voice features unavailable - PyAudio not installed.")
-        print("To install PyAudio, follow the instructions in the readme:")
-        print("For macOS:")
-        print("1. brew install portaudio")
-        print("2. pip install --global-option='build_ext' --global-option='-I/opt/homebrew/include' --global-option='-L/opt/homebrew/lib' pyaudio")
-        return None
-    return OpenAISTT() 
+        print("Warning: PyAudio not installed — terminal mic recording disabled.")
+        print("Web voice input (browser recording + Whisper transcription) still works.")
+    return OpenAISTT()

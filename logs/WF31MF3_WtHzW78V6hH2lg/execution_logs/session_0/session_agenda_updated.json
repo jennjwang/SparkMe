@@ -1,0 +1,271 @@
+{
+  "user_id": "WF31MF3_WtHzW78V6hH2lg",
+  "session_id": 0,
+  "user_portrait": {
+    "Role Description": "",
+    "Years at Firm": "",
+    "Team Structure": "",
+    "Task Composition": {},
+    "Tools Used": [],
+    "AI Tools and Trust": [],
+    "Collaboration Patterns": [],
+    "Typical Time Allocation": {},
+    "Pain Points": [],
+    "Bright Spots": [],
+    "Patterns and Trends": []
+  },
+  "last_meeting_summary": "",
+  "interview_description": "Initial intake interview: understanding your role, tasks, and work patterns",
+  "additional_notes": [],
+  "interview_topic_manager": {
+    "core_topic_dict": {
+      "1": {
+        "topic_id": "1",
+        "description": "Role and Context",
+        "required_subtopics": {
+          "1.1": {
+            "subtopic_id": "1.1",
+            "core_topic_id": "1",
+            "description": "Current role title and description of primary responsibilities",
+            "questions": [],
+            "notes": [],
+            "emergent_insights": [],
+            "final_summary": "",
+            "is_covered": false
+          },
+          "1.2": {
+            "subtopic_id": "1.2",
+            "core_topic_id": "1",
+            "description": "What a typical work week looks like in terms of structure and rhythm",
+            "questions": [],
+            "notes": [],
+            "emergent_insights": [],
+            "final_summary": "",
+            "is_covered": false
+          },
+          "1.3": {
+            "subtopic_id": "1.3",
+            "core_topic_id": "1",
+            "description": "Team structure and reporting relationships",
+            "questions": [],
+            "notes": [],
+            "emergent_insights": [],
+            "final_summary": "",
+            "is_covered": false
+          },
+          "1.4": {
+            "subtopic_id": "1.4",
+            "core_topic_id": "1",
+            "description": "Years at the firm and career trajectory within the organization",
+            "questions": [],
+            "notes": [],
+            "emergent_insights": [],
+            "final_summary": "",
+            "is_covered": false
+          }
+        },
+        "emergent_subtopics": {},
+        "keywords": []
+      },
+      "2": {
+        "topic_id": "2",
+        "description": "Task Inventory",
+        "required_subtopics": {
+          "2.1": {
+            "subtopic_id": "2.1",
+            "core_topic_id": "2",
+            "description": "Main activities and deliverables in a typical week",
+            "questions": [],
+            "notes": [],
+            "emergent_insights": [],
+            "final_summary": "",
+            "is_covered": false
+          },
+          "2.2": {
+            "subtopic_id": "2.2",
+            "core_topic_id": "2",
+            "description": "Estimated time allocation across different task types",
+            "questions": [],
+            "notes": [],
+            "emergent_insights": [],
+            "final_summary": "",
+            "is_covered": false
+          },
+          "2.3": {
+            "subtopic_id": "2.3",
+            "core_topic_id": "2",
+            "description": "Tasks performed daily versus weekly versus on an ad-hoc basis",
+            "questions": [],
+            "notes": [],
+            "emergent_insights": [],
+            "final_summary": "",
+            "is_covered": false
+          },
+          "2.4": {
+            "subtopic_id": "2.4",
+            "core_topic_id": "2",
+            "description": "Seasonal or project-driven variation in the task mix",
+            "questions": [],
+            "notes": [],
+            "emergent_insights": [],
+            "final_summary": "",
+            "is_covered": false
+          }
+        },
+        "emergent_subtopics": {},
+        "keywords": []
+      },
+      "3": {
+        "topic_id": "3",
+        "description": "Tools and Methods",
+        "required_subtopics": {
+          "3.1": {
+            "subtopic_id": "3.1",
+            "core_topic_id": "3",
+            "description": "Primary software tools and platforms used in daily work",
+            "questions": [],
+            "notes": [],
+            "emergent_insights": [],
+            "final_summary": "",
+            "is_covered": false
+          },
+          "3.2": {
+            "subtopic_id": "3.2",
+            "core_topic_id": "3",
+            "description": "AI tools currently in use and their specific applications",
+            "questions": [],
+            "notes": [],
+            "emergent_insights": [],
+            "final_summary": "",
+            "is_covered": false
+          },
+          "3.3": {
+            "subtopic_id": "3.3",
+            "core_topic_id": "3",
+            "description": "Level of trust and reliance on AI tool outputs",
+            "questions": [],
+            "notes": [],
+            "emergent_insights": [],
+            "final_summary": "",
+            "is_covered": false
+          },
+          "3.4": {
+            "subtopic_id": "3.4",
+            "core_topic_id": "3",
+            "description": "Methods or workflows that are manual versus automated",
+            "questions": [],
+            "notes": [],
+            "emergent_insights": [],
+            "final_summary": "",
+            "is_covered": false
+          }
+        },
+        "emergent_subtopics": {},
+        "keywords": []
+      },
+      "4": {
+        "topic_id": "4",
+        "description": "Collaboration and Delegation",
+        "required_subtopics": {
+          "4.1": {
+            "subtopic_id": "4.1",
+            "core_topic_id": "4",
+            "description": "Key collaborators and their roles in the workflow",
+            "questions": [],
+            "notes": [],
+            "emergent_insights": [],
+            "final_summary": "",
+            "is_covered": false
+          },
+          "4.2": {
+            "subtopic_id": "4.2",
+            "core_topic_id": "4",
+            "description": "Delegation patterns: who assigns work and who receives it",
+            "questions": [],
+            "notes": [],
+            "emergent_insights": [],
+            "final_summary": "",
+            "is_covered": false
+          },
+          "4.3": {
+            "subtopic_id": "4.3",
+            "core_topic_id": "4",
+            "description": "Review and approval processes for deliverables",
+            "questions": [],
+            "notes": [],
+            "emergent_insights": [],
+            "final_summary": "",
+            "is_covered": false
+          },
+          "4.4": {
+            "subtopic_id": "4.4",
+            "core_topic_id": "4",
+            "description": "Cross-team or client-facing interactions",
+            "questions": [],
+            "notes": [],
+            "emergent_insights": [],
+            "final_summary": "",
+            "is_covered": false
+          }
+        },
+        "emergent_subtopics": {},
+        "keywords": []
+      },
+      "5": {
+        "topic_id": "5",
+        "description": "Pain Points and Bright Spots",
+        "required_subtopics": {
+          "5.1": {
+            "subtopic_id": "5.1",
+            "core_topic_id": "5",
+            "description": "Biggest inefficiencies or frustrations in current workflow",
+            "questions": [],
+            "notes": [],
+            "emergent_insights": [],
+            "final_summary": "",
+            "is_covered": false
+          },
+          "5.2": {
+            "subtopic_id": "5.2",
+            "core_topic_id": "5",
+            "description": "Tasks or processes that feel most satisfying or effective",
+            "questions": [],
+            "notes": [],
+            "emergent_insights": [],
+            "final_summary": "",
+            "is_covered": false
+          },
+          "5.3": {
+            "subtopic_id": "5.3",
+            "core_topic_id": "5",
+            "description": "Areas where better tools or processes could help",
+            "questions": [],
+            "notes": [],
+            "emergent_insights": [],
+            "final_summary": "",
+            "is_covered": false
+          },
+          "5.4": {
+            "subtopic_id": "5.4",
+            "core_topic_id": "5",
+            "description": "Recent changes that improved or worsened the work experience",
+            "questions": [],
+            "notes": [],
+            "emergent_insights": [],
+            "final_summary": "",
+            "is_covered": false
+          }
+        },
+        "emergent_subtopics": {},
+        "keywords": []
+      }
+    },
+    "active_topic_id_list": [
+      "1",
+      "2"
+    ],
+    "coverage_stats": []
+  },
+  "strategic_priorities": {},
+  "emergent_insights": []
+}

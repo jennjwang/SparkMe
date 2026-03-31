@@ -217,6 +217,7 @@ class Interviewer(BaseAgent, Participant):
             # For baseline mode, remove recall tool
             tools_set.discard("recall")
 
+
         # Create format parameters based on prompt type
         format_params = {
             "user_portrait": user_portrait_str,
@@ -243,13 +244,17 @@ class Interviewer(BaseAgent, Participant):
                 strategic_questions_str = self._format_strategic_questions()
                 format_params["strategic_questions"] = strategic_questions_str
 
-        # Use the baseline prompt if enabled
+        # Select prompt variant based on session type and conversation state
+        is_weekly = getattr(self.interview_session, "session_type", "intake") == "weekly"
+
         if len(all_interviewer_messages) == 0 and len(last_meeting_summary_str) == 0:
-            main_prompt = get_prompt("introduction")
+            main_prompt = get_prompt("weekly_introduction" if is_weekly else "introduction")
         elif len(all_interviewer_messages) == 0:
-            main_prompt = get_prompt("introduction_continue_session")
+            main_prompt = get_prompt("weekly_introduction" if is_weekly else "introduction_continue_session")
         elif self.use_baseline:
             main_prompt = get_prompt("baseline")
+        elif is_weekly:
+            main_prompt = get_prompt("weekly_normal")
         else:
             main_prompt = get_prompt("normal")
 

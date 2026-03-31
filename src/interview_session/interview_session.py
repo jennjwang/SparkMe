@@ -28,6 +28,8 @@ from src.content.memory_bank.memory import Memory
 from src.content.question_bank.question_bank_vector_db import QuestionBankVectorDB
 from src.interview_session.prompts.conversation_summarize import summarize_conversation
 from src.utils.token_tracker import TokenUsageTracker
+from src.content.weekly_snapshot.snapshot_manager import SnapshotManager
+from src.content.weekly_snapshot.weekly_snapshot import WeeklySnapshot, TaskEntry
 
 
 
@@ -48,6 +50,7 @@ class InterviewConfig(TypedDict, total=False):
     interview_evaluation: str
     additional_context_path: str
     initial_user_portrait_path: str
+    session_type: str  # "intake" (default) or "weekly"
 
 class BankConfig(TypedDict, total=False):
     """Configuration for memory and question banks."""
@@ -92,6 +95,7 @@ class InterviewSession:
         self.user_id = user_config.get("user_id", "default_user")
         self._initial_additional_context_path = interview_config.get("additional_context_path", None)
         self._interview_description = interview_config.get("interview_description", "any topic")
+        self.session_type = interview_config.get("session_type", "intake")
 
         # Session agenda setup
         self.session_agenda = SessionAgenda.get_last_session_agenda(self.user_id,
@@ -488,10 +492,83 @@ class InterviewSession:
                 self.historical_question_bank.save_to_file(self.user_id)
                 SessionLogger.log_to_file(
                     "execution_log", f"[COMPLETED] Question bank saved")
-                       
+
+                # Generate and persist weekly snapshot for weekly sessions
+                if self.session_type == "weekly":
+                    try:
+                        await self._generate_and_save_weekly_snapshot()
+                    except Exception as snap_err:
+                        SessionLogger.log_to_file(
+                            "execution_log",
+                            f"[SNAPSHOT] Error generating weekly snapshot: {snap_err}"
+                        )
+
                 self.session_completed = True
                 SessionLogger.log_to_file(
                     "execution_log", f"[COMPLETED] Session completed")
+
+    async def _generate_and_save_weekly_snapshot(self):
+        """Extract a structured WeeklySnapshot from session memories and save it."""
+        from src.agents.session_scribe.prompts import get_prompt as scribe_get_prompt
+        from src.utils.llm.engines import get_engine, invoke_engine
+
+        memories = await self.get_session_memories(include_processed=True)
+        if not memories:
+            SessionLogger.log_to_file(
+                "execution_log", "[SNAPSHOT] No memories to extract snapshot from."
+            )
+            return
+
+        memories_text = "\n".join(
+            f"- [{m.title}] {m.text}" for m in memories
+        )
+        portrait = self.session_agenda.user_portrait
+
+        prompt_template = scribe_get_prompt("extract_weekly_snapshot")
+        prompt = prompt_template.format(
+            memories=memories_text,
+            user_portrait=str(portrait),
+        )
+
+        engine = get_engine(os.getenv("MODEL_NAME", "gpt-4.1-mini"))
+        response = invoke_engine(engine, prompt)
+        text = response.content if hasattr(response, "content") else str(response)
+
+        # Strip markdown fences
+        text = text.strip()
+        if text.startswith("```"):
+            text = text.split("\n", 1)[-1]
+            text = text.rsplit("```", 1)[0]
+
+        try:
+            import json
+            data = json.loads(text.strip())
+        except Exception:
+            SessionLogger.log_to_file(
+                "execution_log", "[SNAPSHOT] Failed to parse snapshot JSON."
+            )
+            return
+
+        tasks = [TaskEntry(**t) for t in data.get("tasks", [])]
+        snapshot = WeeklySnapshot(
+            user_id=self.user_id,
+            session_id=self.session_id,
+            week_number=SnapshotManager.current_week_number(),
+            tasks=tasks,
+            tools=data.get("tools", []),
+            ai_tools=data.get("ai_tools", []),
+            collaborators=data.get("collaborators", []),
+            time_allocation=data.get("time_allocation", {}),
+            pain_points=data.get("pain_points", []),
+            notable_changes=data.get("notable_changes", []),
+            session_summary=data.get("session_summary", ""),
+        )
+
+        manager = SnapshotManager(self.user_id)
+        path = manager.save_snapshot(snapshot)
+        SessionLogger.log_to_file(
+            "execution_log", f"[SNAPSHOT] Weekly snapshot saved to {path}"
+        )
 
     async def get_session_memories(self, include_processed=True) -> List[Memory]:
         """Get memories added during this session

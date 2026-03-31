@@ -21,8 +21,17 @@ class SessionAgenda:
         self.last_meeting_summary: str = data.get("last_meeting_summary", "")
         self.interview_description: str = data.get("interview_description", "")
         self.additional_notes: list[str] = data.get("additional_notes", [])
-        self.interview_topic_manager: InterviewTopicManager = data.get("interview_topic_manager", InterviewTopicManager())
+        raw_manager = data.get("interview_topic_manager")
+        if raw_manager is None:
+            self.interview_topic_manager = InterviewTopicManager()
+        elif isinstance(raw_manager, dict):
+            self.interview_topic_manager = InterviewTopicManager.from_dict(raw_manager)
+        else:
+            self.interview_topic_manager = raw_manager
         self.current_snapshot: int = 0
+
+        # Weekly check-in: raw previous snapshot loaded at startup (static for session)
+        self.last_week_snapshot: dict = data.get("last_week_snapshot", {})
 
         # Strategic planning data (updated by StrategicPlanner)
         self.strategic_priorities: Dict[str, dict] = data.get("strategic_priorities", {})
@@ -266,6 +275,7 @@ class SessionAgenda:
             "interview_description": self.interview_description,
             "additional_notes": self.additional_notes,
             "interview_topic_manager": self.interview_topic_manager.to_dict(),
+            "last_week_snapshot": self.last_week_snapshot,
             "strategic_priorities": self.strategic_priorities,
             "emergent_insights": self.emergent_insights,
         }
@@ -302,6 +312,35 @@ class SessionAgenda:
         if not self.last_meeting_summary:
             return ""
         return self.last_meeting_summary
+
+    def get_last_week_snapshot_str(self) -> str:
+        """Returns a formatted string of last week's raw snapshot."""
+        if not self.last_week_snapshot:
+            return ""
+
+        lines = []
+        snap = self.last_week_snapshot
+
+        if snap.get("week_number"):
+            lines.append(f"Week {snap['week_number']} snapshot:")
+
+        if snap.get("tasks"):
+            lines.append("\nTasks last week:")
+            for t in snap["tasks"]:
+                time_str = f" (~{t['time_share']:.0%})" if t.get("time_share") else ""
+                ai_str = ""
+                if t.get("ai_involved"):
+                    ai_str = f" [AI: {t.get('ai_tool', '?')} — {t.get('ai_purpose', '')}]"
+                lines.append(f"  - {t['description']}{time_str}{ai_str}")
+
+        if snap.get("collaborators_this_week"):
+            lines.append(f"\nCollaborators: {', '.join(snap['collaborators_this_week'])}")
+
+        if snap.get("notable_events"):
+            lines.append(f"\nNotable events: {snap['notable_events']}")
+
+        return "\n".join(lines)
+
         
     def update_user_portrait_str(self, new_user_portrait: str):
         parsed_user_portrait = safe_parse_json(new_user_portrait)

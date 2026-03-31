@@ -417,4 +417,5 @@ class InterviewTopicManager(BaseModel):
         for topic_id in active_topic_id_list_data:
             manager.add_topic_id_as_active_topic(topic_id)
 
+        manager.coverage_stats = data.get("coverage_stats", {})
         return manager

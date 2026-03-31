@@ -447,3 +447,47 @@ class AddHistoricalQuestion(BaseTool):
             return f"Successfully stored question: {content}"
         except Exception as e:
             raise ToolException(f"Error storing question: {e}")
+
+
+class AddSnapshotSubtopicInput(BaseModel):
+    topic_id: str = Field(
+        description="The ID of the weekly topic this subtopic belongs under (e.g., '1' for This Week's Tasks)."
+    )
+    description: str = Field(
+        description=(
+            "Description of what needs to be explored. Be specific about what changed or is missing. "
+            "Example: 'Client deck prep was ~30% of time last week but not mentioned — check if still ongoing or wrapped up'"
+        )
+    )
+
+
+class AddSnapshotSubtopic(BaseTool):
+    """Tool for adding snapshot-driven subtopics that the Interviewer should cover."""
+    name: str = "add_snapshot_subtopic"
+    description: str = (
+        "Add a new subtopic based on a comparison against last week's snapshot. "
+        "Use this when you detect an inconsistency (user contradicts the snapshot) "
+        "or an unmentioned item (something from the snapshot the user hasn't discussed and "
+        "the related subtopic is NOT COVERED). The Interviewer will cover this subtopic "
+        "like any other uncovered subtopic."
+    )
+    args_schema: Type[BaseModel] = AddSnapshotSubtopicInput
+    session_agenda: SessionAgenda = Field(...)
+
+    def _run(
+        self,
+        topic_id: str,
+        description: str,
+        run_manager: Optional[CallbackManagerForToolRun] = None,
+    ) -> str:
+        try:
+            added = self.session_agenda.add_emergent_subtopic(
+                topic_id=str(topic_id),
+                subtopic_description=description
+            )
+            if added:
+                return f"Added snapshot subtopic under topic {topic_id}: {description}"
+            else:
+                return f"Subtopic not added (may be duplicate or topic not found): {description}"
+        except Exception as e:
+            raise ToolException(f"Error adding snapshot subtopic: {e}")

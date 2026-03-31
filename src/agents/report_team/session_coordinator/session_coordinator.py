@@ -207,6 +207,7 @@ class SessionCoordinator(ReportTeamAgent):
     def _get_summary_prompt(self, new_memories: List[Memory]) -> str:
         summary_tool_names = [
             "update_last_meeting_summary", "update_user_portrait"]
+
         return SESSION_SUMMARY_PROMPT.format(
             new_memories="\n\n".join(m.to_xml() for m in new_memories),
             user_portrait=self._session_agenda.get_user_portrait_str(),

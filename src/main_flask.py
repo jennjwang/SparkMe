@@ -10,6 +10,7 @@ import traceback
 import asyncio
 import threading
 import os
+import sys
 import uuid
 import argparse
 import time
@@ -22,13 +23,17 @@ from pathlib import Path
 from typing import Dict, Optional
 from dotenv import load_dotenv
 
+_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _root not in sys.path:
+    sys.path.insert(0, _root)
+
+load_dotenv(override=True)
+
 # Your backend imports
 from src.utils.speech.text_to_speech import TextToSpeechBase, create_tts_engine
 from src.utils.speech.audio_player import AudioPlayerBase, create_audio_player
 from src.utils.speech.speech_to_text import create_stt_engine
 from src.interview_session.interview_session import InterviewSession
-
-load_dotenv(override=True)
 
 # =============================================================================
 # CONFIGURATION
@@ -162,10 +167,27 @@ active_sessions: Dict[str, SessionWrapper] = {}
 last_messages_by_session: Dict[str, Dict[str, str]] = {}
 session_audio_cache: Dict[str, Dict[str, object]] = {}
 
-def create_interview_session(user_id: str) -> tuple[InterviewSession, str]:
-    """Create interview session with authenticated user_id"""
+def create_interview_session(user_id: str, session_type: str = "intake") -> tuple[InterviewSession, str]:
+    """Create interview session with authenticated user_id.
+
+    Args:
+        user_id: Authenticated user identifier.
+        session_type: "intake" for initial profiling, "weekly" for recurring check-ins.
+    """
     session_token = str(uuid.uuid4())
-    
+
+    if session_type == "weekly":
+        interview_plan_path = os.getenv('INTERVIEW_PLAN_PATH_WEEKLY',
+                                        'data/configs/topics_weekly.json')
+        interview_description = "Weekly work check-in: tracking how your tasks and work are evolving"
+    else:
+        interview_plan_path = os.getenv('INTERVIEW_PLAN_PATH_INTAKE',
+                                        'data/configs/topics_intake.json')
+        interview_description = os.getenv(
+            'INTERVIEW_DESCRIPTION',
+            "Initial intake interview: understanding your role, tasks, and work patterns"
+        )
+
     interview_session = InterviewSession(
         interaction_mode='api',
         user_config={
@@ -175,14 +197,12 @@ def create_interview_session(user_id: str) -> tuple[InterviewSession, str]:
         },
         interview_config={
             "enable_voice": False,
-            "interview_description": os.getenv(
-                'INTERVIEW_DESCRIPTION', 
-                "Understanding the impact of AI in the workforce"
-            ),
-            "interview_plan_path": os.getenv('INTERVIEW_PLAN_PATH'),
+            "interview_description": interview_description,
+            "interview_plan_path": interview_plan_path,
             "interview_evaluation": os.getenv('COMPLETION_METRIC'),
             "additional_context_path": config.additional_context_path,
             "initial_user_portrait_path": os.getenv('USER_PORTRAIT_PATH'),
+            "session_type": session_type,
         },
         max_turns=config.max_turns
     )
@@ -353,7 +373,9 @@ def start_session():
             })
     
     # Create new session only if none exists
-    interview_session, session_token = create_interview_session(user_id=user_id)
+    data = request.get_json(silent=True) or {}
+    session_type = data.get("session_type", os.getenv("SESSION_TYPE", "intake"))
+    interview_session, session_token = create_interview_session(user_id=user_id, session_type=session_type)
 
     app.logger.info(f"Session created: {session_token} | User: {current_user.username} ({user_id})")
     print(f"[Session] Created NEW session {session_token} for user {current_user.username}")
@@ -423,14 +445,10 @@ def send_voice():
             'error': 'Invalid or expired session'
         }), 400
 
-    # Check if STT is available
-    if stt_engine is None:
-        return jsonify({
-            'success': False,
-            'error': 'Voice input is not enabled on this server (PyAudio not available)'
-        }), 503
-
-    temp_audio_path = Path(f"temp_audio_{uuid.uuid4().hex}.wav")
+    # Preserve the original file extension so STT engines get the right format
+    orig_filename = audio_file.filename or 'recording.webm'
+    ext = Path(orig_filename).suffix or '.webm'
+    temp_audio_path = Path(f"temp_audio_{uuid.uuid4().hex}{ext}")
     audio_file.save(temp_audio_path)
 
     try:
@@ -447,6 +465,9 @@ def send_voice():
             'transcribed_text': transcribed_text,
             'message': 'Voice message processed successfully'
         })
+    except Exception as e:
+        app.logger.error(f"[send_voice] Transcription error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
     finally:
         if temp_audio_path.exists():
             temp_audio_path.unlink()

@@ -30,6 +30,16 @@ if TYPE_CHECKING:
     from src.interview_session.interview_session import InterviewSession
 
 
+def _parse_min_novelty_score(raw: str | None, default: int = 3) -> int:
+    """Novelty thresholds are integers 1–5; allow env values in (0, 1) as a fraction of that scale (e.g. 0.6 → 3)."""
+    if raw is None or not str(raw).strip():
+        return default
+    v = float(str(raw).strip())
+    if 0 < v < 1:
+        return max(1, min(5, int(round(v * 5))))
+    return max(1, min(5, int(round(v))))
+
+
 class StrategicPlannerConfig(TypedDict, total=False):
     """Configuration for Strategic Planner.
 
@@ -93,7 +103,9 @@ class StrategicPlanner(BaseAgent, Participant):
         self.alpha = float(os.getenv("STRATEGIC_PLANNER_ALPHA", "0.5"))  # Coverage weight
         self.beta = float(os.getenv("STRATEGIC_PLANNER_BETA", "0.3"))  # Cost penalty
         self.gamma = float(os.getenv("STRATEGIC_PLANNER_GAMMA", "0.2"))  # Emergence reward
-        self.min_novelty_score = int(os.getenv("STRATEGIC_PLANNER_MIN_NOVELTY", "3"))
+        self.min_novelty_score = _parse_min_novelty_score(
+            os.getenv("STRATEGIC_PLANNER_MIN_NOVELTY"), 3
+        )
 
         # Strategic state (NOT loaded from file, starts fresh each session)
         session_id = interview_session.session_id
@@ -120,7 +132,7 @@ class StrategicPlanner(BaseAgent, Participant):
             ),
             "identify_emergent_insights": IdentifyEmergentInsights(
                 session_agenda=self.interview_session.session_agenda,
-                min_novelty_score=3
+                min_novelty_score=self.min_novelty_score,
             ),
         }
 

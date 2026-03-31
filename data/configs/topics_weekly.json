@@ -1,0 +1,30 @@
+[
+    {
+        "topic": "Tasks and Deliverables",
+        "subtopics": [
+            "Main tasks and deliverables worked on this week",
+            "Approximate time allocation across tasks"
+        ]
+    },
+    {
+        "topic": "Tools and Methods",
+        "subtopics": [
+            "How tasks were executed: tools and methods used",
+            "Any AI tool usage: what tool, what for, how much they trusted the output"
+        ]
+    },
+    {
+        "topic": "Collaboration",
+        "subtopics": [
+            "Who they worked with or for this week",
+            "Any new delegation or coordination patterns"
+        ]
+    },
+    {
+        "topic": "Pain Points and Bright Spots",
+        "subtopics": [
+            "Biggest frustrations or inefficiencies this week",
+            "What went well or felt particularly effective"
+        ]
+    }
+]

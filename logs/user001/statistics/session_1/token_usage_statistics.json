@@ -1,0 +1,33 @@
+{
+  "session_info": {
+    "session_id": "1",
+    "user_id": "user001",
+    "start_time": "2026-03-25T20:22:18.870686",
+    "current_time": "2026-03-25T20:22:23.201882",
+    "duration_seconds": 4.331201
+  },
+  "total_usage": {
+    "prompt_tokens": 700,
+    "completion_tokens": 123,
+    "total_tokens": 823,
+    "total_calls": 1
+  },
+  "agent_breakdown": {
+    "Interviewer": {
+      "prompt_tokens": 700,
+      "completion_tokens": 123,
+      "total_tokens": 823,
+      "call_count": 1
+    }
+  },
+  "turn_history": [
+    {
+      "turn": 0,
+      "timestamp": "2026-03-25T20:22:21.974325",
+      "agent": "Interviewer",
+      "prompt_tokens": 700,
+      "completion_tokens": 123,
+      "total_tokens": 823
+    }
+  ]
+}

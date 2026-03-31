@@ -1,8 +1,6 @@
 # SparkMe
 
-<p align="center">
-  <img src="./assets/main-diagram.png" alt="SparkMe Diagram" width="80%"/>
-</p>
+
 
 An multi-agent semi-structured interview system that conducts multi-turn interviews with strategic question planning, real-time note-taking, and emergent subtopic discovery. Supports both terminal and web interfaces.
 
@@ -25,6 +23,7 @@ Recommended Python version: 3.10.12 or above
 ```bash
 pip install -r requirements.txt
 ```
+
 ## Interview Topics
 
 Interview topic configurations are in `data/configs/`. The file `data/configs/topics.json` defines the interview plan with 10 main topics and 48 subtopics covering **"Understanding the impact of AI in the workforce"** adapted from WorkBank, including areas such as background, core responsibilities, task proficiency, tech learning comfort, AI tool adoption, trust and control, and future outlook.
@@ -43,15 +42,17 @@ python src/main.py --user_id <user_id>
 
 **Arguments:**
 
-| Flag | Description |
-|---|---|
-| `--user_id` | (Required) User identifier for the session |
-| `--user_agent` | Use an LLM agent as the interviewee instead of terminal input |
-| `--voice_input` | Enable speech-to-text for user input |
-| `--voice_output` | Enable text-to-speech for interviewer responses |
-| `--restart` | Clear previous session data for this user and start fresh |
-| `--max_turns N` | Maximum number of conversation turns |
-| `--additional_context_path` | Path to a file with additional context for the interview |
+
+| Flag                        | Description                                                   |
+| --------------------------- | ------------------------------------------------------------- |
+| `--user_id`                 | (Required) User identifier for the session                    |
+| `--user_agent`              | Use an LLM agent as the interviewee instead of terminal input |
+| `--voice_input`             | Enable speech-to-text for user input                          |
+| `--voice_output`            | Enable text-to-speech for interviewer responses               |
+| `--restart`                 | Clear previous session data for this user and start fresh     |
+| `--max_turns N`             | Maximum number of conversation turns                          |
+| `--additional_context_path` | Path to a file with additional context for the interview      |
+
 
 **Examples:**
 
@@ -86,6 +87,7 @@ gcloud projects add-iam-policy-binding <project name> \
 Then, you can checkout `scripts/web_interview` for deployment scripts!
 
 The web interface provides:
+
 - User authentication (register/login)
 - Session creation and management
 - Text and voice message support
@@ -134,12 +136,14 @@ The `USER_PORTRAIT_PATH` in `.env` points to this file.
 
 Each agent has a `prompts.py` file in `src/agents/` containing its prompt templates. Modify these to change agent behavior for your domain:
 
-| File | Controls |
-|---|---|
-| `src/agents/interviewer/prompts.py` | Interviewer persona, interview flow instructions, STAR framework usage |
-| `src/agents/session_scribe/prompts.py` | Note-taking strategy, subtopic coverage evaluation, emergent insight detection |
-| `src/agents/strategic_planner/prompts.py` | Question prioritization, rollout strategies, utility function weights |
-| `src/agents/user/prompts.py` | Simulated interviewee behavior (only relevant when using `--user_agent`) |
+
+| File                                      | Controls                                                                       |
+| ----------------------------------------- | ------------------------------------------------------------------------------ |
+| `src/agents/interviewer/prompts.py`       | Interviewer persona, interview flow instructions, STAR framework usage         |
+| `src/agents/session_scribe/prompts.py`    | Note-taking strategy, subtopic coverage evaluation, emergent insight detection |
+| `src/agents/strategic_planner/prompts.py` | Question prioritization, rollout strategies, utility function weights          |
+| `src/agents/user/prompts.py`              | Simulated interviewee behavior (only relevant when using `--user_agent`)       |
+
 
 ## Baselines
 
@@ -147,7 +151,7 @@ Four baseline interviewer systems are provided in `baselines/`. Each takes a top
 
 ### InterviewGPT
 
-**`baselines/interviewgpt/interviewgpt.py`**
+`**baselines/interviewgpt/interviewgpt.py**`
 
 A single-agent interviewer. One LLM call per turn handles both sufficiency judgment (whether the current subtopic has been adequately covered) and next question generation. Tracks condensed notes per subtopic from user responses. Logs each turn as JSONL.
 
@@ -161,7 +165,7 @@ python baselines/interviewgpt/interviewgpt.py \
 
 ### LLMRoleplay
 
-**`baselines/llmroleplay/llmroleplay.py`**
+`**baselines/llmroleplay/llmroleplay.py**`
 
 A single-agent system consisting of interviewer that is provided with an agenda and goes through each part of the agenda one at a time, in a particular fixed order. The agent can decide to reask for at most n times before moving on to the next subtopic.
 
@@ -175,7 +179,7 @@ python baselines/llmroleplay/llmroleplay.py \
 
 ### MimiTalk
 
-**`baselines/mimitalk/mimitalk.py`**
+`**baselines/mimitalk/mimitalk.py**`
 
 An async dual-agent interviewer (interviewer + supervisor), where supervisor monitors the interviewer.
 
@@ -188,7 +192,7 @@ python baselines/mimitalk/mimitalk.py \
 
 ### StorySage
 
-**`baselines/storysage/`**
+`**baselines/storysage/**`
 
 A multi-agent system with multiple specialized components: an interviewer agent, a session scribe for note-taking, a strategic planner, a section writer, and a session coordinator. Uses vector databases (FAISS) for question banks and session memories, enabling semantic retrieval during interviews. The most architecturally complex baseline.
 

@@ -1,0 +1,47 @@
+[
+    {
+        "topic": "Role and Context",
+        "subtopics": [
+            "Current role title and description of primary responsibilities",
+            "What a typical work week looks like in terms of structure and rhythm",
+            "Team structure and reporting relationships",
+            "Years at the firm and career trajectory within the organization"
+        ]
+    },
+    {
+        "topic": "Task Inventory",
+        "subtopics": [
+            "Main activities and deliverables in a typical week",
+            "Estimated time allocation across different task types",
+            "Tasks performed daily versus weekly versus on an ad-hoc basis",
+            "Seasonal or project-driven variation in the task mix"
+        ]
+    },
+    {
+        "topic": "Tools and Methods",
+        "subtopics": [
+            "Primary software tools and platforms used in daily work",
+            "AI tools currently in use and their specific applications",
+            "Level of trust and reliance on AI tool outputs",
+            "Methods or workflows that are manual versus automated"
+        ]
+    },
+    {
+        "topic": "Collaboration and Delegation",
+        "subtopics": [
+            "Key collaborators and their roles in the workflow",
+            "Delegation patterns: who assigns work and who receives it",
+            "Review and approval processes for deliverables",
+            "Cross-team or client-facing interactions"
+        ]
+    },
+    {
+        "topic": "Pain Points and Bright Spots",
+        "subtopics": [
+            "Biggest inefficiencies or frustrations in current workflow",
+            "Tasks or processes that feel most satisfying or effective",
+            "Areas where better tools or processes could help",
+            "Recent changes that improved or worsened the work experience"
+        ]
+    }
+]

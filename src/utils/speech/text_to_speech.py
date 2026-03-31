@@ -43,7 +43,8 @@ class OpenAITTS(TextToSpeechBase):
         response = self.client.audio.speech.create(
             model="tts-1",
             voice=self.voice,
-            input=text
+            input=text,
+            speed=1.3
         )
         
         # Create directory if it doesn't exist

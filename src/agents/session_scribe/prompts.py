@@ -73,6 +73,16 @@ def get_prompt(prompt_type: str):
             "CONTEXT": UPDATE_USER_PORTRAIT_CONTEXT,
             "INSTRUCTIONS": UPDATE_USER_PORTRAIT_INSTRUCTIONS
         })
+    elif prompt_type == "extract_weekly_snapshot":
+        return EXTRACT_WEEKLY_SNAPSHOT_PROMPT
+    elif prompt_type == "compare_against_snapshot":
+        return format_prompt(COMPARE_AGAINST_SNAPSHOT_PROMPT, {
+            "CURRENT_QA": COMPARE_AGAINST_SNAPSHOT_CURRENT_QA,
+            "LAST_WEEK_SNAPSHOT": COMPARE_AGAINST_SNAPSHOT_SNAPSHOT,
+            "TOPIC_COVERAGE": COMPARE_AGAINST_SNAPSHOT_TOPIC_COVERAGE,
+            "TOOL_DESCRIPTIONS": COMPARE_AGAINST_SNAPSHOT_TOOL,
+            "INSTRUCTIONS": COMPARE_AGAINST_SNAPSHOT_INSTRUCTIONS,
+        })
     
 
 
@@ -1099,4 +1109,127 @@ Decision rules:
 <!-- If no emergent insights are detected, produce NO tool_calls section -->
 
 </output_format>
+"""
+
+# =============================================================================
+# WEEKLY SNAPSHOT EXTRACTION
+# =============================================================================
+
+EXTRACT_WEEKLY_SNAPSHOT_PROMPT = """
+You are extracting a structured weekly work snapshot from an interview transcript.
+Read the session memories below and extract the following fields as JSON.
+
+Session memories (extracted insights from the conversation):
+<memories>
+{memories}
+</memories>
+
+Current user portrait (for context only):
+<user_portrait>
+{user_portrait}
+</user_portrait>
+
+Extract and return a JSON object with exactly these fields:
+
+{{
+  "tasks": [
+    {{
+      "description": "Free-text description of the task in the user's own words",
+      "time_share": 0.0,
+      "ai_involved": false,
+      "ai_tool": "",
+      "ai_purpose": ""
+    }}
+  ],
+  "collaborators_this_week": ["role/relationship descriptions, no names"],
+  "notable_events": "Anything surprising or out of pattern mentioned this week"
+}}
+
+Rules:
+- time_share values are fractions (0.0–1.0) that should sum to approximately 1.0
+- Use the person's own language for task descriptions where possible
+- ai_involved is true if the user mentioned using an AI tool for that task
+- ai_tool is the specific tool name (e.g., "ChatGPT", "Copilot"); empty string if not applicable
+- ai_purpose is what the AI tool was used for on that task; empty string if not applicable
+- collaborators_this_week: only people/roles mentioned in connection with this week's work, no PII
+- notable_events: a single string summarizing anything surprising, out of pattern, or new this week; empty string if nothing notable
+- If a field has no data, return an empty list or empty string
+- Return only the JSON object, no other text
+"""
+
+
+# =============================================================================
+# COMPARE AGAINST SNAPSHOT (weekly turn-by-turn analysis)
+# =============================================================================
+
+COMPARE_AGAINST_SNAPSHOT_PROMPT = """
+{CURRENT_QA}
+
+{LAST_WEEK_SNAPSHOT}
+
+{TOPIC_COVERAGE}
+
+{TOOL_DESCRIPTIONS}
+
+{INSTRUCTIONS}
+"""
+
+COMPARE_AGAINST_SNAPSHOT_CURRENT_QA = """
+Here is the most recent Q&A exchange from the interview:
+<current_qa>
+{current_qa}
+</current_qa>
+"""
+
+COMPARE_AGAINST_SNAPSHOT_SNAPSHOT = """
+Here is the structured snapshot from last week's session:
+<last_week_snapshot>
+{last_week_snapshot}
+</last_week_snapshot>
+"""
+
+COMPARE_AGAINST_SNAPSHOT_TOPIC_COVERAGE = """
+Here is the current topic/subtopic coverage state:
+<topic_coverage>
+{topic_coverage}
+</topic_coverage>
+"""
+
+
+COMPARE_AGAINST_SNAPSHOT_TOOL = """
+{tool_descriptions}
+"""
+
+COMPARE_AGAINST_SNAPSHOT_INSTRUCTIONS = """
+<instructions>
+You are analyzing the user's latest response against their previous week's snapshot.
+When you find something noteworthy, add it as a new subtopic so the Interviewer covers it.
+
+## Step 1: Search for context (optional)
+If the user mentions something that relates to a snapshot item, use the recall tool to retrieve
+their original words from prior sessions. Include those words in the subtopic description to make
+the Interviewer's question more specific and personal.
+
+## Step 2: Compare and add subtopics
+Compare what the user just said to the snapshot and topic_coverage. Add subtopics for:
+
+1. **Inconsistencies**: The user said something that contradicts the snapshot.
+   - A task they said was wrapping up is now taking significant time
+   - A tool they expressed frustration with is now described positively (or vice versa)
+   - Time allocation shifted significantly
+   Add a subtopic like: "Client deck prep was ~30% last week but user now says it wrapped up — explore what replaced it"
+
+2. **Unmentioned items**: Snapshot items not yet discussed.
+   - Check topic_coverage first: if the relevant subtopic is already COVERED, skip it.
+   - Check existing subtopic descriptions: don't add duplicates of what's already there.
+   - Only add subtopics for items whose related topic is NOT fully COVERED.
+   Add a subtopic like: "Copilot was listed as a new tool last week — check if still in use and how"
+
+Do NOT add subtopics for:
+- Confirmations (user confirmed something from the snapshot — no action needed)
+- Items already covered by an existing subtopic
+- Trivial or obvious matches
+
+If nothing noteworthy comes from this Q&A pair, do NOT call any tool — it's fine to produce nothing.
+</instructions>
 """

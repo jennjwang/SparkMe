@@ -43,7 +43,6 @@ Process the new information in this order:
    - For new fields: Only add if revealing fundamental aspect of user
    - Use update_user_portrait tool, setting is_new_field appropriately
    - Provide clear reasoning for each update/creation
-
 Make separate tool calls for each update/addition.
 </instructions>
 
@@ -200,3 +199,4 @@ Don't use other output format like markdown, json, code block, etc.
 
 </output_format>
 """
+
