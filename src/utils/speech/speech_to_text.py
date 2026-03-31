@@ -118,6 +118,10 @@ class OpenAISTT(SpeechToTextBase):
 def create_stt_engine() -> Optional[SpeechToTextBase]:
     """Factory function to create STT engine"""
     if not PYAUDIO_AVAILABLE:
-        print("Warning: PyAudio not installed — terminal mic recording disabled.")
-        print("Web voice input (browser recording + Whisper transcription) still works.")
+        print("Warning: Voice features unavailable - PyAudio not installed.")
+        print("To install PyAudio, follow the instructions in the readme:")
+        print("For macOS:")
+        print("1. brew install portaudio")
+        print("2. pip install --global-option='build_ext' --global-option='-I/opt/homebrew/include' --global-option='-L/opt/homebrew/lib' pyaudio")
+        return None
     return OpenAISTT()
