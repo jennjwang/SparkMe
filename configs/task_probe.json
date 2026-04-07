@@ -1,0 +1,144 @@
+[
+  {
+    "topic": "Task Components",
+    "subtopics": [
+      {
+        "id": "action",
+        "description": "What the person actually does — the core verb or activity at the center of the task.",
+        "coverage_criteria": [
+          "The respondent names a specific, observable action rather than a role label or end goal.",
+          "The action is scoped to a meaningful unit of work — neither a single click nor an entire job function."
+        ],
+        "priority": 1
+      },
+      {
+        "id": "object",
+        "description": "What the action is performed on, to, or for — the primary target that gives the action its specificity.",
+        "coverage_criteria": [
+          "The respondent identifies a concrete target (document, case, dataset, system, person, product, etc.).",
+          "The target is specific enough to distinguish this task from other tasks using the same verb."
+        ],
+        "priority": 1
+      },
+      {
+        "id": "purpose",
+        "description": "Why the task is performed — the immediate result or objective it produces, not a downstream business outcome.",
+        "coverage_criteria": [
+          "The respondent states a direct, proximate purpose rather than only describing what they do.",
+          "The purpose distinguishes this task from other tasks involving the same action-object pair."
+        ],
+        "priority": 1
+      },
+      {
+        "id": "tools",
+        "description": "What the person uses to carry out the task — software, equipment, instruments, or materials, as distinct from what the task is performed on or what guides it.",
+        "coverage_criteria": [
+          "The respondent names at least one tool, system, or material central to execution.",
+          "Tools are identified specifically enough to be meaningful (e.g., a named platform, not just 'software')."
+        ],
+        "priority": 2
+      },
+      {
+        "id": "information_sources",
+        "description": "Where guidance, inputs, or reference material comes from — the policies, procedures, knowledge, briefs, data feeds, prior cases, or people the worker draws on.",
+        "coverage_criteria": [
+          "The respondent identifies at least one source of input or guidance that shapes how the task is done.",
+          "The response indicates the degree of prescription: tightly scripted, loosely guided, or largely self-directed."
+        ],
+        "priority": 2
+      },
+      {
+        "id": "method",
+        "description": "How the task is carried out — the process, sequence, or technique, when that detail is necessary to understand the work.",
+        "coverage_criteria": [
+          "The respondent describes a process or technique beyond simply restating the action, object, and purpose.",
+          "The method detail is sufficient to distinguish the respondent's approach from other possible approaches."
+        ],
+        "priority": 2
+      },
+      {
+        "id": "judgment",
+        "description": "Where the worker exercises discretion — any point requiring evaluation, comparison, prioritization, diagnosis, or selection, and the basis for that decision.",
+        "coverage_criteria": [
+          "The respondent identifies at least one decision point within the task.",
+          "The respondent names the factors, criteria, or signals used to make that judgment.",
+          "The response makes clear whether the worker is exercising discretion or simply applying a fixed rule."
+        ],
+        "priority": 1
+      },
+      {
+        "id": "quality_criteria",
+        "description": "What counts as done and done well — the standards, checks, thresholds, or completion conditions used to evaluate the output.",
+        "coverage_criteria": [
+          "At least one concrete standard, check, or threshold is named rather than a vague appeal to quality."
+        ],
+        "priority": 1
+      },
+      {
+        "id": "work_context",
+        "description": "The surrounding conditions that shape execution, time pressure, coordination dependencies, regulatory constraints, physical setting, or system limitations, included only when they materially affect how the task is performed.",
+        "coverage_criteria": [
+          "The respondent identifies at least one contextual factor that concretely changes how the task is done.",
+          "The factor is tied to its effect on the task rather than stated for background details."
+        ],
+        "priority": 3
+      }
+    ]
+  },
+  {
+    "topic": "Task Attributes",
+    "subtopics": [
+      {
+        "id": "frequency",
+        "description": "How often the task is performed.",
+        "coverage_criteria": [
+          "The respondent indicates whether the task is performed daily, weekly, monthly, seasonally, ad hoc, or triggered by specific events.",
+          "The answer is specific enough to distinguish routine tasks from infrequent or exceptional ones."
+        ],
+        "priority": 1
+      },
+      {
+        "id": "duration",
+        "description": "How much time the task takes, either per instance or as a share of total work time.",
+        "coverage_criteria": [
+          "The respondent provides an approximate duration per instance, per cycle, or as a percentage of time spent."
+        ],
+        "priority": 1
+      }
+    ]
+  },
+  {
+    "topic": "Skills, Experience & Training",
+    "subtopics": [
+      {
+        "id": "skills",
+        "description": "Skills and developed capacities the worker draws on to perform the task.",
+        "coverage_criteria": [
+          "The respondent identifies at least one concrete skill, knowledge area, or capability used in carrying out the task.",
+          "The skill is tied to the task itself rather than described only as a general trait or qualification.",
+          "The answer makes clear whether the skill is essential to execution, helpful but secondary, or mainly relevant at decision points."
+        ],
+        "priority": 1
+      },
+      {
+        "id": "experience",
+        "description": "Prior work-related experience typically needed to perform the task competently.",
+        "coverage_criteria": [
+          "The respondent indicates whether prior experience is usually needed before someone can perform the task well.",
+          "The answer describes the kind or approximate amount of related experience that helps a worker perform the task competently or with less supervision.",
+          "The response makes clear that experience refers to prior exposure or practice, not the skill itself or the training used to learn it."
+        ],
+        "priority": 2
+      },
+      {
+        "id": "training",
+        "description": "Training and preparation needed to learn to perform the task, including formal courses, certifications, onboarding, mentorship, or self-directed learning.",
+        "coverage_criteria": [
+          "The respondent identifies at least one kind of training, instruction, or guided preparation used to learn the task.",
+          "The answer indicates whether the task can be learned quickly on the job or requires substantial formal or supervised training."
+        ],
+        "priority": 2
+      }
+    ]
+  }
+]
