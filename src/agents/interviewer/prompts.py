@@ -6,6 +6,7 @@ def get_prompt(prompt_type: str = "normal"):
             "CONTEXT": CONTEXT,
             "USER_PORTRAIT": USER_PORTRAIT,
             "LAST_MEETING_SUMMARY": LAST_MEETING_SUMMARY,
+            "QUESTIONS_AND_NOTES": QUESTIONS_AND_NOTES,
             "INSTRUCTIONS": INTRODUCTION_INSTRUCTIONS,
             "OUTPUT_FORMAT": OUTPUT_FORMAT_INTRODUCTION
         })
@@ -43,7 +44,7 @@ def get_prompt(prompt_type: str = "normal"):
         return format_prompt(INTRODUCTION_PROMPT, {
             "CONTEXT": WEEKLY_CONTEXT,
             "USER_PORTRAIT": USER_PORTRAIT,
-            "LAST_MEETING_SUMMARY": LAST_MEETING_SUMMARY,
+            "LAST_MEETING_SUMMARY": LAST_WEEK_SNAPSHOT,
             "INSTRUCTIONS": WEEKLY_INTRODUCTION_INSTRUCTIONS,
             "OUTPUT_FORMAT": OUTPUT_FORMAT_INTRODUCTION
         })
@@ -51,7 +52,7 @@ def get_prompt(prompt_type: str = "normal"):
         return format_prompt(INTERVIEW_PROMPT, {
             "CONTEXT": WEEKLY_CONTEXT,
             "USER_PORTRAIT": USER_PORTRAIT,
-            "LAST_MEETING_SUMMARY": LAST_MEETING_SUMMARY,
+            "LAST_MEETING_SUMMARY": LAST_WEEK_SNAPSHOT,
             "QUESTIONS_AND_NOTES": QUESTIONS_AND_NOTES,
             "CHAT_HISTORY": CHAT_HISTORY,
             "STRATEGIC_QUESTIONS": WEEKLY_STRATEGIC_QUESTIONS,
@@ -107,6 +108,8 @@ INTRODUCTION_PROMPT = """
 {USER_PORTRAIT}
 
 {LAST_MEETING_SUMMARY}
+
+{QUESTIONS_AND_NOTES}
 
 {INSTRUCTIONS}
 
@@ -164,6 +167,13 @@ Here is a summary of the last interview session with the user, don't repeat ques
 <last_meeting_summary>
 {last_meeting_summary}
 </last_meeting_summary>
+"""
+
+LAST_WEEK_SNAPSHOT = """
+Here is last week's structured snapshot — use it to anchor your questions and detect what changed:
+<last_week_snapshot>
+{last_week_snapshot}
+</last_week_snapshot>
 """
 
 CHAT_HISTORY = """
@@ -251,10 +261,10 @@ Here's how to kick things off:
    - "Hi, thanks so much for taking the time to chat today. I'm looking forward to hearing about ..."
 2. Give a quick overview of what to expect.
    - "The way this will go is pretty simple: I'll ask you some questions, but feel free to pause or ask me to clarify anything at any point."
-3. Transition smoothly into introduction WITHOUT asking for PII.
-   - "To get started, could you tell me a bit about your background and what brings you here today?"
+3. Ask exactly ONE question drawn directly from the first topic in the topics list below.
    - DO NOT ask for: name, age, specific location, contact information, or other PII
-   - Focus on: professional background, interests, experiences, or motivations
+   - Do NOT use a generic opener like "tell me about your background" — use the actual topics.
+   - Do NOT ask multiple questions or combine questions with "and". One question only.
 
 ## Tools
 - Your response should include the tool calls you want to make.
@@ -393,11 +403,10 @@ Your output should include be responding to user according to the following form
 </output_format>
 """
 
-#TODO fix prompt because this is rage fix
 OUTPUT_FORMAT = """
 <output_format>
 
-<thinking>
+<reasoning>
 Step-by-step reasoning:
 1. Identify the subtopic that is being explored in previous conversations.
 2. Identify whether we really need this subtopic to be evaluated with STAR or STAR is not necessary by considering overall theme: {interview_description}.
@@ -409,7 +418,7 @@ Step-by-step reasoning:
    - Deepen explanation or implications, or
    - Explore an emergent insight worth probing further.
 7. Begin with one brief, specific acknowledgment of what the user just said — something that reflects their actual answer (e.g., "That makes sense given how fast things were moving." or "It sounds like that decision had a big impact on the team."). Do NOT use generic filler like "Thanks for sharing" or "Great." Then ask exactly one question. Keep the total response to 2 sentences.
-</thinking>
+</reasoning>
 
 <!-- Produce exactly ONE tool call below -->
 
@@ -424,10 +433,6 @@ Step-by-step reasoning:
       </response>
   </respond_to_user>
 
-  <recall>
-      <reasoning>Why prior-session context is required</reasoning>
-      <query>What specific information to retrieve</query>
-  </recall>
 </tool_calls>
 
 </output_format>
@@ -583,7 +588,7 @@ BASELINE_OUTPUT_FORMAT = """
 <output_format>
 
 First, carefully think through each step of your response process:
-<thinking>
+<reasoning>
 Step 1: Topic Selection
 - Choose an list of topics from the guidelines based on conversation context and last meeting summary
 - Consider what would be most meaningful to explore next by analyzing the user's history and current context
@@ -592,7 +597,7 @@ Step 1: Topic Selection
 Step 2: Question Phrasing
 - Craft a clear, engaging question based on the selected topic in Step 1
 - Ensure the question invites detailed narrative responses
-</thinking>
+</reasoning>
 
 Then, structure your output using the following tool call format:
 <tool_calls>
@@ -634,10 +639,10 @@ WEEKLY_INTRODUCTION_INSTRUCTIONS = """
 
 1. Greet the person briefly and acknowledge this is the recurring weekly check-in.
    - "Hey, good to connect again for the weekly check-in!"
-2. If the last meeting summary includes a snapshot from last week, reference something specific to show continuity:
+2. If the `<last_week_snapshot>` is available, reference something specific to show continuity:
    - "Last time you mentioned spending a lot of time on [task] — how's that going this week?"
    - Pick the most prominent task or a notable change from the snapshot to anchor the opening.
-3. If there is no snapshot, reference the user portrait or last meeting summary for context.
+3. If there is no snapshot, reference the user portrait for context.
 4. If this is the first weekly session (no prior snapshot), open with a broad but focused question:
    - "Walk me through the main things you worked on this week."
 5. Keep the opening warm but brief — aim to be into the first substantive question within 2 exchanges.
@@ -658,8 +663,8 @@ The following questions have been prepared to fill any remaining coverage gaps o
 - **coverage_gap**: Use to cover subtopics not yet addressed in this session.
 - **emergent_insight**: Use opportunistically when the conversation opens a door.
 
-Note: diff-grounded follow-up questions are in the `last_week_snapshot` section above — use those first.
-These strategic questions are for filling gaps after the diff questions are addressed.
+Note: the `<last_week_snapshot>` section contains last week's tasks and time allocations — use those to anchor your questions first.
+These strategic questions are for filling gaps after the snapshot-driven questions are addressed.
 </strategic_questions>
 """
 
@@ -672,11 +677,11 @@ This is a short, focused check-in — aim for roughly 10 minutes. Keep questions
 ---
 
 ## STEP 1. Anchor in What Changed
-* Reference the last meeting summary (which includes last week's snapshot) to orient the conversation.
-  If this is the first turn, open with something specific from the snapshot.
+* Reference the `<last_week_snapshot>` to orient the conversation.
+  If this is the first turn, open with something specific from the snapshot (a task, time allocation, or collaborator).
 * If there's no snapshot (first weekly session), open broadly: "Walk me through the main things you worked on this week."
 
-Example: last meeting summary shows "client deck prep (~30%)" as a task last week
+Example: snapshot shows "client deck prep (~30%)" as a task last week
 → Ask: "Last time you mentioned spending a lot of time on client deck prep — is that still a big part of your week?"
 
 ## STEP 2. Cover This Week's Core Topics

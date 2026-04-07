@@ -664,8 +664,20 @@ class StrategicPlanner(BaseAgent, Participant):
                                                                                        active_topics_only=False)
 
         if prompt_type == "draft_rollouts":
+            # Load conversational style from user profile if available
+            conv_style_path = os.path.join(
+                os.getenv("USER_AGENT_PROFILES_DIR", "data/sample_user_profiles"),
+                f"{self.user_id}/conversation.md"
+            )
+            conversational_style = ""
+            if os.path.exists(conv_style_path):
+                with open(conv_style_path, 'r') as f:
+                    conversational_style = f.read()
+
             return format_prompt(prompt, {
                 "user_portrait": self.interview_session.session_agenda.user_portrait,
+                "conversational_style": conversational_style,
+                "session_style_observations": self._infer_session_style(),
                 "topics_list": all_topics,
                 "previous_events": self._get_recent_conversation(),
                 "interview_description": self.interview_session.session_agenda.interview_description,
@@ -722,6 +734,60 @@ class StrategicPlanner(BaseAgent, Participant):
             })
         else:
             raise ValueError(f"Unknown prompt type: {prompt_type}")
+
+    def _infer_session_style(self) -> str:
+        """
+        Infer conversational style observations from user messages in this session.
+
+        Returns a short markdown summary of observed patterns (response length,
+        tone signals, capitalization, etc.) that can override or supplement the
+        static conversation.md profile.
+        """
+        user_messages = [
+            m.content for m in self.interview_session.chat_history
+            if m.role == "User" and m.content.strip()
+        ]
+
+        if not user_messages:
+            return "No user messages observed yet in this session."
+
+        # --- Length ---
+        lengths = [len(m.split()) for m in user_messages]
+        avg_len = sum(lengths) / len(lengths)
+        max_len = max(lengths)
+        min_len = min(lengths)
+        if avg_len <= 5:
+            length_desc = "very short (avg ≤5 words)"
+        elif avg_len <= 15:
+            length_desc = "short (avg 6–15 words)"
+        elif avg_len <= 40:
+            length_desc = "moderate (avg 16–40 words)"
+        else:
+            length_desc = "long (avg >40 words)"
+
+        # --- Capitalization ---
+        starts_lowercase = sum(1 for m in user_messages if m[0].islower()) if user_messages else 0
+        lowercase_ratio = starts_lowercase / len(user_messages)
+        cap_note = "usually starts sentences in lowercase" if lowercase_ratio > 0.5 else "uses normal capitalization"
+
+        # --- Question answering pattern ---
+        short_replies = sum(1 for m in user_messages if len(m.split()) <= 5)
+        short_ratio = short_replies / len(user_messages)
+        brevity_note = f"{int(short_ratio * 100)}% of replies are 5 words or fewer"
+
+        # --- Sample responses (up to 3 shortest recent ones for concrete illustration) ---
+        recent = user_messages[-10:]
+        samples = sorted(recent, key=lambda m: len(m.split()))[:3]
+        sample_lines = "\n".join(f'  - "{s}"' for s in samples)
+
+        n = len(user_messages)
+        return (
+            f"Observed from {n} user message(s) this session:\n"
+            f"- Response length: {length_desc} (min={min_len}, max={max_len} words)\n"
+            f"- {brevity_note}\n"
+            f"- Capitalization: {cap_note}\n"
+            f"- Example short replies from this session:\n{sample_lines}"
+        )
 
     def _get_recent_conversation(self, n: int = None) -> str:
         """

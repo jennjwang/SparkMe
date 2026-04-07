@@ -73,6 +73,8 @@ def get_prompt(prompt_type: str):
             "CONTEXT": UPDATE_USER_PORTRAIT_CONTEXT,
             "INSTRUCTIONS": UPDATE_USER_PORTRAIT_INSTRUCTIONS
         })
+    elif prompt_type == "extract_user_portrait":
+        return EXTRACT_USER_PORTRAIT_PROMPT
     elif prompt_type == "extract_weekly_snapshot":
         return EXTRACT_WEEKLY_SNAPSHOT_PROMPT
     elif prompt_type == "compare_against_snapshot":
@@ -123,19 +125,24 @@ Here is the stream of previous events for context:
 {previous_events}
 </previous_events>
 
-Here is the current question-answer exchange you need to process:
-<current_qa>
+Here is the user's response to process into memories:
+<current_user_response>
 {current_qa}
-</current_qa>
+</current_user_response>
 
 Here is the topics and subtopics that you can link the memory to:
 <topics_list>
 {topics_list}
 </topics_list>
 
+Here are the existing memories in the memory bank. When possible, UPDATE an existing memory instead of creating a new one:
+<existing_memories>
+{existing_memories}
+</existing_memories>
+
 Reminder:
 - The external tag of each event indicates the role of the sender of the event.
-- Focus ONLY on processing the content within the current Q&A exchange above.
+- Extract memories ONLY from the user's response above, not from any interviewer messages.
 - Previous messages are shown only for context, not for reprocessing.
 </input_context>
 """
@@ -151,33 +158,45 @@ UPDATE_MEMORY_QUESTION_BANK_INSTRUCTIONS = """
 <instructions>
 
 ## Process:
-1. Analyze the user's response to identify important information:
-   - Split long responses into MULTIPLE coherent parts.
-     * Each memory should cover one part of the user's direct response.
-     * Together, all memories should cover the ENTIRE user's response.
-   - For EACH piece of information worth storing:
-     * Create a concise but descriptive title.
-     * Summarize the information clearly.
-     * Add relevant metadata (e.g., topics, emotions, when, where, who, etc.).
-     * Identify ALL relevant subtopics from the provided topics list.
-     * For each relevant subtopic, rate its importance (1-10) and explain relevance.
+1. Split the response into atomic memories — one specific fact per memory:
+   - Each memory must cover exactly ONE specific concept, fact, tool, relationship, or event.
+   - Long responses should produce MULTIPLE memories — one per distinct piece of information.
+   - Together, all memories should cover the ENTIRE user's response.
+   - Do NOT bundle multiple distinct facts into one memory.
+   - Good splits (each is its own memory):
+     * "User uses Microsoft Excel for data analysis" (one tool, one use case)
+     * "User reports to the Director of Clinical Operations" (one relationship)
+     * "User's team has 3 peers, no direct reports" (one team structure fact)
+   - Bad (too bundled — split these):
+     * "User uses Excel, PowerPoint, and Teams and reports to the Director" → 4 separate memories
 
-2. Linking and coverage:
+2. For each atomic memory:
+   - Create a concise but specific title (name the specific subject).
+   - Summarize that one fact clearly in 1-3 sentences.
+   - Add relevant metadata (tool names, people, dates, quantities, locations, etc.).
+   - Identify ALL relevant subtopics from the provided topics list.
+   - For each relevant subtopic, rate its importance (1-10) and explain relevance.
+
+3. Merge into an existing memory ONLY when the user is elaborating on the exact same specific subject:
+   - Use `update_existing_memory` ONLY when the new detail is a direct elaboration on a specific existing memory (same named tool, same named person, same named event).
+   - DO NOT merge just because two things are in the same broad domain (e.g., "work" or "AI tools"). Merge only when they describe the exact same item.
+   - Examples of when to merge:
+     * Existing: "User uses Microsoft Copilot for data review" + New: user adds Copilot also rewrites emails → merge (same tool)
+   - Examples of when to create new (even if related):
+     * Existing memory is about Copilot; new info is about ChatGPT → new memory (different tool)
+     * Existing memory is about job role; new info is about team structure → new memory (different fact)
+
+4. Linking and coverage:
    - Each memory can relate to MULTIPLE subtopics.
-   - Use `subtopic_links` as a list of objects, where each object contains:
-     * `subtopic_id`: ID from <topics_list>
-     * `importance`: 1-10 score for how critical this memory is to THIS subtopic
-     * `relevance`: Brief explanation of why this memory matters to THIS subtopic
-   - Importance scoring guide:
-     * 9-10: Core, defining information for this subtopic
-     * 7-8: Highly relevant, adds significant depth
-     * 5-6: Moderately relevant, provides context
-     * 3-4: Tangentially related, minor detail
-     * 1-2: Barely relevant, mentioned in passing
+   - Use `subtopic_links` as a list of objects: subtopic_id, importance (1-10), relevance (explanation).
    - Do NOT invent subtopic_ids; only use ones explicitly listed in <topics_list>.
-   - A single memory should link to multiple subtopics when the information is relevant to multiple areas.
 
-3. Skip all tool calls if the response:
+5. Only store what the USER said:
+   - Memories must only contain information from the user's response, never from the interviewer's question.
+   - The interviewer's question is only provided as context to understand what the user was responding to.
+   - Do NOT extract or store any facts that appear only in the interviewer's question.
+
+6. Skip all tool calls if the response:
    - Contains no meaningful information,
    - Is just greetings or ice-breakers,
    - Shows user deflection or non-answers.
@@ -187,38 +206,39 @@ UPDATE_MEMORY_QUESTION_BANK_INSTRUCTIONS = """
 UPDATE_MEMORY_QUESTION_BANK_OUTPUT_FORMAT = """
 <output_format>
 <thinking>
-1. Analyze Response Content:
-   - Is this response worth storing? (Skip if just greetings/deflections)
-   - How should I split this response into meaningful segments?
-     * Look for natural breaks in topics, experiences, or time periods.
-     * Each split should be a complete, coherent thought.
-   
-2. Multi-Subtopic Relevance Analysis:
-   For each memory segment:
-   - Which subtopics does this information relate to?
-   - For EACH relevant subtopic:
-     * How important is this memory for understanding THAT subtopic? (1-10)
-     * Why does this memory matter to THAT subtopic specifically?
-   - Example reasoning:
-     "User worked at Google for 5 years on LLM team"
-     → career_history (importance: 9) - Core career experience defining professional background
-     → technical_expertise (importance: 7) - LLM team indicates AI/ML skills
-     → company_culture (importance: 4) - Google experience provides work environment context
+1. Split into atomic facts:
+   - List every distinct fact, tool, person, event, or relationship mentioned in the response.
+   - Each item on this list will become its own memory (unless it merges with an existing one).
 
-3. Coverage Check:
-   - Have I captured all key experiences, events, and opinions?
-   - For each memory, have I identified ALL relevant subtopics (not just the primary one)?
-   - Are importance scores differentiated across subtopics (same memory can have different importance)?
-   - Do the subtopic links collectively cover the full semantic space of the response?
+2. For each atomic fact, check existing memories:
+   - Is there an existing memory about the EXACT SAME specific subject (same named tool, person, event)?
+   - If yes: use `update_existing_memory` with a merged summary.
+   - If no: use `update_memory_bank_and_session` to create a new memory.
+
+3. Subtopic analysis for each memory:
+   - Which subtopics does this specific fact relate to?
+   - For each relevant subtopic: importance (1-10) and why.
+
+4. Coverage check:
+   - Does every distinct fact from the response have its own memory (new or updated)?
+   - Am I splitting rather than bundling?
 </thinking>
 
 <tool_calls>
-    <!-- One update_memory_bank_and_session call per distinct piece of information -->
-    <!-- Each call can link to MULTIPLE subtopics via subtopic_links list -->
+    <!-- Use update_existing_memory ONLY when elaborating on the same specific subject as an existing memory -->
+    <update_existing_memory>
+        <memory_id>ID of existing memory to merge into</memory_id>
+        <text>Updated summary combining old and new information</text>
+        <new_subtopic_links>[{{"subtopic_id": "id", "importance": 1-10, "relevance": "why"}}]</new_subtopic_links>
+        <title>Optional: updated title if scope broadened</title>
+        <metadata>{{"key": "value"}}</metadata>
+    </update_existing_memory>
+
+    <!-- Only use this for genuinely NEW information not covered by any existing memory -->
     <update_memory_bank_and_session>
         <title>Concise descriptive title</title>
         <text>Clear summary of the information</text>
-        <subtopic_links>[{{"subtopic_id": "subtopic_id_1_from_topics_list", importance": 1-10, "relevance": "Brief explanation of why this memory matters to this subtopic"}}, {{"subtopic_id": "subtopic_id_2_from_topics_list", "importance": 1-10, "relevance": "Brief explanation of why this memory matters to this other subtopic"}}, ...]</subtopic_links>
+        <subtopic_links>[{{"subtopic_id": "subtopic_id_1_from_topics_list", "importance": 1-10, "relevance": "Brief explanation of why this memory matters to this subtopic"}}, {{"subtopic_id": "subtopic_id_2_from_topics_list", "importance": 1-10, "relevance": "Brief explanation of why this memory matters to this other subtopic"}}, ...]</subtopic_links>
         <metadata>{{"key 1": "value 1", "key 2": "value 2", ...}}</metadata>
     </update_memory_bank_and_session>
     ...
@@ -626,32 +646,50 @@ UPDATE_SUBTOPIC_COVERAGE_INSTRUCTIONS = """
 
 ## Process
 
-1. **Determine Subtopic Nature**
-   - Infer whether the subtopic is:
+1. **Check for Subtopic-Level Coverage Criteria**
+   - If the subtopic has explicit `Coverage Criteria` listed, evaluate each criterion individually against the notes.
+   - Call `update_criteria_coverage` with the subtopic ID and a boolean list (one per criterion, in order) reflecting whether each criterion is met.
+   - The subtopic is fully covered only when ALL criteria are met.
+
+2. **Determine Subtopic Nature (when no coverage criteria are provided)**
+   - If the subtopic does NOT have explicit coverage criteria, infer whether the subtopic is:
      * **STAR-appropriate** → if it describes an event, project, or experience involving actions, challenges, or outcomes.
      * **Descriptive** → if it focuses on background, motivation, interest, reasoning, or conceptual understanding rather than a specific event.
 
-2. **Evaluate Completeness**
-   - For **STAR-appropriate** subtopics:
-       * Coverage requires STAR components:
-         - **Situation:** Context or background
-         - **Task:** Objective or responsibility
-         - **Action:** Steps taken or reasoning
-         - **Result:** Outcome, metric, or reflection
-       * Fully covered when almost all components are clearly present and coherent.
+3. **Evaluate Completeness**
+   - **When subtopic-level coverage criteria exist:**
+       * Fully covered when all criteria return `true`.
        * However, if notes is already comprehensive, feel free to mark it as covered as there are more important subtopics to be covered in later section.
-   - For **Descriptive** subtopics:
-       * Coverage requires comprehensive factual, reflective, or conceptual detail.
-       * Fully covered when the main question or theme is explained with sufficient clarity, logic, and completeness (even if not quantifiable).
-       * However, if notes is already comprehensive, feel free to mark it as covered as there are more important subtopics to be covered in later section.
+   - **When using inferred evaluation (no coverage criteria):**
+     - For **STAR-appropriate** subtopics:
+         * Coverage requires STAR components:
+           - **Situation:** Context or background
+           - **Task:** Objective or responsibility
+           - **Action:** Steps taken or reasoning
+           - **Result:** Outcome, metric, or reflection
+         * Fully covered when almost all components are clearly present and coherent.
+         * However, if notes is already comprehensive, feel free to mark it as covered as there are more important subtopics to be covered in later section.
+     - For **Descriptive** subtopics:
+         * Coverage requires comprehensive factual, reflective, or conceptual detail.
+         * Fully covered when the main question or theme is explained with sufficient clarity, logic, and completeness (even if not quantifiable).
+         * However, if notes is already comprehensive, feel free to mark it as covered as there are more important subtopics to be covered in later section.
 
-3. **Aggregation**
+4. **Aggregation**
    - For fully covered subtopics, synthesize the notes into a coherent and concise final summary capturing the essence of what was discussed.
    - Avoid repetition or rephrasing—focus on integration and clarity.
 
-4. **Tool Invocation (Fully Covered)**
+5. **Task Deep Dive Topic Creation (Task Inventory topic only)**
+   - When processing any subtopic under the **Task Inventory** topic, scan the subtopic's notes for distinct tasks the user has named or described.
+   - For each task that the user has clearly described (i.e., named and given at least a brief description of what it involves), call `add_task_deep_dive_topic` once with the task's name.
+   - Only create a Task Deep Dive topic for tasks that:
+     * Have been explicitly named or described by the user (not just implied).
+     * Do NOT already have a "Task Deep Dive: [task name]" topic in the topics list.
+   - Call `add_task_deep_dive_topic` before calling `update_subtopic_coverage` for that subtopic.
+
+6. **Tool Invocation**
+   - For subtopics WITH coverage criteria: always call `update_criteria_coverage` first (even if not all criteria are met yet).
    - Only call `update_subtopic_coverage` for subtopics that are fully covered.
-   - Each call should include:
+   - Each `update_subtopic_coverage` call should include:
        * `subtopic_id`: the ID of the covered subtopic.
        * `aggregated_notes`: the aggregated summary notes.
 
@@ -662,13 +700,22 @@ UPDATE_SUBTOPIC_COVERAGE_OUTPUT_FORMAT = """
 <output_format>
 <thinking>
 For each subtopic, you should:
-1. Review its notes.
-2. Infer if STAR is relevant or not.
-3. Evaluate completeness based on the inferred type.
+1. Check if the subtopic has explicit coverage criteria.
+   - If yes: evaluate each criterion against the notes, then call `update_criteria_coverage`.
+   - If no: infer if STAR is relevant or not.
+2. Evaluate overall completeness.
+3. If this subtopic belongs to the Task Inventory topic, check notes for any named tasks. For each new task not yet having a Task Deep Dive topic, plan to call `add_task_deep_dive_topic`.
 4. For fully covered subtopics, aggregate the notes and call `update_subtopic_coverage`.
 </thinking>
 
 <tool_calls>
+    <!-- Call add_task_deep_dive_topic once per distinct named task from the Task Inventory topic.
+         Only call this when the task is clearly named and no Task Deep Dive topic exists for it yet. -->
+    <add_task_deep_dive_topic>
+        <task_name>Short descriptive name for the task (e.g., "Weekly status report")</task_name>
+    </add_task_deep_dive_topic>
+    ...
+
     <!-- One update_subtopic_coverage call per subtopic id, ONLY when the subtopic is considered fully covered -->
     <update_subtopic_coverage>
         <subtopic_id>The subtopic ID to be marked as covered</subtopic_id>
@@ -1110,6 +1157,46 @@ Decision rules:
 
 </output_format>
 """
+
+# =============================================================================
+# USER PORTRAIT EXTRACTION (intake session end)
+# =============================================================================
+
+EXTRACT_USER_PORTRAIT_PROMPT = """
+You are synthesizing a structured user work profile from memories collected during an intake interview.
+Read all the memories below and fill in the user portrait schema as completely as possible.
+
+Session memories (extracted insights from the conversation):
+<memories>
+{memories}
+</memories>
+
+Current user portrait (may be partially filled — update and expand it, do not discard existing values):
+<current_user_portrait>
+{user_portrait}
+</current_user_portrait>
+
+Return a JSON object with exactly these fields. Use only information from the memories — do not invent details.
+
+{{
+  "Functional Role": "Job title and primary responsibilities in 1-2 sentences",
+  "Team Structure": "Who the user reports to, peers, direct reports, and team size",
+  "Seniority": "Career level and years of relevant experience",
+  "Collaboration and Delegation": "How the user works with others, delegates, or depends on collaborators",
+  "Tools and Methods": ["List of specific tools, software, or methods the user relies on"],
+  "Task Inventory": ["List of recurring tasks or responsibilities the user performs"],
+  "Motivations and Goals": ["What the user cares about or is trying to achieve in their role"],
+  "Known Pain Points": ["Frustrations, bottlenecks, or challenges the user faces"],
+  "Known Bright Spots": ["Things going well, sources of satisfaction, or areas of strength"]
+}}
+
+Rules:
+- Use the user's own language and phrasing where possible
+- Lists should contain specific, concrete items — not vague categories
+- Leave a field as empty string or empty list if there is genuinely no information for it
+- Return only the JSON object, no other text
+"""
+
 
 # =============================================================================
 # WEEKLY SNAPSHOT EXTRACTION

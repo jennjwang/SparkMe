@@ -122,9 +122,6 @@ class UpdateMemoryBankAndSessionInput(BaseModel):
         if not isinstance(v, list):
             raise ValueError(f"subtopic_links must be a list, got {type(v).__name__}")
 
-        if len(v) == 0:
-            raise ValueError("subtopic_links must contain at least one link")
-
         for i, link in enumerate(v):
             if not isinstance(link, dict):
                 raise ValueError(f"Link {i} must be a dictionary, got {type(link).__name__}")
@@ -199,6 +196,128 @@ class UpdateMemoryBankAndSession(BaseTool):
             return f"Successfully stored memory and note for: {title}"
         except Exception as e:
             raise ToolException(f"Error storing memory: {e}")
+
+
+class UpdateExistingMemoryInput(BaseModel):
+    memory_id: str = Field(description="The ID of the existing memory to update/merge into")
+    text: str = Field(description="The updated, aggregated summary that combines the old and new information")
+    new_subtopic_links: Union[str, List[Dict[str, Any]]] = Field(
+        description=(
+            "List of NEW or updated subtopic links from this response. "
+            "Format: same as update_memory_bank_and_session subtopic_links."
+        )
+    )
+    title: Optional[str] = Field(
+        description="Updated title if the scope of the memory has broadened. Leave empty to keep original.",
+        default=None
+    )
+    metadata: Optional[dict] = Field(
+        description="Additional metadata to merge into the existing memory.",
+        default={}
+    )
+
+    @field_validator('new_subtopic_links', mode='before')
+    @classmethod
+    def parse_subtopic_links(cls, v):
+        return UpdateMemoryBankAndSessionInput.parse_subtopic_links(v)
+
+
+class UpdateExistingMemory(BaseTool):
+    """Tool for updating/merging new information into an existing memory."""
+    name: str = "update_existing_memory"
+    description: str = (
+        "Update an existing memory by merging new information from the current "
+        "transcript turn. Use this instead of creating a new memory when the user "
+        "provides additional details about something already stored."
+    )
+    args_schema: Type[BaseModel] = UpdateExistingMemoryInput
+    memory_bank: MemoryBankBase = Field(...)
+    session_agenda: SessionAgenda = Field(...)
+    on_memory_added: SkipValidation[Callable[[Memory], None]] = Field(...)
+    get_current_qa: SkipValidation[Callable[[], str]] = Field(
+        description="Function to get the current interviewer's question and user's response"
+    )
+
+    def _run(
+        self,
+        memory_id: str,
+        text: str,
+        new_subtopic_links: Union[str, List[Dict[str, Any]]],
+        title: Optional[str] = None,
+        metadata: Optional[dict] = {},
+        run_manager: Optional[CallbackManagerForToolRun] = None,
+    ) -> str:
+        try:
+            new_subtopic_links = UpdateExistingMemoryInput.parse_subtopic_links(new_subtopic_links)
+            if not isinstance(metadata, dict):
+                metadata = {}
+
+            question_text, response_text = self.get_current_qa()
+            updated_memory = self.memory_bank.update_memory(
+                memory_id=memory_id,
+                text=text,
+                new_subtopic_links=new_subtopic_links,
+                source_interview_question=question_text,
+                source_interview_response=response_text,
+                title=title,
+                additional_metadata=metadata,
+            )
+
+            if updated_memory is None:
+                raise ToolException(f"Memory with ID {memory_id} not found")
+
+            self.on_memory_added(updated_memory)
+
+            # Update session agenda notes for all linked subtopics
+            for item_link in new_subtopic_links:
+                self.session_agenda.add_note(subtopic_id=item_link['subtopic_id'], note=text)
+
+            return f"Successfully updated memory {memory_id}: {updated_memory.title}"
+        except ToolException:
+            raise
+        except Exception as e:
+            raise ToolException(f"Error updating memory: {e}")
+
+
+class UpdateCriteriaCoverageInput(BaseModel):
+    subtopic_id: str = Field(
+        description="The unique ID of the subtopic whose criteria are being evaluated. Example: '1.1'."
+    )
+    criteria_statuses: List[bool] = Field(
+        description=(
+            "A list of booleans, one per coverage criterion, in the same order they appear "
+            "in the subtopic's Coverage Criteria list. True = criterion is met by the notes, "
+            "False = criterion is not yet met. Must match the number of criteria exactly."
+        )
+    )
+
+class UpdateCriteriaCoverage(BaseTool):
+    """Tool for reporting which individual coverage criteria are met for a subtopic."""
+    name: str = "update_criteria_coverage"
+    description: str = (
+        "Report which individual coverage criteria are met for a subtopic. "
+        "Only call this for subtopics that have Coverage Criteria defined. "
+        "Pass a boolean for each criterion in order."
+    )
+    args_schema: Type[BaseModel] = UpdateCriteriaCoverageInput
+    session_agenda: SessionAgenda = Field(...)
+
+    def _run(
+        self,
+        subtopic_id: str,
+        criteria_statuses: List[bool],
+        run_manager: Optional[CallbackManagerForToolRun] = None,
+    ) -> str:
+        try:
+            self.session_agenda.update_subtopic_criteria_coverage(
+                subtopic_id=str(subtopic_id),
+                statuses=criteria_statuses,
+            )
+            met = sum(criteria_statuses)
+            total = len(criteria_statuses)
+            return f"Updated criteria coverage for subtopic {subtopic_id}: {met}/{total} criteria met."
+        except Exception as e:
+            raise ToolException(f"Error updating criteria coverage: {e}")
 
 
 class UpdateSubtopicCoverageInput(BaseModel):
@@ -447,6 +566,134 @@ class AddHistoricalQuestion(BaseTool):
             return f"Successfully stored question: {content}"
         except Exception as e:
             raise ToolException(f"Error storing question: {e}")
+
+
+TASK_DEEP_DIVE_SUBTOPICS = [
+    {
+        "description": "Action: step-by-step process and time breakdown",
+        "coverage_criteria": [
+            "Describes the sequential steps taken to complete this task from start to finish.",
+            "Estimates the time spent on each major step or phase within the task.",
+            "Identifies any steps that are repeated, looped, or conditional on prior outcomes.",
+        ],
+    },
+    {
+        "description": "Object: what is being worked on",
+        "coverage_criteria": [
+            "Names the specific artifact, document, system, or entity that is the primary target of this task.",
+            "Specifies the format or medium of the object (e.g., spreadsheet, code file, customer record, physical item).",
+            "Distinguishes between the inputs consumed and the outputs produced by this task.",
+        ],
+    },
+    {
+        "description": "Outcome: how task completion is determined",
+        "coverage_criteria": [
+            "States the explicit signal or criterion used to decide the task is done (e.g., approval received, metric threshold met, file submitted).",
+            "Identifies who or what validates the completion (self-review, manager sign-off, automated check, customer acceptance).",
+            "Describes what happens if the outcome criteria are not met (rework loop, escalation, abandon).",
+        ],
+    },
+    {
+        "description": "Tools: tools and methods used for this task",
+        "coverage_criteria": [
+            "Lists each specific tool, software, or method used at each step of the task.",
+            "Identifies which tools are required versus optional or supplementary.",
+            "Notes any manual workarounds used in the absence of a proper tool.",
+        ],
+    },
+    {
+        "description": "AI involvement: how AI is or isn't used in this task",
+        "coverage_criteria": [
+            "Explicitly states whether any generative AI or automation tools are used for this task (Yes/No).",
+            "If Yes, describes which specific AI tool is used and at which step of the task it is applied.",
+            "Distinguishes between company-mandated AI usage and personal/ad-hoc AI workarounds.",
+            "If No, describes whether AI has been considered and why it is not used.",
+        ],
+    },
+    {
+        "description": "Flow of work: where output goes and who initiates",
+        "coverage_criteria": [
+            "Identifies who or what triggers the start of this task (manager request, scheduled event, incoming dependency, self-initiated).",
+            "Traces where the output of this task is consumed next (downstream role, system, client, archive).",
+            "Describes any handoff steps between this task and the next stage in the workflow.",
+        ],
+    },
+    {
+        "description": "Team: support structure and accountability",
+        "coverage_criteria": [
+            "Identifies who is accountable if this task fails or is delayed.",
+            "Lists any roles that provide support, review, or input during this task.",
+            "Specifies whether this task is performed solo, collaboratively, or with a defined backup/escalation path.",
+        ],
+    },
+    {
+        "description": "Experience requirements: skills and expertise needed for this task",
+        "coverage_criteria": [
+            "Names the core technical or domain skills required to perform this task competently.",
+            "Identifies any certifications, training, or prior experience that are prerequisites.",
+            "Estimates how long it typically takes someone new to become independently proficient at this task.",
+            "Describes any tacit knowledge or judgment calls that are hard to learn from documentation alone.",
+        ],
+    },
+    {
+        "description": "Pain points and highlights: frustrations and satisfactions specific to this task",
+        "coverage_criteria": [
+            "Identifies the single biggest frustration or inefficiency associated with this task.",
+            "Categorizes the source of friction as Tool-based, Process-based, or Personnel-based.",
+            "Names one aspect of this task that is consistently satisfying or energizing.",
+            "Proposes one change (tool, process, or resource) that would most improve this task.",
+        ],
+    },
+]
+
+
+class AddTaskDeepDiveTopicInput(BaseModel):
+    task_name: str = Field(
+        description=(
+            "A short, descriptive name for the task the user described "
+            "(e.g., 'Weekly status report', 'Client onboarding', 'Code review')."
+        )
+    )
+
+
+class AddTaskDeepDiveTopic(BaseTool):
+    """Tool for adding a Task Deep Dive topic for a specific task the user described."""
+    name: str = "add_task_deep_dive_topic"
+    description: str = (
+        "Add a new 'Task Deep Dive' core topic for a specific task the user described. "
+        "Call this once per distinct task when the user names a task they perform. "
+        "It creates a structured topic with nine subtopics: Action, Object, Outcome, Tools, "
+        "AI Involvement, Flow of Work, Team, Experience Requirements, and Pain Points and Highlights."
+    )
+    args_schema: Type[BaseModel] = AddTaskDeepDiveTopicInput
+    session_agenda: SessionAgenda = Field(...)
+
+    def _run(
+        self,
+        task_name: str,
+        run_manager: Optional[CallbackManagerForToolRun] = None,
+    ) -> str:
+        try:
+            result = self.session_agenda.add_task_deep_dive(
+                task_name=task_name,
+                subtopics=TASK_DEEP_DIVE_SUBTOPICS,
+            )
+            if result == "queued":
+                return (
+                    f"Task Deep Dive for '{task_name}' has been queued. "
+                    f"It will be created automatically once the current Task Deep Dive is complete."
+                )
+            elif result == "exists":
+                return f"Task Deep Dive for '{task_name}' already exists — skipping."
+            else:
+                topic_id = result.split(":", 1)[1]
+                return (
+                    f"Added Task Deep Dive topic for '{task_name}' as topic ID {topic_id} "
+                    f"with 9 subtopics (Action, Object, Outcome, Tools, AI Involvement, "
+                    f"Flow of Work, Team, Experience Requirements, Pain Points and Highlights)."
+                )
+        except Exception as e:
+            raise ToolException(f"Error adding task deep dive topic: {e}")
 
 
 class AddSnapshotSubtopicInput(BaseModel):

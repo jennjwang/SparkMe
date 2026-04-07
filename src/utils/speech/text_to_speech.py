@@ -44,7 +44,7 @@ class OpenAITTS(TextToSpeechBase):
             model="tts-1",
             voice=self.voice,
             input=text,
-            speed=1.3
+            speed=1.0
         )
         
         # Create directory if it doesn't exist

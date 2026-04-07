@@ -433,6 +433,25 @@
       color: var(--muted);
       line-height: 1.4;
     }
+    .subtopic-criteria {
+      padding: 4px 8px;
+      border-left: 2px solid var(--accent);
+      background: rgba(99,102,241,0.04);
+      border-radius: 0 4px 4px 0;
+    }
+    .subtopic-criteria-label {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 2px;
+    }
+    .subtopic-criteria-item {
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
     .meta-chip {
       font-size: 10px;
       padding: 1px 6px;
@@ -510,10 +529,58 @@
       color: var(--accent);
       border: 1px solid rgba(99,102,241,0.3);
     }
+    .memory-sources {
+      margin-top: 6px;
+      border-top: 1px solid var(--border);
+      padding-top: 6px;
+    }
+    .memory-sources-label {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--accent);
+      margin-bottom: 4px;
+    }
+    .memory-source-item {
+      font-size: 10px;
+      color: var(--muted);
+      padding: 4px 6px;
+      background: var(--surface2);
+      border-radius: 4px;
+      margin-bottom: 3px;
+      line-height: 1.4;
+      border-left: 2px solid var(--accent);
+    }
+    .memory-item.aggregated {
+      border-color: var(--accent);
+    }
+    .memory-agg-badge {
+      font-size: 9px;
+      padding: 1px 5px;
+      border-radius: 6px;
+      background: rgba(99,102,241,0.15);
+      color: var(--accent);
+      border: 1px solid rgba(99,102,241,0.3);
+      margin-left: 4px;
+      vertical-align: middle;
+    }
 
     /* =========================================================
        PORTRAIT TAB
     ========================================================= */
+    .portrait-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 14px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .portrait-status .filled-count {
+      font-weight: 700;
+      color: var(--green);
+    }
     .portrait-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -524,25 +591,66 @@
       border: 1px solid var(--border);
       border-radius: 8px;
       padding: 12px;
-      transition: border-color 0.3s;
+      transition: border-color 0.3s, background 0.3s;
     }
-    .portrait-card.filled { border-color: var(--green); }
+    .portrait-card.wide { grid-column: 1 / -1; }
+    .portrait-card.filled { border-color: var(--green); background: rgba(34,197,94,0.03); }
     .portrait-key {
+      display: flex;
+      align-items: center;
+      gap: 6px;
       font-size: 10px;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.07em;
       color: var(--muted);
-      margin-bottom: 5px;
+      margin-bottom: 6px;
     }
+    .portrait-key .key-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--border);
+      flex-shrink: 0;
+    }
+    .portrait-card.filled .key-dot { background: var(--green); }
     .portrait-val {
       font-size: 12px;
       color: var(--text);
-      line-height: 1.5;
+      line-height: 1.6;
     }
-    .portrait-val.empty { color: var(--muted); font-style: italic; }
-    .portrait-val ul { padding-left: 14px; }
-    .portrait-val ul li { margin-bottom: 2px; }
+    .portrait-val.empty { color: var(--muted); font-style: italic; font-size: 11px; }
+    .portrait-val ul { padding-left: 0; list-style: none; }
+    .portrait-val ul li {
+      padding: 3px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+    }
+    .portrait-val ul li:last-child { border-bottom: none; }
+    .portrait-val ul li::before { content: '›  '; color: var(--muted); }
+
+    /* =========================================================
+       SNAPSHOT TAB
+    ========================================================= */
+    .snapshot-header {
+      font-size: 11px; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .07em; margin-bottom: 10px;
+    }
+    .snapshot-task {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 12px; margin-bottom: 8px;
+    }
+    .snapshot-task .task-desc { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+    .snapshot-task .task-meta { font-size: 11px; color: var(--muted); line-height: 1.6; }
+    .snapshot-task .task-meta span { margin-right: 12px; }
+    .snapshot-section { margin-bottom: 14px; }
+    .snapshot-section-title {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .07em; color: var(--muted); margin-bottom: 6px;
+    }
+    .snapshot-chip {
+      display: inline-block; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 12px; padding: 2px 10px; font-size: 11px; color: var(--text); margin: 2px 4px 2px 0;
+    }
+    .snapshot-note { font-size: 12px; color: var(--text); line-height: 1.5; }
 
     /* =========================================================
        STRATEGIC TAB
@@ -834,6 +942,10 @@
   </div>
 
   <div class="topbar-right">
+    <select id="session-type-select" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;cursor:pointer;">
+      <option value="intake">Intake</option>
+      <option value="weekly">Weekly</option>
+    </select>
     <div id="agent-controls">
       <button class="btn-ctrl" id="btn-pause" title="Pause after next user response">⏸ Pause</button>
       <button class="btn-ctrl" id="btn-resume" title="Resume automatic simulation" disabled>▶ Resume</button>
@@ -882,6 +994,7 @@
       <button class="tab-btn active" data-tab="coverage">Coverage</button>
       <button class="tab-btn" data-tab="memories">Memories</button>
       <button class="tab-btn" data-tab="portrait">Work Profile</button>
+      <button class="tab-btn" data-tab="snapshot">Snapshot</button>
       <button class="tab-btn" data-tab="strategic">Strategic</button>
       <button class="tab-btn" data-tab="timeline">Timeline</button>
     </div>
@@ -917,8 +1030,18 @@
 
       <!-- ── PORTRAIT TAB ── -->
       <div class="tab-pane" id="tab-portrait">
-        <div id="portrait-container">
-          <div class="empty-state"><div class="icon">👤</div>Work profile is built progressively across sessions.</div>
+        <div class="portrait-status">
+          <span>Fields filled:</span>
+          <span class="filled-count" id="portrait-filled-count">0 / 9</span>
+          <span>— synthesized from memories after each turn</span>
+        </div>
+        <div id="portrait-container"></div>
+      </div>
+
+      <!-- ── SNAPSHOT TAB ── -->
+      <div class="tab-pane" id="tab-snapshot">
+        <div id="snapshot-container">
+          <div class="empty-state"><div class="icon">📸</div>Last week's snapshot will appear here during weekly sessions.</div>
         </div>
       </div>
 
@@ -977,6 +1100,7 @@ let lastMemoryIds   = [];
 let lastTopicHash   = '';
 let lastPortraitHash = '';
 let lastStrategicHash = '';
+let lastSnapshotHash  = '';
 let lastInsightCount  = 0;
 let lastTurnCount     = 0;
 
@@ -989,6 +1113,10 @@ async function initSession() {
   const params = new URLSearchParams(window.location.search);
   const agentMode = params.get('mode') === 'agent';
   const simUserId = params.get('sim_user_id') || null;
+  const sessionTypeParam = params.get('session_type');
+  const selectEl = document.getElementById('session-type-select');
+  if (sessionTypeParam) selectEl.value = sessionTypeParam;
+  const sessionType = selectEl.value;
 
   if (agentMode) {
     document.getElementById('brand-mode').textContent = '/ Agent Simulation';
@@ -998,15 +1126,17 @@ async function initSession() {
     syncAgentButtons();
   }
 
+  // Disable the selector once the session starts
+  document.getElementById('session-type-select').disabled = true;
+
   try {
     const endpoint = agentMode ? '/api/start-agent-session' : '/api/start-session';
-    const body = agentMode && simUserId
-      ? JSON.stringify({ sim_user_id: simUserId })
-      : JSON.stringify({});
+    const reqBody = { session_type: sessionType };
+    if (agentMode && simUserId) reqBody.sim_user_id = simUserId;
     const res = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body,
+      body: JSON.stringify(reqBody),
     });
     const data = await res.json();
     if (!data.success) { alert('Failed to start session: ' + (data.error || '?')); return; }
@@ -1117,6 +1247,7 @@ function renderState(data) {
   renderCoverage(data.topics || []);
   renderMemories(data.memories || [], data.memory_count || 0);
   renderPortrait(data.user_portrait || {});
+  renderSnapshot(data.last_week_snapshot || {});
   renderStrategic(data.strategic_priorities || {}, data.rollout_predictions || [], data.emergent_insights || []);
   renderTimeline(data.turns || []);
 
@@ -1128,7 +1259,7 @@ function renderState(data) {
 
 /* ── Coverage ── */
 function renderCoverage(topics) {
-  const hash = JSON.stringify(topics.map(t => t.subtopics.map(s => s.is_covered + '|' + (s.notes||[]).join('|') + '|' + (s.final_summary||''))));
+  const hash = JSON.stringify(topics.map(t => t.subtopics.map(s => s.is_covered + '|' + (s.notes||[]).join('|') + '|' + (s.final_summary||'') + '|' + (s.criteria_coverage||[]).join(','))));
   if (hash === lastTopicHash) return;
   lastTopicHash = hash;
 
@@ -1175,6 +1306,14 @@ function renderCoverage(topics) {
       const rationaleHtml = (st.is_covered && st.final_summary)
         ? `<div class="subtopic-rationale"><div class="subtopic-rationale-label">Covered — rationale</div><div class="subtopic-rationale-text">${escHtml(st.final_summary)}</div></div>`
         : '';
+      const criteriaHtml = (st.coverage_criteria && st.coverage_criteria.length > 0 && !st.is_covered)
+        ? `<div class="subtopic-criteria"><div class="subtopic-criteria-label">Coverage Criteria</div>${st.coverage_criteria.map((c, i) => {
+            const met = st.criteria_coverage && st.criteria_coverage[i] === true;
+            const icon = met ? '<span style="color:var(--green)">✓</span>' : '<span style="color:var(--muted)">✗</span>';
+            const style = met ? 'color:var(--text)' : '';
+            return `<div class="subtopic-criteria-item" style="${style}">${icon} ${escHtml(c)}</div>`;
+          }).join('')}</div>`
+        : '';
       return `
         <div class="subtopic-row ${stateClass}">
           <div class="subtopic-row-header">
@@ -1184,6 +1323,7 @@ function renderCoverage(topics) {
           </div>
           ${notesHtml}
           ${rationaleHtml}
+          ${criteriaHtml}
         </div>`;
     }).join('');
 
@@ -1206,7 +1346,11 @@ function renderMemories(memories, total) {
   document.getElementById('mem-big-count').textContent = total;
 
   const newIds = memories.map(m => m.id);
-  const hash   = newIds.join(',');
+  // Use a richer hash that also tracks transcript_references count so aggregated
+  // memories re-render when a new source is added
+  const hash = memories.map(m =>
+    m.id + ':' + (m.transcript_references || []).length
+  ).join(',');
   if (hash === lastMemoryIds.join(',')) return;
 
   const container = document.getElementById('memories-container');
@@ -1216,28 +1360,54 @@ function renderMemories(memories, total) {
     return;
   }
 
-  // Figure out which are new
-  const prevSet = new Set(lastMemoryIds);
-  lastMemoryIds = newIds;
+  const prevSet = new Set(lastMemoryIds.map(h => h.split(':')[0]));
+  lastMemoryIds = hash.split(',');
 
   // Rebuild (newest first)
   container.innerHTML = '';
   [...memories].reverse().forEach(mem => {
-    const isNew = !prevSet.has(mem.id);
-    const ts    = mem.timestamp ? new Date(mem.timestamp).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '';
-    const links = (mem.subtopic_links || []).map(l =>
+    const isNew  = !prevSet.has(mem.id);
+    const refs   = mem.transcript_references || [];
+    const isAgg  = refs.length > 1;
+    const ts     = mem.timestamp
+      ? new Date(mem.timestamp).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})
+      : '';
+    const links  = (mem.subtopic_links || []).map(l =>
       `<span class="link-chip">${escHtml(l.subtopic_id || l)}</span>`
     ).join('');
 
+    // Transcript sources section (only when >1 reference)
+    let sourcesHtml = '';
+    if (isAgg) {
+      const sourceItems = refs.map((ref, i) => {
+        const refTs = ref.timestamp
+          ? new Date(ref.timestamp).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})
+          : `source ${i + 1}`;
+        const snippet = ref.interview_response
+          ? escHtml(ref.interview_response.slice(0, 120)) + (ref.interview_response.length > 120 ? '…' : '')
+          : '';
+        return `<div class="memory-source-item"><strong>${refTs}</strong> — ${snippet}</div>`;
+      }).join('');
+      sourcesHtml = `
+        <div class="memory-sources">
+          <div class="memory-sources-label">Aggregated from ${refs.length} responses</div>
+          ${sourceItems}
+        </div>`;
+    }
+
     const item = document.createElement('div');
-    item.className = `memory-item${isNew ? ' new-flash' : ''}`;
+    item.className = `memory-item${isNew ? ' new-flash' : ''}${isAgg ? ' aggregated' : ''}`;
     item.innerHTML = `
       <div class="memory-dot"></div>
       <div class="memory-body">
-        <div class="memory-title">${escHtml(mem.title)}</div>
+        <div class="memory-title">
+          ${escHtml(mem.title)}
+          ${isAgg ? `<span class="memory-agg-badge">${refs.length} sources</span>` : ''}
+        </div>
         <div class="memory-text">${escHtml(mem.text)}</div>
         ${links ? `<div class="memory-links">${links}</div>` : ''}
         <div class="memory-time">${ts}</div>
+        ${sourcesHtml}
       </div>`;
     container.appendChild(item);
 
@@ -1246,40 +1416,110 @@ function renderMemories(memories, total) {
 }
 
 /* ── Portrait ── */
+const PORTRAIT_FIELDS = [
+  { key: 'Functional Role',            wide: false },
+  { key: 'Team Structure',             wide: false },
+  { key: 'Seniority',                  wide: false },
+  { key: 'Collaboration and Delegation', wide: false },
+  { key: 'Tools and Methods',          wide: true  },
+  { key: 'Task Inventory',             wide: true  },
+  { key: 'Motivations and Goals',      wide: true  },
+  { key: 'Known Pain Points',          wide: true  },
+  { key: 'Known Bright Spots',         wide: true  },
+];
+
 function renderPortrait(portrait) {
   const hash = JSON.stringify(portrait);
   if (hash === lastPortraitHash) return;
   lastPortraitHash = hash;
 
   const container = document.getElementById('portrait-container');
-  const entries   = Object.entries(portrait);
-  if (entries.length === 0) {
-    container.innerHTML = '<div class="empty-state"><div class="icon">👤</div>Work profile is built progressively across sessions.</div>';
-    return;
-  }
-
   container.innerHTML = '<div class="portrait-grid"></div>';
   const grid = container.querySelector('.portrait-grid');
 
-  entries.forEach(([key, val]) => {
+  let filledCount = 0;
+
+  PORTRAIT_FIELDS.forEach(({ key, wide }) => {
+    const val     = portrait[key];
     const isEmpty = !val || (Array.isArray(val) && val.length === 0) || val === '';
-    const card    = document.createElement('div');
-    card.className = `portrait-card${isEmpty ? '' : ' filled'}`;
+    if (!isEmpty) filledCount++;
+
+    const card = document.createElement('div');
+    card.className = `portrait-card${isEmpty ? '' : ' filled'}${wide ? ' wide' : ''}`;
 
     let valHtml;
     if (Array.isArray(val) && val.length > 0) {
       valHtml = `<ul>${val.map(v => `<li>${escHtml(String(v))}</li>`).join('')}</ul>`;
-    } else if (val && !isEmpty) {
+    } else if (!isEmpty) {
       valHtml = escHtml(String(val));
     } else {
-      valHtml = '—';
+      valHtml = 'Not yet gathered';
     }
 
     card.innerHTML = `
-      <div class="portrait-key">${escHtml(key.replace(/_/g,' '))}</div>
+      <div class="portrait-key">
+        <span class="key-dot"></span>
+        ${escHtml(key)}
+      </div>
       <div class="portrait-val${isEmpty ? ' empty' : ''}">${valHtml}</div>`;
     grid.appendChild(card);
   });
+
+  document.getElementById('portrait-filled-count').textContent =
+    `${filledCount} / ${PORTRAIT_FIELDS.length}`;
+}
+
+/* ── Snapshot ── */
+function renderSnapshot(snapshot) {
+  const hash = JSON.stringify(snapshot);
+  if (hash === lastSnapshotHash) return;
+  lastSnapshotHash = hash;
+
+  const container = document.getElementById('snapshot-container');
+  const keys = Object.keys(snapshot);
+  if (keys.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="icon">📸</div>Last week\'s snapshot will appear here during weekly sessions.</div>';
+    return;
+  }
+
+  let html = '';
+
+  // Header with week number and timestamp
+  if (snapshot.week_number) {
+    html += `<div class="snapshot-header">Week ${snapshot.week_number}${snapshot.timestamp ? ' &middot; ' + new Date(snapshot.timestamp).toLocaleDateString() : ''}</div>`;
+  }
+
+  // Tasks
+  const tasks = snapshot.tasks || [];
+  if (tasks.length > 0) {
+    html += '<div class="snapshot-section"><div class="snapshot-section-title">Tasks</div>';
+    tasks.forEach(t => {
+      const pct = Math.round((t.time_share || 0) * 100);
+      html += `<div class="snapshot-task">
+        <div class="task-desc">${escHtml(t.description)}</div>
+        <div class="task-meta">
+          <span>Time: ${pct}%</span>
+          ${t.ai_involved ? `<span>AI: ${escHtml(t.ai_tool || 'yes')}${t.ai_purpose ? ' — ' + escHtml(t.ai_purpose) : ''}</span>` : '<span>No AI</span>'}
+        </div>
+      </div>`;
+    });
+    html += '</div>';
+  }
+
+  // Collaborators
+  const collabs = snapshot.collaborators_this_week || [];
+  if (collabs.length > 0) {
+    html += '<div class="snapshot-section"><div class="snapshot-section-title">Collaborators</div>';
+    collabs.forEach(c => { html += `<span class="snapshot-chip">${escHtml(c)}</span>`; });
+    html += '</div>';
+  }
+
+  // Notable events
+  if (snapshot.notable_events) {
+    html += `<div class="snapshot-section"><div class="snapshot-section-title">Notable Events</div><div class="snapshot-note">${escHtml(snapshot.notable_events)}</div></div>`;
+  }
+
+  container.innerHTML = html;
 }
 
 /* ── Strategic ── */
@@ -1449,7 +1689,7 @@ async function agentControl(action) {
       body: JSON.stringify({ session_token: sessionToken, action }),
     });
     const data = await res.json();
-    if (!data.success) return;
+    if (!data.success) { console.error('agentControl failed:', data.error); return; }
     agentPaused = data.paused;
     syncAgentButtons();
   } catch(e) { console.error('agentControl error', e); }

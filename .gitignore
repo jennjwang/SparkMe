@@ -208,3 +208,9 @@ __marimo__/
 
 gcp-key.json
 logs/
+
+.venv-analysis/
+analysis/
+.claude/
+data/
+user_study/

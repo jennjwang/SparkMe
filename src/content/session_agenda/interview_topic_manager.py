@@ -27,6 +27,9 @@ class InterviewTopicManager(BaseModel):
     coverage_stats: Dict[str, Any] = Field(default_factory=list)
     enable_emergent_subtopics: bool = False
 
+    # Queue of task names waiting to become Task Deep Dive topics
+    pending_task_deep_dives: List[str] = Field(default_factory=list)
+
     # Embedding-based dedup for emergent subtopics
     embedding_service: Optional[Any] = Field(default=None, exclude=True)
     subtopic_embeddings: Dict[str, Any] = Field(default_factory=dict, exclude=True)
@@ -113,12 +116,19 @@ class InterviewTopicManager(BaseModel):
 
             for j, subtopic in enumerate(topic_dict.get('subtopics', [])):
                 subtopic_id = f"{topic_id}.{j + 1}"
+                if isinstance(subtopic, dict):
+                    subtopic_description = subtopic.get('description', subtopic.get('subtopic_description', ''))
+                    subtopic_criteria = subtopic.get('coverage_criteria', [])
+                else:
+                    subtopic_description = subtopic
+                    subtopic_criteria = []
                 curr_subtopic = SubTopic(
                     subtopic_id=subtopic_id,
                     core_topic_id=topic_id,
-                    description=subtopic,
+                    description=subtopic_description,
                     questions=[],
-                    is_covered=False
+                    is_covered=False,
+                    coverage_criteria=subtopic_criteria,
                 )
                 curr_core_topic.add_required_subtopic(curr_subtopic)
 
@@ -142,6 +152,76 @@ class InterviewTopicManager(BaseModel):
     
     def add_core_topic(self, core_topic: CoreTopic):
         self.core_topic_dict[core_topic.topic_id] = core_topic
+
+    def _is_task_deep_dive(self, topic_id: str) -> bool:
+        """Return True if the topic is a Task Deep Dive topic."""
+        topic = self.core_topic_dict.get(topic_id)
+        return topic is not None and topic.description.startswith("Task Deep Dive:")
+
+    def _has_incomplete_task_deep_dive(self) -> bool:
+        """Return True if any Task Deep Dive topic is not yet complete."""
+        return any(
+            self._is_task_deep_dive(tid) and not self.check_core_topic_completion(tid)
+            for tid in self.core_topic_dict
+        )
+
+    def add_task_deep_dive(self, task_name: str, subtopics: List[Dict[str, Any]]) -> str:
+        """Add a Task Deep Dive topic for task_name, or queue it if one is already in progress.
+
+        Returns:
+            "created:<topic_id>" if the topic was created immediately.
+            "queued" if a deep dive is already active — task_name is queued for later.
+        """
+        # Skip if already exists
+        description = f"Task Deep Dive: {task_name}"
+        if any(t.description == description for t in self.core_topic_dict.values()):
+            return "exists"
+
+        if self._has_incomplete_task_deep_dive():
+            # Queue for later — only if not already queued
+            if task_name not in self.pending_task_deep_dives:
+                self.pending_task_deep_dives.append(task_name)
+            return "queued"
+
+        topic_id = self.add_new_core_topic(description=description, subtopics=subtopics)
+        return f"created:{topic_id}"
+
+    def add_new_core_topic(self, description: str, subtopics: List[Dict[str, Any]]) -> str:
+        """Dynamically add a new core topic with given subtopics. Returns the new topic_id."""
+        topic_id = str(len(self.core_topic_dict) + 1)
+        # Ensure uniqueness in case of collisions
+        while topic_id in self.core_topic_dict:
+            topic_id = str(int(topic_id) + 1)
+
+        new_topic = CoreTopic(
+            topic_id=topic_id,
+            description=description,
+            required_subtopics={},
+            emergent_subtopics={},
+            keywords=[],
+        )
+
+        for j, subtopic in enumerate(subtopics):
+            subtopic_id = f"{topic_id}.{j + 1}"
+            if isinstance(subtopic, dict):
+                subtopic_description = subtopic.get('description', '')
+                subtopic_criteria = subtopic.get('coverage_criteria', [])
+            else:
+                subtopic_description = str(subtopic)
+                subtopic_criteria = []
+            new_subtopic = SubTopic(
+                subtopic_id=subtopic_id,
+                core_topic_id=topic_id,
+                description=subtopic_description,
+                questions=[],
+                is_covered=False,
+                coverage_criteria=subtopic_criteria,
+            )
+            new_topic.add_required_subtopic(new_subtopic)
+
+        self.add_core_topic(new_topic)
+        self.add_topic_id_as_active_topic(topic_id)
+        return topic_id
         
     def get_core_topic(self, core_topic_id: str) -> Optional[CoreTopic]:
         return self.core_topic_dict.get(core_topic_id, None)
@@ -365,6 +445,17 @@ class InterviewTopicManager(BaseModel):
         insight = EmergentInsight.from_dict(insight_data)
         return subtopic.add_emergent_insight(insight=insight)
     
+    def update_subtopic_criteria_coverage(self, subtopic_id: str, statuses: list) -> bool:
+        topic_id = subtopic_id.split(".")[0]
+        core_topic = self.get_core_topic(topic_id)
+        if core_topic is None:
+            return False
+        subtopic = core_topic.get_subtopic(subtopic_id)
+        if subtopic is None:
+            return False
+        subtopic.update_criteria_coverage(statuses)
+        return True
+
     def give_feedback_subtopic_coverage(self, subtopic_id: str, feedback: str) -> bool:
         topic_id = subtopic_id.split(".")[0]
         core_topic = self.get_core_topic(topic_id)
@@ -378,15 +469,32 @@ class InterviewTopicManager(BaseModel):
         return subtopic.update_coverage_feedback_gap(feedback=feedback)
     
     def revise_agenda_after_update(self):
-        # TODO basic rule, only 3 active topic at a time
+        # If a pending task deep dive is queued and no deep dive is currently active,
+        # create the next one now.
+        if self.pending_task_deep_dives and not self._has_incomplete_task_deep_dive():
+            from src.agents.session_scribe.tools import TASK_DEEP_DIVE_SUBTOPICS
+            next_task = self.pending_task_deep_dives.pop(0)
+            self.add_task_deep_dive(task_name=next_task, subtopics=TASK_DEEP_DIVE_SUBTOPICS)
+
+        # Build active topic list — at most 3, but Task Deep Dive topics take priority:
+        # if any incomplete deep dive exists, only deep dives are active.
+        incomplete_deep_dives = [
+            tid for tid in self.core_topic_dict
+            if self._is_task_deep_dive(tid) and not self.check_core_topic_completion(tid)
+        ]
+
         self.active_topic_id_list = []
-        for topic_id, core_topic in self.core_topic_dict.items():
-            if not self.check_core_topic_completion(topic_id):
-                self.active_topic_id_list.append(topic_id)
-            
-            if len(self.active_topic_id_list) == 3:
-                break
-            
+        if incomplete_deep_dives:
+            # Only the current (first) incomplete deep dive is active
+            self.active_topic_id_list = [incomplete_deep_dives[0]]
+        else:
+            # No deep dive in progress — normal topic rotation
+            for topic_id in self.core_topic_dict:
+                if not self.check_core_topic_completion(topic_id):
+                    self.active_topic_id_list.append(topic_id)
+                if len(self.active_topic_id_list) == 3:
+                    break
+
         # Stats gathering only
         curr_coverage_stats = {}
         for topic_id, core_topic in self.core_topic_dict.items():
@@ -399,6 +507,7 @@ class InterviewTopicManager(BaseModel):
             'core_topic_dict': {k: v.to_dict() for k, v in self.core_topic_dict.items()},
             'active_topic_id_list': self.active_topic_id_list,
             'coverage_stats': self.coverage_stats, # Stats only
+            'pending_task_deep_dives': self.pending_task_deep_dives,
         }
     
     @classmethod
@@ -418,4 +527,5 @@ class InterviewTopicManager(BaseModel):
             manager.add_topic_id_as_active_topic(topic_id)
 
         manager.coverage_stats = data.get("coverage_stats", {})
+        manager.pending_task_deep_dives = data.get("pending_task_deep_dives", [])
         return manager

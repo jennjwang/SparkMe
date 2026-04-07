@@ -8,7 +8,7 @@ from datetime import datetime
 
 
 
-from src.content.memory_bank.memory import Memory, MemorySearchResult
+from src.content.memory_bank.memory import Memory, MemorySearchResult, TranscriptReference
 
 class MemoryBankBase(ABC):
     """Abstract base class for memory bank implementations.
@@ -52,7 +52,7 @@ class MemoryBankBase(ABC):
         question_ids: Optional[List[str]] = None
     ) -> Memory:
         """Add a new memory to the database.
-        
+
         Args:
             title: Title of the memory
             text: Content of the memory
@@ -61,9 +61,38 @@ class MemoryBankBase(ABC):
             source_interview_response: Original response from interview
             metadata: Optional metadata dictionary
             question_ids: Optional list of question IDs that generated this memory
-            
+
         Returns:
             Memory: The created memory object
+        """
+        pass
+
+    @abstractmethod
+    def update_memory(
+        self,
+        memory_id: str,
+        text: str,
+        new_subtopic_links: List[Dict[str, Any]],
+        source_interview_question: str,
+        source_interview_response: str,
+        title: Optional[str] = None,
+        additional_metadata: Optional[Dict] = None,
+    ) -> Optional[Memory]:
+        """Update an existing memory by merging new information.
+
+        Appends a new transcript reference and merges subtopic links and metadata.
+
+        Args:
+            memory_id: ID of the existing memory to update
+            text: Updated/merged summary text
+            new_subtopic_links: Additional subtopic links to merge
+            source_interview_question: The new interview question source
+            source_interview_response: The new interview response source
+            title: Optional updated title (keeps original if None)
+            additional_metadata: Optional metadata to merge
+
+        Returns:
+            The updated Memory, or None if memory_id not found
         """
         pass
     
@@ -204,55 +233,54 @@ class MemoryBankBase(ABC):
 
     def get_formatted_memories_from_ids(self, memory_ids: List[str], include_source: bool = True) -> str:
         """Get and format memories from memory IDs into XML format.
-        
+
         Args:
             memory_ids: List of memory IDs to format
-            include_source: Whether to include source interview response in output
-            
+            include_source: Whether to include transcript references in output
+
         Returns:
             str: XML formatted string of memories, or empty string if no memories
         """
         if not memory_ids:
             return ""
-            
+
         # Track seen source responses to avoid duplicates
         seen_sources = {}  # source_text -> first_memory_id
         memory_texts = []
-        
+
         for memory_id in memory_ids:
             memory = self.get_memory_by_id(memory_id)
             if not memory:
                 continue
-                
+
             if include_source:
-                source_text = memory.source_interview_response
-                if source_text in seen_sources:
-                    # Reference the first memory with this source
-                    source_xml = (
-                        f'<source_interview_response>\n'
-                        f'Same as {seen_sources[source_text]}\n'
-                        f'</source_interview_response>'
-                    )
-                else:
-                    # First time seeing this source
-                    seen_sources[source_text] = memory.id
-                    source_xml = (
-                        f'<source_interview_response>\n'
-                        f'{source_text}\n'
-                        f'</source_interview_response>'
-                    )
-                
-                # Build memory XML with modified source
+                # Build transcript references XML, deduplicating responses
+                ref_lines = []
+                for ref in memory.transcript_references:
+                    source_text = ref.interview_response
+                    if source_text in seen_sources:
+                        ref_lines.append(
+                            f'<interview_response>Same as {seen_sources[source_text]}</interview_response>'
+                        )
+                    else:
+                        seen_sources[source_text] = memory.id
+                        ref_lines.append(
+                            f'<interview_response>\n{source_text}\n</interview_response>'
+                        )
+
                 memory_xml = [
                     '<memory>',
                     f'<title>{memory.title}</title>',
                     f'<summary>{memory.text}</summary>',
                     f'<id>{memory.id}</id>',
-                    source_xml,
-                    '</memory>'
                 ]
+                if ref_lines:
+                    memory_xml.append('<transcript_references>')
+                    memory_xml.extend(ref_lines)
+                    memory_xml.append('</transcript_references>')
+                memory_xml.append('</memory>')
                 memory_texts.append('\n'.join(memory_xml))
             else:
                 memory_texts.append(memory.to_xml(include_source=False))
-        
+
         return "\n\n".join(memory_texts) if memory_texts else ""

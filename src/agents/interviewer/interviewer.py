@@ -142,12 +142,6 @@ class Interviewer(BaseAgent, Participant):
         
         return quantified_question
 
-    _INTAKE_OPENING = (
-        "Hi, thanks so much for taking the time to chat today. "
-        "The way this will go is pretty simple: I'll ask you some questions, "
-        "but feel free to pause or ask me to clarify anything at any point. "
-        "To get started, could you tell me a bit about your professional background?"
-    )
 
     async def on_message(self, message: Message):
 
@@ -159,14 +153,11 @@ class Interviewer(BaseAgent, Participant):
             self.add_event(sender=message.role, tag="message",
                            content=message.content)
 
-        # Opening turn of a fresh intake session: send fixed greeting, skip LLM
+        # Opening turn of a fresh session with no prior summary: let LLM generate first question
         is_weekly = getattr(self.interview_session, "session_type", "intake") == "weekly"
-        if message is None and not is_weekly:
-            last_summary = self.interview_session.session_agenda.get_last_meeting_summary_str()
-            if not last_summary:
-                await self._handle_response(self._INTAKE_OPENING)
-                self.add_event(sender=self.name, tag="message", content=self._INTAKE_OPENING)
-                return
+
+        # If session is paused, wait until resumed or a step is requested
+        await self.interview_session.wait_if_paused()
 
         self._turn_to_respond = True
         iterations = 0
@@ -177,10 +168,13 @@ class Interviewer(BaseAgent, Participant):
             response = await self.call_engine_async(prompt)
             print(f"{GREEN}Interviewer:\n{response}{RESET}")
             try:
+                if "<tool_calls>" not in response and "<respond_to_user>" in response:
+                    response = f"<tool_calls>{response}</tool_calls>"
                 await self.handle_tool_calls_async(response)
             except Exception as e:
                 print(f"Error calling tool: {e}. Use the raw response as the output.")
-                await self._handle_response(response)
+                if response.strip():
+                    await self._handle_response(response)
 
             iterations += 1
             if iterations >= self._max_consideration_iterations:
@@ -234,11 +228,20 @@ class Interviewer(BaseAgent, Participant):
             tools_set.discard("recall")
 
 
+        # For weekly sessions, provide the snapshot for prompt formatting
+        last_week_snapshot_str = ""
+        if getattr(self.interview_session, "session_type", "intake") == "weekly":
+            last_week_snapshot_str = (
+                self.interview_session.session_agenda
+                .get_last_week_snapshot_str()
+            )
+
         # Create format parameters based on prompt type
         format_params = {
             "user_portrait": user_portrait_str,
             "interview_description": self.interview_description,
             "last_meeting_summary": last_meeting_summary_str,
+            "last_week_snapshot": last_week_snapshot_str,
             "chat_history": '\n'.join(recent_events),
             "current_events": '\n'.join(current_events),
             "recent_interviewer_messages": '\n'.join(
@@ -274,11 +277,16 @@ class Interviewer(BaseAgent, Participant):
         else:
             main_prompt = get_prompt("normal")
 
-            # Remove STRATEGIC_QUESTIONS section from template if stale
-            if not self.use_baseline and not self._should_include_strategic_questions():
-                # Remove the {STRATEGIC_QUESTIONS} line to exclude the section entirely
-                main_prompt = main_prompt.replace("\n{STRATEGIC_QUESTIONS}\n", "\n")
-                # Don't provide strategic_questions key in format_params (already omitted above)
+        # Remove strategic questions section if not included to avoid unfilled placeholders
+        if not self.use_baseline and not self._should_include_strategic_questions():
+            # Remove the entire <strategic_questions>...</strategic_questions> block
+            main_prompt = re.sub(
+                r'\s*<strategic_questions>.*?</strategic_questions>\s*',
+                '\n',
+                main_prompt,
+                flags=re.DOTALL
+            )
+            main_prompt = main_prompt.replace("{strategic_questions}", "")
 
         return format_prompt(main_prompt, format_params)
 

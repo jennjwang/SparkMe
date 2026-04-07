@@ -12,8 +12,10 @@ from src.utils.llm.models.vllm import VLLMEngine
 
 
 engine_constructor = {
+    "gpt-4.1": ChatOpenAI,
     "gpt-4.1-mini": ChatOpenAI,
     "gpt-4.1-nano": ChatOpenAI,
+    "gpt-5.4-mini": ChatOpenAI,
     "gpt-4o-mini-2024-07-18": ChatOpenAI,
     "gpt-3.5-turbo-0125": ChatOpenAI,
     "gpt-4o": ChatOpenAI,
@@ -83,7 +85,6 @@ def get_engine(model_name, **kwargs):
         kwargs["max_tokens"] = token_limit
         return VLLMEngine(model_name=actual_model_name, **kwargs)
 
-    # For other models (OpenAI, Llama), use max_tokens
     kwargs["max_tokens"] = token_limit
     kwargs["model_name"] = model_name
     return engine_constructor[model_name](**kwargs)
@@ -107,7 +108,21 @@ def invoke_engine(engine, prompt, **kwargs) -> ModelResponse:
         return response
 
     # For LangChain models, wrap the response and extract token usage
-    model_response = ModelResponse(response.content)
+    # Newer OpenAI models may use native JSON tool calling even without tools bound,
+    # resulting in empty response.content. Convert native tool_calls to XML format.
+    content = response.content
+    if not content and hasattr(response, 'tool_calls') and response.tool_calls:
+        xml_parts = ["<tool_calls>"]
+        for tc in response.tool_calls:
+            tool_name = tc.get('name', '')
+            args = tc.get('args', {})
+            xml_parts.append(f"<{tool_name}>")
+            for k, v in args.items():
+                xml_parts.append(f"<{k}>{v}</{k}>")
+            xml_parts.append(f"</{tool_name}>")
+        xml_parts.append("</tool_calls>")
+        content = "\n".join(xml_parts)
+    model_response = ModelResponse(content)
 
     # Extract token usage from LangChain response metadata if available
     if hasattr(response, 'response_metadata') and 'token_usage' in response.response_metadata:

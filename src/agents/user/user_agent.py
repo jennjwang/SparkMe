@@ -25,8 +25,11 @@ class UserAgent(BaseAgent, User):
         # Load profile background
         profile_path = os.path.join(
             os.getenv("USER_AGENT_PROFILES_DIR"), f"{user_id}/{user_id}_bio_notes.md")
-        with open(profile_path, 'r') as f:
-            self.profile_background = f.read()
+        if os.path.exists(profile_path):
+            with open(profile_path, 'r') as f:
+                self.profile_background = f.read()
+        else:
+            self.profile_background = ""
         
         # Load topics and advance to next topic
         # topics_path = os.path.join(
@@ -63,12 +66,8 @@ class UserAgent(BaseAgent, User):
         else:
             self.conversational_style = ""
 
-        # Pause/step control (for visualizer agent mode)
-        self._paused = False
-        self._step_requested = False
-
     async def on_message(self, message: Message):
-        """Handle incoming messages by generating a response and notifying 
+        """Handle incoming messages by generating a response and notifying
         the interview session"""
         if not message:
             return
@@ -77,10 +76,8 @@ class UserAgent(BaseAgent, User):
         self.add_event(sender=message.role, tag="message",
                        content=message.content)
 
-        # If paused, wait until resumed or a step is requested
-        while self._paused and not self._step_requested:
-            await asyncio.sleep(0.2)
-        self._step_requested = False  # consume step token
+        # If session is paused, wait until resumed or a step is requested
+        await self.interview_session.wait_if_paused()
 
         # Score the interviewer's question for potential feedback
         # if os.getenv("EVAL_MODE") == "true":
@@ -106,9 +103,7 @@ class UserAgent(BaseAgent, User):
         self.add_event(sender=self.name,
                        tag="message", content=response)
 
-        # Wait to mimic natural response time (skip delay when paused/stepping)
-        if not self._paused:
-            await asyncio.sleep(10)
+        # No artificial delay — respond immediately
         print(f"{ORANGE}User Agent:\n{response}{RESET}")
 
         self.interview_session.add_message_to_chat_history(

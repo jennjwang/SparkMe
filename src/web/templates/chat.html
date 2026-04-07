@@ -243,19 +243,7 @@
         .send-btn:active { transform: scale(0.95); }
         .send-btn:disabled { background: #e5e7eb; color: #9ca3af; cursor: not-allowed; transform: none; }
 
-        /* ---- Typewriter cursor ---- */
-        .cursor {
-            display: inline-block;
-            width: 2px; height: 1em;
-            background: #10a37f;
-            margin-left: 2px;
-            vertical-align: text-bottom;
-            animation: cursorBlink 0.8s ease-in-out infinite;
-        }
-        @keyframes cursorBlink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0; }
-        }
+
 
         /* ---- Typing indicator ---- */
         .typing-indicator {
@@ -383,9 +371,6 @@
             document.getElementById('chat-form').onsubmit = e => { e.preventDefault(); };
         }
 
-        // Map messageId -> typewriter control so audio can sync speed
-        const typewriterRegistry = {};
-
         function appendMessage(role, text, messageId) {
             if (messageId && seenMessageIds.has(messageId)) return false;
             if (messageId) seenMessageIds.add(messageId);
@@ -407,74 +392,10 @@
             div.appendChild(contentDiv);
             box.appendChild(div);
 
-            if (isUser) {
-                // User messages appear instantly
-                contentP.innerHTML = text.replace(/\n/g, '<br>');
-            } else {
-                // Bot messages: typewriter, ~12ms/char
-                typewriterText(contentP, text, messageId, 12);
-            }
+            contentP.innerHTML = text.replace(/\n/g, '<br>');
 
             scrollToBottom();
             return true;
-        }
-
-        function typewriterText(el, fullText, messageId, msPerChar) {
-            // Split into chars (handles emoji/unicode safely)
-            const chars = [...fullText];
-            let i = 0;
-
-            // Add blinking cursor
-            const cursor = document.createElement('span');
-            cursor.className = 'cursor';
-            el.appendChild(cursor);
-
-            let intervalId = setInterval(() => {
-                if (i < chars.length) {
-                    const ch = chars[i++];
-                    // Insert char before cursor
-                    el.insertBefore(document.createTextNode(ch === '\n' ? '' : ch), cursor);
-                    if (ch === '\n') el.insertBefore(document.createElement('br'), cursor);
-                    scrollToBottom();
-                } else {
-                    clearInterval(intervalId);
-                    cursor.remove();
-                    if (messageId && typewriterRegistry[messageId]) {
-                        delete typewriterRegistry[messageId];
-                    }
-                }
-            }, msPerChar);
-
-            // Store control handle so audio can adjust speed
-            if (messageId) {
-                typewriterRegistry[messageId] = {
-                    setSpeed: (newMs) => {
-                        clearInterval(intervalId);
-                        intervalId = setInterval(() => {
-                            if (i < chars.length) {
-                                const ch = chars[i++];
-                                el.insertBefore(document.createTextNode(ch === '\n' ? '' : ch), cursor);
-                                if (ch === '\n') el.insertBefore(document.createElement('br'), cursor);
-                                scrollToBottom();
-                            } else {
-                                clearInterval(intervalId);
-                                cursor.remove();
-                                delete typewriterRegistry[messageId];
-                            }
-                        }, newMs);
-                    },
-                    finish: () => {
-                        clearInterval(intervalId);
-                        cursor.remove();
-                        // Flush remaining text
-                        const remaining = chars.slice(i).join('');
-                        el.innerHTML = el.innerHTML.replace(/<span class="cursor"><\/span>/, '') + remaining.replace(/\n/g, '<br>');
-                        delete typewriterRegistry[messageId];
-                    },
-                    charsLeft: () => chars.length - i,
-                    totalChars: chars.length,
-                };
-            }
         }
 
         // AudioContext — unlocked once on first user gesture, stays unlocked forever
@@ -512,19 +433,6 @@
                     const arrayBuffer = await res.arrayBuffer();
                     const ctx = getAudioContext();
                     const decoded = await ctx.decodeAudioData(arrayBuffer);
-
-                    // Sync typewriter speed to audio duration (1.0x multiplier)
-                    const tw = typewriterRegistry[messageId];
-                    if (tw && decoded.duration > 0) {
-                        const remaining = tw.charsLeft();
-                        if (remaining > 0) {
-                            const msPerChar = (decoded.duration * 1000) / remaining;
-                            tw.setSpeed(msPerChar);
-                        } else {
-                            // Text already done — finish instantly
-                            tw.finish && tw.finish();
-                        }
-                    }
 
                     stopCurrentAudio();
                     const source = ctx.createBufferSource();

@@ -2,17 +2,60 @@
   "user_id": "WF31MF3_WtHzW78V6hH2lg",
   "session_id": 0,
   "user_portrait": {
-    "Role Description": "",
-    "Years at Firm": "",
-    "Team Structure": "",
-    "Task Composition": {},
-    "Tools Used": [],
-    "AI Tools and Trust": [],
-    "Collaboration Patterns": [],
-    "Typical Time Allocation": {},
-    "Pain Points": [],
-    "Bright Spots": [],
-    "Patterns and Trends": []
+    "Functional Role": "PhD student specializing in Computer Science, responsible for running experiments, formulating hypotheses, collecting data, and analyzing results to advance research. Focuses on algorithm parameter tuning and validating improvements through experimental data analysis.",
+    "Team Structure": "Reports to a professor advisor and collaborates closely with postdoc mentors who provide detailed feedback and guidance. Works within a lab environment alongside peers and mentors. No direct reports.",
+    "Seniority": "PhD student level; no explicit years of experience mentioned.",
+    "Collaboration and Delegation": "Works closely with postdoc mentors who hear design decisions and provide detailed feedback; advisor is less involved in detailed work. Has regular check-in meetings with mentors and advisor. Prepares and sends meeting notes ahead with project updates. Shares feedback both offline and online. Depends on mentors for input on experimental design, statistical methods, and validation techniques. Pauses to reassess data and consults mentors before adjusting experiments after unexpected results.",
+    "Tools and Methods": [
+      "Experimental design changes recommended by mentors",
+      "Statistical methods for data analysis",
+      "Algorithm parameter tuning",
+      "Regular meetings and written meeting notes",
+      "Data collection and analysis workflows",
+      "Simpler design changes and stats methods based on past success and mentor advice"
+    ],
+    "Task Inventory": [
+      "Running experiments daily",
+      "Formulating hypotheses",
+      "Collecting data systematically",
+      "Analyzing experimental results daily",
+      "Writing down thoughts and analyzing results",
+      "Answering messages daily",
+      "Attending meetings consolidated on a single day weekly",
+      "Performing weekly data analysis when data is ready",
+      "Occasionally dogfooding tools",
+      "Occasionally giving presentations",
+      "Preparing and sending meeting notes ahead of meetings"
+    ],
+    "Motivations and Goals": [
+      "Improving algorithm robustness and stability",
+      "Confirming if algorithm tweaks improve performance",
+      "Unblocking progress by clarifying key uncertainties",
+      "Completing detailed statistical analysis of experiment results",
+      "Drafting notes on observed data patterns",
+      "Seeking mentor input to validate generalizability of results",
+      "Meeting weekly goals such as stabilizing experiment setup",
+      "Using deadlines and meetings to prioritize daily focus",
+      "Finishing parameter tuning, running next batch of experiments, and doing deeper analysis to validate improvements",
+      "Testing algorithm on a different dataset as a stretch goal"
+    ],
+    "Known Pain Points": [
+      "Uncertainty whether observed data patterns generalize beyond current dataset",
+      "Need for concrete advice on validation methods for cross-dataset checks",
+      "Uncertainty about why unexpected variance occurs and if tweaks reduce it",
+      "Need input on whether experimental design is robust enough to isolate parameter tweak effects",
+      "Difficulty isolating variance due to data versus algorithm changes",
+      "Overall work week is pretty unstructured beyond meeting day"
+    ],
+    "Known Bright Spots": [
+      "Postdoc mentor feedback helped focus on specific parameters and improved experiment stability",
+      "Experiments have become more consistent with reduced noise in data",
+      "Regular collaboration and alignment with mentors and advisor",
+      "Meeting weekly goals close to initial expectations",
+      "Daily routine includes consistent execution of key tasks",
+      "Preliminary analysis showed slight improvement over baseline",
+      "Using simpler design changes and stats methods based on past success and mentor advice"
+    ]
   },
   "last_meeting_summary": "",
   "interview_description": "Initial intake interview: understanding your role, tasks, and work patterns",
@@ -21,251 +64,320 @@
     "core_topic_dict": {
       "1": {
         "topic_id": "1",
-        "description": "Role and Context",
+        "description": "Weekly Check-in",
         "required_subtopics": {
           "1.1": {
             "subtopic_id": "1.1",
             "core_topic_id": "1",
-            "description": "Current role title and description of primary responsibilities",
-            "questions": [],
-            "notes": [],
+            "description": "Main activities and accomplishments last week",
+            "questions": [
+              {
+                "subtopic_id": "1.1",
+                "question_id": "Q_04070816_ZGC",
+                "question": "Hi, thanks so much for taking the time to chat today. I'm looking forward to hearing about your recent work. The way this will go is pretty simple: I'll ask you some questions, but feel free to pause or ask me to clarify anything at any point. To start, could you share with me some of the main activities and accomplishments you had last week? For example, any specific deliverables you completed or collaborative efforts you were involved in?",
+                "rubric": null,
+                "notes": [],
+                "sub_questions": []
+              },
+              {
+                "subtopic_id": "1.1",
+                "question_id": "Q_04070816_PN2",
+                "question": "Since you\u2019re working in a research lab, I\u2019d love to hear about any specific projects or experiments you worked on last week. What were some key tasks or milestones you tackled, and did you collaborate with others on those?",
+                "rubric": null,
+                "notes": [],
+                "sub_questions": []
+              },
+              {
+                "subtopic_id": "1.1",
+                "question_id": "Q_04070816_FXJ",
+                "question": "It sounds like you made solid progress with the experiments and had a productive discussion on design tweaks. What were the key findings or results from your preliminary analysis, and how do they compare to what you expected?",
+                "rubric": null,
+                "notes": [],
+                "sub_questions": []
+              },
+              {
+                "subtopic_id": "1.1",
+                "question_id": "Q_04070816_CSH",
+                "question": "It\u2019s interesting that you saw some unexpected variance alongside the improvement. How has that influenced your next steps or your approach to refining the algorithm?",
+                "rubric": null,
+                "notes": [],
+                "sub_questions": []
+              },
+              {
+                "subtopic_id": "1.1",
+                "question_id": "Q_04070816_4CI",
+                "question": "It\u2019s clear you rely on proven methods and mentor advice to guide your experimental tweaks. Looking back at last week, what would you say was the most significant accomplishment or output from your work, and how did collaboration with your mentors influence that?",
+                "rubric": null,
+                "notes": [],
+                "sub_questions": []
+              }
+            ],
+            "notes": [
+              "Last week, the user ran a set of experiments specifically testing a new variant of their algorithm as part of their research activities.",
+              "The user collected data generated from the experiments they ran last week, which is essential for subsequent analysis and validation of the algorithm variant.",
+              "The user began preliminary analysis of the collected data from the experiments, initiating the process of interpreting results and informing next steps.",
+              "The user collaborates closely with postdocs who act as mentors and also works with a professor who serves as their advisor. Recently, the user worked specifically with a postdoc mentor to review the experiment setup and received feedback on algorithm tweaks. The feedback helped the user focus on specific parameters that seemed off, leading to targeted adjustments in the experiment setup. This collaboration ensures alignment with the phase goal of improving algorithm robustness. The user's most significant output last week was finalizing the experiment setup, which showed more stable results. The postdoc mentor\u2019s feedback was key in pinpointing which parameters to adjust, contributing directly to this improved stability. Additionally, last week the user synced with a postdoc to discuss some design tweaks, continuing this collaborative process to refine the algorithm and experiment design.",
+              "The user began preliminary analysis of the collected data from the experiments, initiating the process of interpreting results and informing next steps. The preliminary results show a slight improvement over the baseline, but also reveal some unexpected variance in a few cases that were not predicted, indicating areas that require further investigation."
+            ],
             "emergent_insights": [],
-            "final_summary": "",
-            "is_covered": false
+            "final_summary": "Last week, the user finalized the experiment setup for a new algorithm variant, achieving more stable results through experiments, data collection, and preliminary analysis. Collaboration with postdoc mentors and a professor provided feedback guiding parameter adjustments. These efforts aligned with goals to improve algorithm robustness and showed clear progress relative to prior expectations.",
+            "is_covered": true,
+            "coverage_criteria": [
+              "Describes at least one concrete output or deliverable completed.",
+              "Mentions at least one collaborative or cross-functional effort.",
+              "Reflects on progress relative to prior goals or expectations."
+            ],
+            "criteria_coverage": [
+              true,
+              true,
+              true
+            ]
           },
           "1.2": {
             "subtopic_id": "1.2",
             "core_topic_id": "1",
-            "description": "What a typical work week looks like in terms of structure and rhythm",
-            "questions": [],
-            "notes": [],
+            "description": "Plans for this week",
+            "questions": [
+              {
+                "subtopic_id": "1.2",
+                "question_id": "Q_04070816_0RH",
+                "question": "It sounds like you have a clear plan to adjust parameters and run targeted tests this week. What are the main tasks or milestones you\u2019re aiming to complete in the next few days, and how do they fit into your overall research goals?",
+                "rubric": null,
+                "notes": [],
+                "sub_questions": []
+              },
+              {
+                "subtopic_id": "1.2",
+                "question_id": "Q_04070817_PNM",
+                "question": "It\u2019s great that your mentors helped you identify new parameter ranges to test. Looking ahead, what are the key priorities you want to focus on this week, and how do you plan to balance must-do tasks versus any stretch goals?",
+                "rubric": null,
+                "notes": [],
+                "sub_questions": []
+              },
+              {
+                "subtopic_id": "1.2",
+                "question_id": "Q_04070817_MP8",
+                "question": "It sounds like you have a clear focus on finishing parameter tuning and running experiments this week. How do you decide which tasks or milestones take priority when you\u2019re balancing these core activities with meetings and messages?",
+                "rubric": null,
+                "notes": [],
+                "sub_questions": []
+              },
+              {
+                "subtopic_id": "1.2",
+                "question_id": "Q_04070817_AT4",
+                "question": "It\u2019s clear you\u2019re keeping experiments and tuning front and center given their urgency. What specific tasks or milestones are you aiming to complete this week, and how do they tie into your overall research goals?",
+                "rubric": null,
+                "notes": [],
+                "sub_questions": []
+              },
+              {
+                "subtopic_id": "1.2",
+                "question_id": "Q_04070817_EXD",
+                "question": "You\u2019ve got a clear focus on finishing tuning and running experiments this week. How do these specific tasks connect to your broader research goals, and do you have any stretch goals or secondary priorities you\u2019re aiming to fit in alongside the must-dos?",
+                "rubric": null,
+                "notes": [],
+                "sub_questions": []
+              },
+              {
+                "subtopic_id": "1.2",
+                "question_id": "Q_04070817_2TK",
+                "question": "It\u2019s clear that validating algorithm improvements and reducing variance are central to your work this week. Could you walk me through the specific tasks or milestones you\u2019re aiming to complete in the next few days, and how each of these connects to your broader research goals?",
+                "rubric": null,
+                "notes": [],
+                "sub_questions": []
+              },
+              {
+                "subtopic_id": "1.2",
+                "question_id": "Q_04070817_BIT",
+                "question": "You\u2019ve clearly mapped out your next few days well. Looking at the whole week, what are your main plans or priorities, and how do these tasks connect to your broader research goals?",
+                "rubric": null,
+                "notes": [],
+                "sub_questions": []
+              }
+            ],
+            "notes": [
+              "The user analyzes experimental results to draw conclusions and inform further research steps. Recently, the user reported mixed results from experiments, with some metrics improving and others not. Based on this, the user is tweaking the algorithm and planning another round of experiments to test if these changes improve performance. The feedback from the postdoc mentor helped focus on specific parameters that seemed off, and after adjusting those, the next experiment was more stable. The adjustments have made the experiments more consistent and reduced noise in the data, resulting in smoother progress and more reliable overall results. However, the results from this experiment still require further analysis. Currently, the user is focusing on tweaking the algorithm specifically to reduce the unexpected variance observed in some cases, by adjusting some parameters and running more targeted tests to evaluate these changes.",
+              "The user analyzes experimental results to draw conclusions and inform further research steps. Recently, the user reported mixed results from experiments, with some metrics improving and others not. Based on this, the user is tweaking the algorithm and planning another round of experiments to test if these changes improve performance. The feedback from the postdoc mentor helped focus on specific parameters that seemed off, and after adjusting those, the next experiment was more stable. The adjustments have made the experiments more consistent and reduced noise in the data, resulting in smoother progress and more reliable overall results. However, the results from this experiment still require further analysis. Currently, the user is focusing on tweaking the algorithm specifically to reduce the unexpected variance observed in some cases, by adjusting some parameters and running more targeted tests to evaluate these changes. The main goal for this week is to finish the parameter tuning, then run the next batch of experiments. Once the new data is ready, the user plans to do a deeper analysis to see if the tweaks actually reduce the variance as intended.",
+              "The user began preliminary analysis of the collected data from the experiments, initiating the process of interpreting results and informing next steps. The preliminary results show a slight improvement over the baseline, which was the most significant output last week, but also reveal some unexpected variance in a few cases that were not predicted, indicating areas that require further investigation.",
+              "The user collaborates closely with postdocs who act as mentors and also works with a professor who serves as their advisor. Recently, the user worked specifically with a postdoc mentor to review the experiment setup and received feedback on algorithm tweaks. The feedback helped the user focus on specific parameters that seemed off, leading to targeted adjustments in the experiment setup. This collaboration ensures alignment with the phase goal of improving algorithm robustness. The user's most significant output last week was finalizing the experiment setup, which showed more stable results. The postdoc mentor\u2019s feedback was key in pinpointing which parameters to adjust, contributing directly to this improved stability. Additionally, last week the user synced with a postdoc to discuss some design tweaks, continuing this collaborative process to refine the algorithm and experiment design. The mentors also suggested specific parameter ranges to test that the user had not considered before, which helped guide the next steps in experimentation."
+            ],
             "emergent_insights": [],
-            "final_summary": "",
-            "is_covered": false
+            "final_summary": "This week, the user plans to complete parameter tuning and run the next batch of experiments aimed at reducing unexpected variance. The focus is on adjusting parameters based on mentor feedback, supporting broader objectives of enhancing algorithm robustness and achieving consistent results.",
+            "is_covered": true,
+            "coverage_criteria": [
+              "Identifies at least one specific task or milestone to complete.",
+              "Distinguishes between must-do priorities and stretch goals.",
+              "Connects planned work to broader objectives or ongoing projects."
+            ],
+            "criteria_coverage": [
+              true,
+              true,
+              true
+            ]
           },
           "1.3": {
             "subtopic_id": "1.3",
             "core_topic_id": "1",
-            "description": "Team structure and reporting relationships",
-            "questions": [],
-            "notes": [],
+            "description": "Open questions or areas for input and support",
+            "questions": [
+              {
+                "subtopic_id": "1.3",
+                "question_id": "Q_04070816_N7M",
+                "question": "You mentioned focusing on parameter tuning and running experiments\u2014are there any specific uncertainties or challenges right now where you\u2019d find input or support especially helpful?",
+                "rubric": null,
+                "notes": [],
+                "sub_questions": []
+              },
+              {
+                "subtopic_id": "1.3",
+                "question_id": "Q_04070816_99G",
+                "question": "It sounds like pinpointing the cause of variance and validating your tweaks is a key challenge right now. How do you usually decide which experimental design changes or statistical methods to try first when facing uncertainties like this?",
+                "rubric": null,
+                "notes": [],
+                "sub_questions": []
+              },
+              {
+                "subtopic_id": "1.3",
+                "question_id": "Q_04070817_H76",
+                "question": "You have a solid plan for the week with clear priorities. Are there any specific uncertainties or blockers right now where you feel additional input or support would really help move things forward?",
+                "rubric": null,
+                "notes": [],
+                "sub_questions": []
+              },
+              {
+                "subtopic_id": "1.3",
+                "question_id": "Q_04070817_WFT",
+                "question": "It sounds like confirming the impact of your parameter tweaks and ensuring your experimental setup is reliable are key challenges right now. What kind of input or support from your mentors or others would be most helpful to help you move past these uncertainties?",
+                "rubric": null,
+                "notes": [],
+                "sub_questions": []
+              },
+              {
+                "subtopic_id": "1.3",
+                "question_id": "Q_04070818_TM4",
+                "question": "It\u2019s clear that getting feedback on your experimental design is a priority. Beyond that, what other open questions or blockers are you facing right now, and what kind of input or support would help you move past them?",
+                "rubric": null,
+                "notes": [],
+                "sub_questions": []
+              },
+              {
+                "subtopic_id": "1.3",
+                "question_id": "Q_04070818_FO9",
+                "question": "It\u2019s helpful to hear that isolating variance sources is a key challenge right now. Are there any other open questions or blockers you\u2019re currently facing where additional input or support would make a difference?",
+                "rubric": null,
+                "notes": [],
+                "sub_questions": []
+              }
+            ],
+            "notes": [
+              "The user is currently uncertain about why the unexpected variance occurs in the experiment results and whether the algorithm tweaks actually help reduce this variance. The user would benefit from input on experimental design and statistical methods to better understand and address these issues. This builds on the previous uncertainty about whether observed data patterns generalize beyond the current dataset and the need for mentor input on validation methods and analysis techniques to confirm robustness and generalizability.",
+              "The user typically begins by applying simpler experimental design changes or statistical methods that have proven effective in past projects or are recommended by mentors. They then iterate on these approaches based on the data outcomes, adjusting their methods as needed to address uncertainties and improve results."
+            ],
             "emergent_insights": [],
-            "final_summary": "",
-            "is_covered": false
-          },
+            "final_summary": "The user is uncertain about the cause of unexpected variance in experiment results and whether algorithm tweaks reduce it. They seek technical input on experimental design and statistical methods, typically starting with simpler approaches recommended by mentors and iterating based on data to improve robustness.",
+            "is_covered": true,
+            "coverage_criteria": [
+              "Identifies at least one unresolved blocker or uncertainty.",
+              "Clarifies what kind of support or input would be helpful.",
+              "Covers at least one domain (technical, strategic, or logistical)."
+            ],
+            "criteria_coverage": [
+              true,
+              true,
+              true
+            ]
+          }
+        },
+        "emergent_subtopics": {
           "1.4": {
             "subtopic_id": "1.4",
             "core_topic_id": "1",
-            "description": "Years at the firm and career trajectory within the organization",
-            "questions": [],
-            "notes": [],
+            "description": "Handling unexpected experimental results and their impact on weekly plans",
+            "questions": [
+              {
+                "subtopic_id": "1.4",
+                "question_id": "Q_04070817_GRS",
+                "question": "It sounds like you have a solid handle on your priorities this week. How do you usually adjust your plans or shift your focus when you encounter unexpected results or surprises in your experiments?",
+                "rubric": null,
+                "notes": [],
+                "sub_questions": []
+              }
+            ],
+            "notes": [
+              "The user began preliminary analysis of the collected data from the experiments, initiating the process of interpreting results and informing next steps. The preliminary results show a slight improvement over the baseline, but also reveal some unexpected variance in a few cases that were not predicted, indicating areas that require further investigation.",
+              "The user analyzes experimental results to draw conclusions and inform further research steps. Recently, the user reported mixed results from experiments, with some metrics improving and others not. Based on this, the user is tweaking the algorithm and planning another round of experiments to test if these changes improve performance. The feedback from the postdoc mentor helped focus on specific parameters that seemed off, and after adjusting those, the next experiment was more stable. The adjustments have made the experiments more consistent and reduced noise in the data, resulting in smoother progress and more reliable overall results. However, the results from this experiment still require further analysis. Currently, the user is focusing on tweaking the algorithm specifically to reduce the unexpected variance observed in some cases, by adjusting some parameters and running more targeted tests to evaluate these changes.",
+              "The user analyzes experimental results to draw conclusions and inform further research steps. Recently, the user reported mixed results from experiments, with some metrics improving and others not. Based on this, the user is tweaking the algorithm and planning another round of experiments to test if these changes improve performance. The feedback from the postdoc mentor helped focus on specific parameters that seemed off, and after adjusting those, the next experiment was more stable. The adjustments have made the experiments more consistent and reduced noise in the data, resulting in smoother progress and more reliable overall results. However, the results from this experiment still require further analysis. Currently, the user is focusing on tweaking the algorithm specifically to reduce the unexpected variance observed in some cases, by adjusting some parameters and running more targeted tests to evaluate these changes. The main goal for this week is to finish the parameter tuning, then run the next batch of experiments. Once the new data is ready, the user plans to do a deeper analysis to see if the tweaks actually reduce the variance as intended."
+            ],
             "emergent_insights": [],
-            "final_summary": "",
-            "is_covered": false
+            "final_summary": "Preliminary experimental analysis showed slight improvement over baseline but unexpected variance in some cases, prompting further investigation and adjustments that impact weekly plans.",
+            "is_covered": true,
+            "coverage_criteria": [],
+            "criteria_coverage": []
+          },
+          "1.5": {
+            "subtopic_id": "1.5",
+            "core_topic_id": "1",
+            "description": "Decision criteria and mental models for selecting experimental designs and statistical methods",
+            "questions": [],
+            "notes": [
+              "The user is currently uncertain about why the unexpected variance occurs in the experiment results and whether the algorithm tweaks actually help reduce this variance. The user would benefit from input on experimental design and statistical methods to better understand and address these issues. This builds on the previous uncertainty about whether observed data patterns generalize beyond the current dataset and the need for mentor input on validation methods and analysis techniques to confirm robustness and generalizability.",
+              "The user typically begins by applying simpler experimental design changes or statistical methods that have proven effective in past projects or are recommended by mentors. They then iterate on these approaches based on the data outcomes, adjusting their methods as needed to address uncertainties and improve results."
+            ],
+            "emergent_insights": [],
+            "final_summary": "The user's decision criteria for experimental designs and statistical methods involve starting with simpler, proven approaches recommended by mentors, then iterating based on data outcomes to address uncertainties and improve robustness.",
+            "is_covered": true,
+            "coverage_criteria": [],
+            "criteria_coverage": []
+          },
+          "1.6": {
+            "subtopic_id": "1.6",
+            "core_topic_id": "1",
+            "description": "Task prioritization strategies balancing experiments, meetings, and messages",
+            "questions": [
+              {
+                "subtopic_id": "1.6",
+                "question_id": "Q_04070818_8TG",
+                "question": "It sounds like your main focus stays on experiments and analysis, which makes sense given their importance. How do you usually prioritize your tasks when you need to balance running experiments, attending meetings, and responding to messages throughout the week?",
+                "rubric": null,
+                "notes": [],
+                "sub_questions": []
+              },
+              {
+                "subtopic_id": "1.6",
+                "question_id": "Q_04070818_9QV",
+                "question": "It makes sense that you keep experiments and tuning as your top priority given their time sensitivity. How do you usually adjust your task priorities or workflow when unexpected interruptions or urgent messages come up during your experiment runs?",
+                "rubric": null,
+                "notes": [],
+                "sub_questions": []
+              }
+            ],
+            "notes": [
+              "The user prioritizes tasks by unblocking progress and clarifying key uncertainties. They usually focus on tasks that impact experiment stability or analysis clarity the most, as these factors are critical for advancing their experiments and analysis effectively. Must-do tasks are those that have the biggest impact on experiment stability or analysis clarity, while stretch goals are considered nice-to-haves if time allows. This week, the user\u2019s main priority is finishing parameter tuning and running experiments, with meetings and messages scheduled around these core tasks. Stretch goals depend on how quickly the experimental data returns, influencing how much additional work can be fit in beyond the must-do tasks.",
+              "The user typically pauses to reassess the experimental data when encountering unexpected results or surprises. During this pause, they consult with mentors if needed to gain input. Based on this reassessment and mentor feedback, the user then adjusts the experimental design or methods to test new hypotheses that arise from the surprising findings."
+            ],
+            "emergent_insights": [],
+            "final_summary": "The user prioritizes tasks that unblock progress and clarify uncertainties affecting experiment stability and analysis. Must-do tasks with significant impact come first, while stretch goals depend on available time. Meetings and messages are scheduled around core experimental tasks, with parameter tuning and running experiments as main priorities.",
+            "is_covered": true,
+            "coverage_criteria": [],
+            "criteria_coverage": []
           }
         },
-        "emergent_subtopics": {},
-        "keywords": []
-      },
-      "2": {
-        "topic_id": "2",
-        "description": "Task Inventory",
-        "required_subtopics": {
-          "2.1": {
-            "subtopic_id": "2.1",
-            "core_topic_id": "2",
-            "description": "Main activities and deliverables in a typical week",
-            "questions": [],
-            "notes": [],
-            "emergent_insights": [],
-            "final_summary": "",
-            "is_covered": false
-          },
-          "2.2": {
-            "subtopic_id": "2.2",
-            "core_topic_id": "2",
-            "description": "Estimated time allocation across different task types",
-            "questions": [],
-            "notes": [],
-            "emergent_insights": [],
-            "final_summary": "",
-            "is_covered": false
-          },
-          "2.3": {
-            "subtopic_id": "2.3",
-            "core_topic_id": "2",
-            "description": "Tasks performed daily versus weekly versus on an ad-hoc basis",
-            "questions": [],
-            "notes": [],
-            "emergent_insights": [],
-            "final_summary": "",
-            "is_covered": false
-          },
-          "2.4": {
-            "subtopic_id": "2.4",
-            "core_topic_id": "2",
-            "description": "Seasonal or project-driven variation in the task mix",
-            "questions": [],
-            "notes": [],
-            "emergent_insights": [],
-            "final_summary": "",
-            "is_covered": false
-          }
-        },
-        "emergent_subtopics": {},
-        "keywords": []
-      },
-      "3": {
-        "topic_id": "3",
-        "description": "Tools and Methods",
-        "required_subtopics": {
-          "3.1": {
-            "subtopic_id": "3.1",
-            "core_topic_id": "3",
-            "description": "Primary software tools and platforms used in daily work",
-            "questions": [],
-            "notes": [],
-            "emergent_insights": [],
-            "final_summary": "",
-            "is_covered": false
-          },
-          "3.2": {
-            "subtopic_id": "3.2",
-            "core_topic_id": "3",
-            "description": "AI tools currently in use and their specific applications",
-            "questions": [],
-            "notes": [],
-            "emergent_insights": [],
-            "final_summary": "",
-            "is_covered": false
-          },
-          "3.3": {
-            "subtopic_id": "3.3",
-            "core_topic_id": "3",
-            "description": "Level of trust and reliance on AI tool outputs",
-            "questions": [],
-            "notes": [],
-            "emergent_insights": [],
-            "final_summary": "",
-            "is_covered": false
-          },
-          "3.4": {
-            "subtopic_id": "3.4",
-            "core_topic_id": "3",
-            "description": "Methods or workflows that are manual versus automated",
-            "questions": [],
-            "notes": [],
-            "emergent_insights": [],
-            "final_summary": "",
-            "is_covered": false
-          }
-        },
-        "emergent_subtopics": {},
-        "keywords": []
-      },
-      "4": {
-        "topic_id": "4",
-        "description": "Collaboration and Delegation",
-        "required_subtopics": {
-          "4.1": {
-            "subtopic_id": "4.1",
-            "core_topic_id": "4",
-            "description": "Key collaborators and their roles in the workflow",
-            "questions": [],
-            "notes": [],
-            "emergent_insights": [],
-            "final_summary": "",
-            "is_covered": false
-          },
-          "4.2": {
-            "subtopic_id": "4.2",
-            "core_topic_id": "4",
-            "description": "Delegation patterns: who assigns work and who receives it",
-            "questions": [],
-            "notes": [],
-            "emergent_insights": [],
-            "final_summary": "",
-            "is_covered": false
-          },
-          "4.3": {
-            "subtopic_id": "4.3",
-            "core_topic_id": "4",
-            "description": "Review and approval processes for deliverables",
-            "questions": [],
-            "notes": [],
-            "emergent_insights": [],
-            "final_summary": "",
-            "is_covered": false
-          },
-          "4.4": {
-            "subtopic_id": "4.4",
-            "core_topic_id": "4",
-            "description": "Cross-team or client-facing interactions",
-            "questions": [],
-            "notes": [],
-            "emergent_insights": [],
-            "final_summary": "",
-            "is_covered": false
-          }
-        },
-        "emergent_subtopics": {},
-        "keywords": []
-      },
-      "5": {
-        "topic_id": "5",
-        "description": "Pain Points and Bright Spots",
-        "required_subtopics": {
-          "5.1": {
-            "subtopic_id": "5.1",
-            "core_topic_id": "5",
-            "description": "Biggest inefficiencies or frustrations in current workflow",
-            "questions": [],
-            "notes": [],
-            "emergent_insights": [],
-            "final_summary": "",
-            "is_covered": false
-          },
-          "5.2": {
-            "subtopic_id": "5.2",
-            "core_topic_id": "5",
-            "description": "Tasks or processes that feel most satisfying or effective",
-            "questions": [],
-            "notes": [],
-            "emergent_insights": [],
-            "final_summary": "",
-            "is_covered": false
-          },
-          "5.3": {
-            "subtopic_id": "5.3",
-            "core_topic_id": "5",
-            "description": "Areas where better tools or processes could help",
-            "questions": [],
-            "notes": [],
-            "emergent_insights": [],
-            "final_summary": "",
-            "is_covered": false
-          },
-          "5.4": {
-            "subtopic_id": "5.4",
-            "core_topic_id": "5",
-            "description": "Recent changes that improved or worsened the work experience",
-            "questions": [],
-            "notes": [],
-            "emergent_insights": [],
-            "final_summary": "",
-            "is_covered": false
-          }
-        },
-        "emergent_subtopics": {},
         "keywords": []
       }
     },
-    "active_topic_id_list": [
-      "1",
-      "2"
-    ],
-    "coverage_stats": []
+    "active_topic_id_list": [],
+    "coverage_stats": {
+      "1": {
+        "total_required_subtopics_covered": 3,
+        "total_required_subtopics": 3,
+        "total_emergent_subtopics_covered": 3,
+        "total_emergent_subtopics": 3,
+        "current_coverage_score": 1.0
+      }
+    },
+    "pending_task_deep_dives": []
   },
+  "last_week_snapshot": {},
   "strategic_priorities": {},
   "emergent_insights": []
 }

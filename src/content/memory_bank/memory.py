@@ -1,18 +1,44 @@
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from pydantic import BaseModel, Field
 
 
+class TranscriptReference(BaseModel):
+    """A reference to a specific part of the interview transcript."""
+    interview_question: str
+    interview_response: str
+    timestamp: Optional[datetime] = None
+
+    def to_dict(self) -> dict:
+        return {
+            'interview_question': self.interview_question,
+            'interview_response': self.interview_response,
+            'timestamp': self.timestamp.isoformat() if self.timestamp else None
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> 'TranscriptReference':
+        ts = d.get('timestamp')
+        return cls(
+            interview_question=d['interview_question'],
+            interview_response=d['interview_response'],
+            timestamp=datetime.fromisoformat(ts) if ts else None
+        )
+
+
 class Memory(BaseModel):
-    """Model for storing memories with their associated questions."""
+    """Model for storing memories with their associated questions.
+
+    Memories are aggregated: similar information from different parts of the
+    transcript is combined into a single memory with multiple transcript_references.
+    """
     id: str
     title: str
     text: str
     subtopic_links: List[Dict[str, Any]]
     metadata: dict
     timestamp: datetime
-    source_interview_question: str
-    source_interview_response: str
+    transcript_references: List[TranscriptReference] = []
     question_ids: List[str] = []  # IDs of questions that generated this memory
 
     def to_dict(self) -> dict:
@@ -24,16 +50,15 @@ class Memory(BaseModel):
             'subtopic_links': self.subtopic_links,
             'metadata': self.metadata,
             'timestamp': self.timestamp.isoformat(),
-            'source_interview_question': self.source_interview_question,
-            'source_interview_response': self.source_interview_response,
+            'transcript_references': [ref.to_dict() for ref in self.transcript_references],
             'question_ids': self.question_ids
         }
 
     def to_xml(self, include_source: bool = False, include_memory_info: bool = True) -> str:
-        """Convert memory to XML format string without source handling.
-        
+        """Convert memory to XML format string.
+
         Args:
-            include_source: Whether to include source_interview_response
+            include_source: Whether to include transcript references
         Returns:
             str: XML formatted string of the memory
         """
@@ -46,23 +71,43 @@ class Memory(BaseModel):
             lines.append(f'<title>{self.title}</title>')
             lines.append(f'<summary>{self.text}</summary>')
             lines.append(f'<subtopic_links>{self.subtopic_links}</subtopic_links>')
-        
-        if include_source:
-            lines.append(
-                f'<source_interview_question>\n'
-                f'{self.source_interview_question}\n'
-                f'</source_interview_question>'
-                f'<source_interview_response>\n'
-                f'{self.source_interview_response}\n'
-                f'</source_interview_response>'
-            )
-                
+
+        if include_source and self.transcript_references:
+            lines.append('<transcript_references>')
+            for i, ref in enumerate(self.transcript_references):
+                lines.append(f'<reference index="{i + 1}">')
+                lines.append(
+                    f'<interview_question>\n'
+                    f'{ref.interview_question}\n'
+                    f'</interview_question>'
+                )
+                lines.append(
+                    f'<interview_response>\n'
+                    f'{ref.interview_response}\n'
+                    f'</interview_response>'
+                )
+                lines.append('</reference>')
+            lines.append('</transcript_references>')
+
         lines.append('</memory>')
         return '\n'.join(lines)
 
     @classmethod
     def from_dict(cls, memory_dict: dict) -> 'Memory':
-        """Create Memory object from dictionary."""
+        """Create Memory object from dictionary. Backward-compatible with old format."""
+        # Handle backward compatibility: old format had source_interview_question/response
+        if 'transcript_references' in memory_dict:
+            refs = [TranscriptReference.from_dict(r) for r in memory_dict['transcript_references']]
+        elif 'source_interview_question' in memory_dict:
+            refs = [TranscriptReference(
+                interview_question=memory_dict['source_interview_question'],
+                interview_response=memory_dict['source_interview_response'],
+                timestamp=datetime.fromisoformat(memory_dict['timestamp'])
+                    if 'timestamp' in memory_dict else None
+            )]
+        else:
+            refs = []
+
         return cls(
             id=memory_dict['id'],
             title=memory_dict['title'],
@@ -70,8 +115,7 @@ class Memory(BaseModel):
             subtopic_links=memory_dict['subtopic_links'],
             metadata=memory_dict['metadata'],
             timestamp=datetime.fromisoformat(memory_dict['timestamp']),
-            source_interview_question=memory_dict['source_interview_question'],
-            source_interview_response=memory_dict['source_interview_response'],
+            transcript_references=refs,
             question_ids=memory_dict.get('question_ids', [])
         )
 
@@ -89,8 +133,7 @@ class MemorySearchResult(Memory):
             subtopic_links=memory.subtopic_links,
             metadata=memory.metadata,
             timestamp=memory.timestamp,
-            source_interview_question=memory.source_interview_question,
-            source_interview_response=memory.source_interview_response,
+            transcript_references=memory.transcript_references,
             question_ids=memory.question_ids,
             similarity_score=similarity_score
         )

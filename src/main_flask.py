@@ -349,7 +349,16 @@ def logout():
 @app.route('/')
 @login_required  # MUST BE LOGGED IN TO SEE INSTRUCTIONS
 def index():
-    """Landing page with instructions - shown after login"""
+    """Landing page with instructions - shown after login.
+    If the user already has a prior session (intake completed), skip to chat."""
+    logs_dir = os.getenv("LOGS_DIR", "logs")
+    user_logs = os.path.join(logs_dir, current_user.id, "execution_logs")
+    if os.path.isdir(user_logs):
+        session_dirs = [d for d in os.listdir(user_logs)
+                        if d.startswith('session_') and
+                        os.path.isdir(os.path.join(user_logs, d))]
+        if session_dirs:
+            return redirect(url_for('unified_chat'))
     return render_template('index.html', username=current_user.username)
 
 @app.route('/chat')
@@ -474,22 +483,18 @@ def agent_control():
     if not session:
         return jsonify({'success': False, 'error': 'Invalid or expired session'}), 400
 
-    user = session.user
-    if not hasattr(user, '_paused'):
-        return jsonify({'success': False, 'error': 'Session is not in agent mode'}), 400
-
     if action == 'pause':
-        user._paused = True
+        session.paused = True
     elif action == 'resume':
-        user._paused = False
-        user._step_requested = False
+        session.paused = False
+        session.step_requested = False
     elif action == 'step':
-        user._paused = True   # stay paused after this step
-        user._step_requested = True
+        session.paused = True   # stay paused after this step
+        session.step_requested = True
     else:
         return jsonify({'success': False, 'error': f'Unknown action: {action}'}), 400
 
-    return jsonify({'success': True, 'paused': user._paused})
+    return jsonify({'success': True, 'paused': session.paused})
 
 @app.route('/api/send-message', methods=['POST'])
 @login_required  # PROTECTED
@@ -883,6 +888,8 @@ def session_state():
                     'emergent_insights_count': len(st.emergent_insights),
                     'final_summary': st.final_summary,
                     'is_emergent': False,
+                    'coverage_criteria': list(st.coverage_criteria),
+                    'criteria_coverage': list(st.criteria_coverage),
                 })
             for st in topic.emergent_subtopics.values():
                 subtopics.append({
@@ -895,6 +902,8 @@ def session_state():
                     'emergent_insights_count': len(st.emergent_insights),
                     'final_summary': st.final_summary,
                     'is_emergent': True,
+                    'coverage_criteria': list(st.coverage_criteria),
+                    'criteria_coverage': list(st.criteria_coverage),
                 })
             topics.append({
                 'id': topic.topic_id,
@@ -915,6 +924,13 @@ def session_state():
                 'text': mem.text[:250],
                 'timestamp': mem.timestamp.isoformat() if hasattr(mem.timestamp, 'isoformat') else str(mem.timestamp),
                 'subtopic_links': mem.subtopic_links,
+                'transcript_references': [
+                    {
+                        'interview_response': ref.interview_response[:200],
+                        'timestamp': ref.timestamp.isoformat() if ref.timestamp else None,
+                    }
+                    for ref in (mem.transcript_references or [])
+                ],
             })
 
     # --- Chat history as lightweight turn list ---
@@ -973,6 +989,7 @@ def session_state():
         'turns': turns,
         'turn_count': len(iv.chat_history),
         'user_portrait': agenda.user_portrait if agenda else {},
+        'last_week_snapshot': agenda.last_week_snapshot if agenda else {},
         'strategic_priorities': strategic_priorities,
         'rollout_predictions': rollout_predictions,
         'emergent_insights': emergent_insights,

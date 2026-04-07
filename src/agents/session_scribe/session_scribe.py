@@ -7,7 +7,8 @@ import os
 from src.agents.base_agent import BaseAgent
 from src.agents.session_scribe.prompts import get_prompt
 from src.agents.session_scribe.tools import UpdateSessionNote, UpdateSubtopicNotes, UpdateSubtopicCoverage, FeedbackSubtopicCoverage, \
-    UpdateMemoryBankAndSession, AddHistoricalQuestion, IdentifyEmergentInsights, AddSnapshotSubtopic
+    UpdateMemoryBankAndSession, UpdateExistingMemory, AddHistoricalQuestion, IdentifyEmergentInsights, AddSnapshotSubtopic, \
+    UpdateCriteriaCoverage, AddTaskDeepDiveTopic
 from src.agents.shared.memory_tools import Recall
 from src.agents.shared.note_tools import AddInterviewQuestion
 from src.agents.shared.feedback_prompts import SIMILAR_QUESTIONS_WARNING, QUESTION_WARNING_OUTPUT_FORMAT
@@ -68,6 +69,12 @@ class SessionScribe(BaseAgent, Participant):
                 get_current_qa=self._get_recent_qa,
                 session_agenda=self.interview_session.session_agenda
             ),
+            "update_existing_memory": UpdateExistingMemory(
+                memory_bank=self.interview_session.memory_bank,
+                on_memory_added=self._add_new_memory,
+                get_current_qa=self._get_recent_qa,
+                session_agenda=self.interview_session.session_agenda
+            ),
             # "add_historical_question": AddHistoricalQuestion(
             #     question_bank=self.interview_session.historical_question_bank,
             #     memory_bank=self.interview_session.memory_bank,
@@ -77,6 +84,9 @@ class SessionScribe(BaseAgent, Participant):
                 session_agenda=self.interview_session.session_agenda
             ),
             "update_subtopic_coverage": UpdateSubtopicCoverage(
+                session_agenda=self.interview_session.session_agenda
+            ),
+            "update_criteria_coverage": UpdateCriteriaCoverage(
                 session_agenda=self.interview_session.session_agenda
             ),
             "feedback_subtopic_coverage": FeedbackSubtopicCoverage(
@@ -101,6 +111,9 @@ class SessionScribe(BaseAgent, Participant):
                 memory_bank=self.interview_session.memory_bank
             ),
             "add_snapshot_subtopic": AddSnapshotSubtopic(
+                session_agenda=self.interview_session.session_agenda
+            ),
+            "add_task_deep_dive_topic": AddTaskDeepDiveTopic(
                 session_agenda=self.interview_session.session_agenda
             ),
         }
@@ -165,8 +178,8 @@ class SessionScribe(BaseAgent, Participant):
             await self._load_last_week_snapshot()
 
     async def _load_last_week_snapshot(self):
-        """Load the previous weekly snapshot onto the session agenda.
-        The Scribe compares user responses against this turn-by-turn."""
+        """Load the previous weekly snapshot onto the session agenda and
+        inject each task as a subtopic so the interviewer covers them."""
         user_id = self.interview_session.user_id
         manager = SnapshotManager(user_id)
         prev_snapshot = manager.load_latest_snapshot()
@@ -178,11 +191,65 @@ class SessionScribe(BaseAgent, Participant):
             )
             return
 
-        self.interview_session.session_agenda.last_week_snapshot = prev_snapshot.model_dump()
+        self.interview_session.session_agenda.last_week_snapshot = prev_snapshot.to_dict()
+
+        injected_count = 0
+
+        # Topic 1: Tasks and Deliverables
+        for task in prev_snapshot.tasks:
+            time_pct = f" (~{task.time_share:.0%})" if task.time_share else ""
+            ai_str = f", used {task.ai_tool}" if task.ai_involved and task.ai_tool else ""
+            description = (
+                f"Last week: {task.description}{time_pct}{ai_str} "
+                f"— is this still part of your week? What changed?"
+            )
+            if self.interview_session.session_agenda.add_emergent_subtopic(
+                topic_id="1", subtopic_description=description
+            ):
+                injected_count += 1
+
+        # Topic 2: Tools and Methods
+        for tool in prev_snapshot.tools:
+            description = f"Last week you used {tool} — are you still using it? Any changes in how you use it?"
+            if self.interview_session.session_agenda.add_emergent_subtopic(
+                topic_id="2", subtopic_description=description
+            ):
+                injected_count += 1
+
+        for ai_tool in prev_snapshot.ai_tools:
+            description = f"Last week you used AI tool {ai_tool} — still using it? How has your trust or usage changed?"
+            if self.interview_session.session_agenda.add_emergent_subtopic(
+                topic_id="2", subtopic_description=description
+            ):
+                injected_count += 1
+
+        # Topic 3: Collaboration
+        for collaborator in prev_snapshot.collaborators:
+            description = f"Last week you worked with {collaborator} — any updates on that collaboration?"
+            if self.interview_session.session_agenda.add_emergent_subtopic(
+                topic_id="3", subtopic_description=description
+            ):
+                injected_count += 1
+
+        # Topic 4: Pain Points and Bright Spots
+        for pain_point in prev_snapshot.pain_points:
+            description = f"Last week you mentioned this frustration: {pain_point} — has it improved or is it still an issue?"
+            if self.interview_session.session_agenda.add_emergent_subtopic(
+                topic_id="4", subtopic_description=description
+            ):
+                injected_count += 1
+
+        for change in prev_snapshot.notable_changes:
+            description = f"Last week you noted: {change} — any follow-up on that?"
+            if self.interview_session.session_agenda.add_emergent_subtopic(
+                topic_id="4", subtopic_description=description
+            ):
+                injected_count += 1
 
         SessionLogger.log_to_file(
             "execution_log",
-            f"[SNAPSHOT] Loaded week {prev_snapshot.week_number} snapshot onto session agenda."
+            f"[SNAPSHOT] Loaded week {prev_snapshot.week_number} snapshot onto session agenda "
+            f"({injected_count} subtopics injected across all topics)."
         )
 
     def _add_question_to_session_agenda(self):
@@ -240,6 +307,14 @@ class SessionScribe(BaseAgent, Participant):
                     self._locked_compare_against_snapshot(interviewer_message, user_message)
                 )
             await asyncio.gather(*parallel_tasks)
+
+            if getattr(self.interview_session, "session_type", "intake") == "intake":
+                try:
+                    await self.interview_session._generate_and_save_user_portrait()
+                except Exception as e:
+                    SessionLogger.log_to_file(
+                        "execution_log", f"[PORTRAIT] Error updating user portrait: {e}"
+                    )
         finally:
             await self._decrement_pending_tasks()
 
@@ -646,19 +721,39 @@ class SessionScribe(BaseAgent, Participant):
             events = self.get_event_stream_str(filter=[
                 {"tag": "memory_lock_message"},
             ], as_list=True)
-            current_qa = events[-2:] if len(events) >= 2 else []
-            previous_events = events[:-2] if len(events) >= 2 else events
+            # Only pass the user's response — memories should only come from
+            # what the user said, not the interviewer's question
+            current_response = events[-1:] if events else []
+            previous_events = events[:-1] if events else []
 
             if len(previous_events) > self._max_events_len:
                 previous_events = previous_events[-self._max_events_len:]
 
+            # Show only the top semantically similar existing memories to avoid
+            # the LLM over-merging unrelated memories
+            memory_bank = self.interview_session.memory_bank
+            if memory_bank.memories:
+                query = "\n".join(current_response)
+                similar = memory_bank.search_memories(query, k=5)
+                existing_memories_str = ""
+                for result in similar:
+                    existing_memories_str += (
+                        f"<memory id=\"{result.id}\">\n"
+                        f"  <title>{result.title}</title>\n"
+                        f"  <text>{result.text}</text>\n"
+                        f"</memory>\n"
+                    )
+            else:
+                existing_memories_str = "(no existing memories yet)"
+
             return format_prompt(prompt, {
                 "user_portrait": self.interview_session.session_agenda.user_portrait,
                 "previous_events": "\n".join(previous_events),
-                "current_qa": "\n".join(current_qa),
+                "current_qa": "\n".join(current_response),
                 "topics_list": self.interview_session.session_agenda.get_all_topics_and_subtopics(),
+                "existing_memories": existing_memories_str,
                 "tool_descriptions": self.get_tools_description(
-                    selected_tools=["update_memory_bank_and_session"]
+                    selected_tools=["update_memory_bank_and_session", "update_existing_memory"]
                 )
             })
         elif prompt_type == "update_list_of_subtopics":
@@ -730,7 +825,13 @@ class SessionScribe(BaseAgent, Participant):
                 "last_meeting_summary": self.interview_session.session_agenda.get_last_meeting_summary_str(),
                 "topics_list": topics_list,
                 "tool_descriptions": self.get_tools_description(
-                    selected_tools=["update_subtopic_coverage"]
+                    selected_tools=(
+                        ["update_criteria_coverage", "update_subtopic_coverage",
+                         "add_task_deep_dive_topic"]
+                        if (os.getenv("ENABLE_TASK_DEEP_DIVE", "false").lower() == "true"
+                            and getattr(self.interview_session, "session_type", "intake") != "weekly")
+                        else ["update_criteria_coverage", "update_subtopic_coverage"]
+                    )
                 )
             })
         elif prompt_type == "update_subtopic_notes":

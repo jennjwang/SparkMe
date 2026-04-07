@@ -32,10 +32,23 @@ class WeeklySnapshot(BaseModel):
     week_number: int  # ISO week number (1–53)
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
-    # This week's work
+    # Topic 1: Tasks and Deliverables
     tasks: List[TaskEntry] = []
-    collaborators_this_week: List[str] = []  # Role/relationship descriptions (no PII)
-    notable_events: str = ""  # Anything surprising or out of pattern
+    time_allocation: dict = {}  # e.g. {"coding": 0.4, "meetings": 0.3}
+
+    # Topic 2: Tools and Methods
+    tools: List[str] = []  # General tools/methods used (e.g. "Figma", "JIRA")
+    ai_tools: List[str] = []  # AI tools used (e.g. "ChatGPT", "Copilot")
+
+    # Topic 3: Collaboration
+    collaborators: List[str] = []  # Role/relationship descriptions (no PII)
+
+    # Topic 4: Pain Points and Bright Spots
+    pain_points: List[str] = []  # Frustrations or inefficiencies
+    notable_changes: List[str] = []  # What went well or changed
+
+    # Summary
+    session_summary: str = ""
 
     def to_dict(self) -> dict:
         return {
@@ -45,8 +58,13 @@ class WeeklySnapshot(BaseModel):
             "week_number": self.week_number,
             "timestamp": self.timestamp.isoformat(),
             "tasks": [t.to_dict() for t in self.tasks],
-            "collaborators_this_week": self.collaborators_this_week,
-            "notable_events": self.notable_events,
+            "time_allocation": self.time_allocation,
+            "tools": self.tools,
+            "ai_tools": self.ai_tools,
+            "collaborators": self.collaborators,
+            "pain_points": self.pain_points,
+            "notable_changes": self.notable_changes,
+            "session_summary": self.session_summary,
         }
 
     @classmethod

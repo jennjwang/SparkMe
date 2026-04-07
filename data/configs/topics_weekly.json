@@ -2,29 +2,79 @@
     {
         "topic": "Tasks and Deliverables",
         "subtopics": [
-            "Main tasks and deliverables worked on this week",
-            "Approximate time allocation across tasks"
+            {
+                "description": "What tasks did you work on this week, and what (if anything) changed compared to last week?",
+                "coverage_criteria": [
+                    "Tasks worked on this week are identified",
+                    "Any tasks dropped, added, or shifted in priority vs last week are noted",
+                    "Time allocation across tasks plausibly accounts for a full work week"
+                ]
+            },
+            {
+                "description": "How did you spend your time this week — and did the balance shift from last week?",
+                "coverage_criteria": [
+                    "Approximate time share per task type is captured",
+                    "Any notable shift in time allocation vs last week is noted"
+                ]
+            }
         ]
     },
     {
         "topic": "Tools and Methods",
         "subtopics": [
-            "How tasks were executed: tools and methods used",
-            "Any AI tool usage: what tool, what for, how much they trusted the output"
+            {
+                "description": "What tools or methods did you use this week — any new ones, or any you stopped using?",
+                "coverage_criteria": [
+                    "Tools used this week are identified",
+                    "Any tools added or dropped vs last week are noted"
+                ]
+            },
+            {
+                "description": "Did you use any AI tools this week — and how did your usage or trust in them compare to last week?",
+                "coverage_criteria": [
+                    "AI tool usage (or non-usage) this week is captured",
+                    "What the AI tool was used for is noted",
+                    "Any change in how much they trusted or relied on it vs last week is noted"
+                ]
+            }
         ]
     },
     {
         "topic": "Collaboration",
         "subtopics": [
-            "Who they worked with or for this week",
-            "Any new delegation or coordination patterns"
+            {
+                "description": "Who did you work with or for this week — and did that change from last week?",
+                "coverage_criteria": [
+                    "Collaborators this week are identified",
+                    "Any new or dropped collaborations vs last week are noted"
+                ]
+            },
+            {
+                "description": "Were there any changes in how you delegated or coordinated work this week?",
+                "coverage_criteria": [
+                    "Delegation or coordination patterns this week are described",
+                    "Any shift in those patterns vs last week is noted"
+                ]
+            }
         ]
     },
     {
         "topic": "Pain Points and Bright Spots",
         "subtopics": [
-            "Biggest frustrations or inefficiencies this week",
-            "What went well or felt particularly effective"
+            {
+                "description": "What was the biggest frustration or inefficiency this week — and is it new or ongoing from last week?",
+                "coverage_criteria": [
+                    "Main frustration or pain point this week is identified",
+                    "Whether it is new or a continuation from last week is noted"
+                ]
+            },
+            {
+                "description": "What went well or felt particularly effective this week — anything different from last week?",
+                "coverage_criteria": [
+                    "A positive or effective moment this week is identified",
+                    "Whether it represents a change or improvement vs last week is noted"
+                ]
+            }
         ]
     }
 ]

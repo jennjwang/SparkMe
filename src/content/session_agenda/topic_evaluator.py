@@ -30,7 +30,7 @@ class MinimumThresholdSubtopicsEvaluator(TopicEvaluator):
         required_topic_coverage = all(st.is_covered for st in core_topic.required_subtopics.values())
         emergent_topic_coverage = all(st.is_covered for st in core_topic.emergent_subtopics.values()) 
 
-        if self.gamma > 0:
+        if self.gamma and self.gamma > 0:
             return (required_topic_coverage and emergent_topic_coverage) or self.get_coverage_score(core_topic) >= self.minimum_threshold
         else:
             return required_topic_coverage or self.get_coverage_score(core_topic) >= self.minimum_threshold

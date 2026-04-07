@@ -493,6 +493,16 @@ This is the portrait of the user:
 {user_portrait}
 </user_portrait>
 
+<conversational_style>
+This is the documented conversational style of the user — use this as the baseline guide to simulate their responses:
+{conversational_style}
+
+If the session observations below diverge from this baseline, prefer the session observations (they reflect actual behavior in this interview):
+<session_style_observations>
+{session_style_observations}
+</session_style_observations>
+</conversational_style>
+
 Here are the topics and subtopics to review:
 <topics_list>
 {topics_list}
@@ -510,10 +520,11 @@ Generate {num_rollouts} diverse interview conversation rollout strategies, each 
 
 For EACH rollout, reason step-by-step. For EACH turn, specify:
 1. Question: The interviewer's next question.
-2. Predicted Response: A realistic simulation of how the candidate would likely respond, matching their linguistic style as observed in the recent conversation. Capture:
-   - Tone (e.g., casual, precise, hedging, enthusiastic)
-   - Voice (e.g., first-person narrative, technical, reflective)
-   - Length (e.g., brief and direct vs. verbose with examples)
+2. Predicted Response: A realistic simulation of how the candidate would likely respond, strictly following the documented `conversational_style` profile above. The `conversational_style` document takes precedence over inference from the recent conversation. Capture:
+   - Tone: match the register described (e.g., casual/informal vs. precise/formal)
+   - Voice: match characteristic phrasing, abbreviations, and sentence starts documented in the style profile
+   - Length: match the typical response length described (e.g., one sentence, brief list) — do NOT generate longer responses if the style is terse
+   - Quirks: replicate documented habits (e.g., lowercase, typos, clipped answers, resistance to repeating information)
 3. Subtopics Covered: List subtopic ID(s) addressed in this turn. Only newly introduced subtopics count toward coverage improvement.
 4. Emergence Potential: A score between 0 and 1 indicating the likelihood of eliciting emergent signal, including:
    - Subtopic emergence (new relevant subtopics), and/or
@@ -531,7 +542,9 @@ Guidelines:
 - Condition later turns on earlier predicted responses.
 - Avoid superficial rephrasing; each rollout should reflect a genuinely different interview strategy.
 - Do not invent novelty—emergent insights should arise plausibly from the candidate's background, constraints, or prior answers.
-- Mirror the candidate's linguistic style (tone, voice, response length) as inferred from the recent conversation. If the candidate tends to give short answers, do not predict long ones.
+- Use `session_style_observations` as the primary signal for response simulation — it reflects actual behavior in this interview. Use the static `conversational_style` profile as a fallback when session data is sparse (fewer than ~5 messages).
+- If the style profile says responses are typically one sentence, do not predict multi-sentence answers unless the question explicitly requires enumeration.
+- If the style profile documents characteristic phrases, abbreviations, or habits (e.g., "msgs", "w" for "with", lowercase starts), include these in predicted responses.
 </instructions>
 """
 
@@ -625,25 +638,24 @@ Your task is to evaluate coverage for each subtopic based on the predicted rollo
 
 Step-by-step for each predicted turn in the rollout:
 
-1. Identify which subtopics (if any) are actually covered by this Q&A exchange.
-2. Determine the appropriate evaluation method for each subtopic:
-   - STAR framework (Situation, Task, Action, Result) for behavioral/experiential subtopics.
-   - General descriptive evaluation for conceptual, factual, or reflective subtopics.
-3. Assess whether the predicted response provides sufficient detail and depth to mark the subtopic as covered:
-   - For STAR subtopics: all four elements (Situation, Task, Action, Result) must be meaningfully present.
+1. Identify which subtopics (if any) are actually addressed by this Q&A exchange.
+2. For each subtopic, check whether it has **Coverage Criteria** listed in `topics_list`:
+   - If **Coverage Criteria are listed**: evaluate each criterion individually. The subtopic is covered only if ALL listed criteria are satisfied by the predicted response(s).
+   - If **no Coverage Criteria are listed**: use the appropriate fallback method:
+     - STAR framework (Situation, Task, Action, Result) for behavioral/experiential subtopics.
+     - General descriptive evaluation for conceptual, factual, or reflective subtopics.
+3. Assess whether the predicted response provides sufficient detail and depth to satisfy coverage:
+   - For criteria-based subtopics: each criterion must be meaningfully addressed.
+   - For STAR subtopics: all four elements must be meaningfully present.
    - For Descriptive subtopics: responses must include comprehensive factual or reflective detail with specificity.
-4. Consider previous notes or coverage of subtopics in earlier turns.
-5. Be strict: only mark subtopics as covered if the exchange truly meets coverage criteria.
+4. Consider coverage contributions from earlier turns in the same rollout.
+5. Be strict: only mark subtopics as covered if the exchange truly meets all applicable coverage criteria.
 
 Do NOT mark subtopics as covered if:
 - Only surface-level mentions occur.
-- STAR elements are incomplete.
+- Any required criterion is missing or only vaguely addressed.
+- STAR elements are incomplete (for STAR subtopics).
 - Responses are vague, generic, or lacking depth.
-
-Considerations:
-- Depth and specificity of the predicted response.
-- Presence of STAR elements for applicable subtopics.
-- Incremental contribution to coverage from repeated or extended discussion.
 
 </instructions>
 """

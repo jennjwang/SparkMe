@@ -64,6 +64,8 @@ class SubTopic(BaseModel):
     final_summary: str = "" # Essentially only available when subtopic is marked as covered
     feedback_gap: str = ""
     is_covered: bool = False
+    coverage_criteria: List[str] = Field(default_factory=list)
+    criteria_coverage: List[bool] = Field(default_factory=list)  # parallel to coverage_criteria
     
     def __iter__(self):
         """Iterate over questions in this subtopic."""
@@ -85,10 +87,19 @@ class SubTopic(BaseModel):
         """Check if it's covered or not."""
         return self.is_covered
     
+    def update_criteria_coverage(self, statuses: List[bool]) -> None:
+        """Update per-criterion coverage statuses (parallel list to coverage_criteria)."""
+        if len(statuses) != len(self.coverage_criteria):
+            return
+        self.criteria_coverage = list(statuses)
+
     def update_coverage_with_summary(self, aggregated_notes: str):
         """Update coverage and with summary."""
         self.mark_covered()
         self.final_summary = aggregated_notes
+        # Mark all criteria as covered when subtopic is fully covered
+        if self.coverage_criteria:
+            self.criteria_coverage = [True] * len(self.coverage_criteria)
         
     def update_coverage_feedback_gap(self, feedback: str):
         """Update coverage feedback gap."""
@@ -152,6 +163,8 @@ class SubTopic(BaseModel):
             'emergent_insights': [insight.to_dict() for insight in self.emergent_insights],
             'final_summary': self.final_summary,
             'is_covered': self.is_covered,
+            'coverage_criteria': self.coverage_criteria,
+            'criteria_coverage': self.criteria_coverage,
         }
 
     @classmethod
@@ -166,6 +179,8 @@ class SubTopic(BaseModel):
             emergent_insights=[EmergentInsight.from_dict(insight) for insight in subtopic_dict['emergent_insights']],
             final_summary=subtopic_dict['final_summary'],
             is_covered=subtopic_dict['is_covered'],
+            coverage_criteria=subtopic_dict.get('coverage_criteria', []),
+            criteria_coverage=subtopic_dict.get('criteria_coverage', []),
         )
 
 class CoreTopic(BaseModel):
@@ -241,7 +256,7 @@ class CoreTopic(BaseModel):
             description=core_topic_dict['description'],
             required_subtopics=required_subtopics,
             emergent_subtopics=emergent_subtopics,
-            keywords=core_topic_dict['keywords'],
+            keywords=core_topic_dict.get('keywords', []),
         )
         
     @classmethod
@@ -259,7 +274,7 @@ class CoreTopic(BaseModel):
             emergent_subtopics=active_emergent_subtopics,
             keywords=core_topic.keywords,
         )
-        
+
     @classmethod
     def get_copy_of_core_topic(cls, core_topic: 'CoreTopic', required_only: bool = False) -> 'CoreTopic':
         """Create new CoreTopic that only contains incomplete subtopics."""

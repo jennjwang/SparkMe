@@ -1,4 +1,5 @@
 import asyncio
+import json
 import os
 import uuid
 from datetime import datetime, timedelta
@@ -15,6 +16,7 @@ from src.agents.interviewer.interviewer import Interviewer, InterviewerConfig, T
 from src.agents.session_scribe.session_scribe import SessionScribe, SessionScribeConfig
 from src.agents.strategic_planner.strategic_planner import StrategicPlanner, StrategicPlannerConfig
 from src.agents.user.user_agent import UserAgent
+from src.agents.user.distractor_agent import DistractorAgent
 from src.content.session_agenda.session_agenda import SessionAgenda
 from src.utils.data_process import save_feedback_to_csv
 from src.utils.logger.session_logger import SessionLogger, setup_logger
@@ -147,6 +149,8 @@ class InterviewSession:
         self.session_in_progress = True
         self.session_completed = False
         self._session_timeout = False
+        self.paused = False           # session-level pause (for visualizer)
+        self.step_requested = False   # single-step control
         self.max_turns = max_turns
 
         # Report auto-update states
@@ -169,8 +173,10 @@ class InterviewSession:
 
         # User in the interview session
         if interaction_mode == 'agent':
-            self.user: User = UserAgent(
-                user_id=self.user_id, interview_session=self, 
+            agent_type = os.getenv("USER_AGENT_TYPE", "default")
+            AgentClass = DistractorAgent if agent_type == "distractor" else UserAgent
+            self.user: User = AgentClass(
+                user_id=self.user_id, interview_session=self,
                 config=user_config)
         elif interaction_mode == 'terminal':
             self.user: User = User(user_id=self.user_id, interview_session=self,
@@ -279,6 +285,12 @@ class InterviewSession:
             "execution_log", f"[INIT] Use baseline: {BaseAgent.use_baseline}")
         
         self.tokenizer = get_encoding("cl100k_base")
+
+    async def wait_if_paused(self):
+        """Block the calling coroutine while the session is paused."""
+        while self.paused and not self.step_requested:
+            await asyncio.sleep(0.2)
+        self.step_requested = False  # consume step token
 
     async def _notify_participants(self, message: Message):
         """Notify subscribers asynchronously"""
@@ -454,18 +466,17 @@ class InterviewSession:
             try:
                 self.session_in_progress = False
 
-                # Update report (API mode handles this separately)
-                if self.interaction_mode != 'api' or self._session_timeout:
-                    with contextlib.suppress(KeyboardInterrupt):
-                        SessionLogger.log_to_file(
-                            "execution_log", 
-                            (
-                                f"[REPORT] Trigger final report update. "
-                                f"Waiting for session scribe to finish processing..."
-                            )
+                # Update report and user portrait at session end
+                with contextlib.suppress(KeyboardInterrupt):
+                    SessionLogger.log_to_file(
+                        "execution_log",
+                        (
+                            f"[REPORT] Trigger final report update. "
+                            f"Waiting for session scribe to finish processing..."
                         )
-                        await self.final_update_report_and_agenda(
-                            selected_topics=[])
+                    )
+                    await self.final_update_report_and_agenda(
+                        selected_topics=[])
 
                 # Wait for report update to complete if it's in progress
                 start_time = time.time()
@@ -504,6 +515,16 @@ class InterviewSession:
                         SessionLogger.log_to_file(
                             "execution_log",
                             f"[SNAPSHOT] Error generating weekly snapshot: {snap_err}"
+                        )
+
+                # Generate and save user portrait from memories for intake sessions
+                if self.session_type == "intake":
+                    try:
+                        await self._generate_and_save_user_portrait()
+                    except Exception as portrait_err:
+                        SessionLogger.log_to_file(
+                            "execution_log",
+                            f"[PORTRAIT] Error generating user portrait: {portrait_err}"
                         )
 
                 self.session_completed = True
@@ -571,6 +592,73 @@ class InterviewSession:
         path = manager.save_snapshot(snapshot)
         SessionLogger.log_to_file(
             "execution_log", f"[SNAPSHOT] Weekly snapshot saved to {path}"
+        )
+
+    async def _generate_and_save_user_portrait(self):
+        """Synthesize all session memories into the user portrait schema and save to file."""
+        from src.agents.session_scribe.prompts import get_prompt as scribe_get_prompt
+        from src.utils.llm.engines import get_engine, invoke_engine
+
+        memories = self.memory_bank.memories
+        if not memories:
+            return
+
+        memories_text = "\n".join(
+            f"- [{m.title}] {m.text}" for m in memories
+        )
+        current_portrait = self.session_agenda.user_portrait
+
+        prompt_template = scribe_get_prompt("extract_user_portrait")
+        prompt = prompt_template.format(
+            memories=memories_text,
+            user_portrait=str(current_portrait),
+        )
+
+        # Run the synchronous engine call in a thread to avoid blocking the event loop
+        engine = get_engine(os.getenv("MODEL_NAME", "gpt-4.1-mini"))
+        response = await asyncio.to_thread(invoke_engine, engine, prompt)
+        text = response.content if hasattr(response, "content") else str(response)
+
+        # Strip markdown fences and find the JSON object
+        text = text.strip()
+        # Remove ```json ... ``` or ``` ... ``` fences
+        if "```" in text:
+            parts = text.split("```")
+            for part in parts:
+                part = part.strip()
+                if part.startswith("json"):
+                    part = part[4:].strip()
+                if part.startswith("{"):
+                    text = part
+                    break
+        # Find the first { ... } block if there's surrounding text
+        start = text.find("{")
+        end   = text.rfind("}")
+        if start != -1 and end != -1:
+            text = text[start:end + 1]
+
+        try:
+            portrait_data = json.loads(text)
+        except json.JSONDecodeError as e:
+            SessionLogger.log_to_file(
+                "execution_log",
+                f"[PORTRAIT] JSON parse error: {e}. Raw text (first 300 chars): {text[:300]}"
+            )
+            return
+
+        # Update the in-memory portrait
+        self.session_agenda.user_portrait = portrait_data
+
+        # Save to user directory so it becomes input for the next session
+        portrait_path = os.path.join(
+            os.getenv("LOGS_DIR"), self.user_id, "user_portrait.json"
+        )
+        os.makedirs(os.path.dirname(portrait_path), exist_ok=True)
+        with open(portrait_path, "w") as f:
+            json.dump(portrait_data, f, indent=2)
+
+        SessionLogger.log_to_file(
+            "execution_log", f"[PORTRAIT] User portrait updated ({len(memories)} memories)"
         )
 
     async def get_session_memories(self, include_processed=True) -> List[Memory]:

@@ -44,8 +44,7 @@ RESPOND_CONTEXT = """
 <context>
 You are playing the role of a real person being interviewed. You are currently in an interview session.
 
-You now need to respond: provide a natural response that aligns with your character's personality and background, as if you are having a genuine conversation with an interviewer.
-If this is the first turn, you should only say that you are happy to start the interview.
+You now need to respond: provide a natural response that aligns with your character's personality, background, and conversational style, as if you are having a genuine conversation with an interviewer.
 </context>
 """
 
@@ -59,6 +58,11 @@ Here are summaries from your previous interview sessions:
 <session_history>
 {session_history}
 </session_history>
+
+This is how you speak and communicate — follow this style closely in every response:
+<conversational_style>
+{conversational_style}
+</conversational_style>
 """
 
 CHAT_HISTORY = """
@@ -122,9 +126,9 @@ Preferred pattern:
 - Stop
 
 # STYLE
-- Natural, conversational, confident.
-- Professional but unscripted.
-- Sound like a strong candidate who knows when to stop talking.
+- Follow the `<conversational_style>` guide exactly: replicate the tone, phrasing patterns, verbal tics, filler words, and response length described there.
+- If the style guide specifies a distinctive verbal habit (e.g., a recurring phrase, a way of opening or closing answers), use it consistently.
+- Do not default to generic "professional but casual" if the style guide describes something different.
 
 # STOPPING RULE (ABSOLUTE)
 - End your response immediately after your main point.
@@ -151,25 +155,17 @@ INTRODUCTION_PROMPT = """
 {OUTPUT_FORMAT}
 """
 
-INTRODUCTION_CONTEXT = """
-<context>
-You are playing the role of a real person being interviewed. You are currently in an interview session.
-
-You now need to respond: provide a natural response that aligns with your character's personality and background, as if you are having a genuine conversation with an interviewer.
-If this is the first turn, you should only say that you are happy to start the interview.
-</context>
-"""
+INTRODUCTION_CONTEXT = RESPOND_CONTEXT
 
 INTRODUCTION_INSTRUCTIONS_PROMPT = """
 <instructions>
 FIRST-TURN BEHAVIOR (MANDATORY)
-- If this is the first assistant message in the interview session:
-  - Briefly introduce yourself in 1 sentence.
-  - State that you are happy to begin the interview.
-  - Do NOT mention experience, skills, examples, or background.
-  - Do NOT answer any implied or future questions.
-  - Stop immediately after the introduction.
-
+- Briefly introduce yourself in 1 sentence.
+- State that you are happy to begin the interview.
+- Do NOT mention experience, skills, examples, or background.
+- Do NOT answer any implied or future questions.
+- Stop immediately after the introduction.
+- Follow the `<conversational_style>` guide — even this short introduction should reflect your character's tone and phrasing.
 </instructions>
 """
 

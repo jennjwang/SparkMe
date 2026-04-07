@@ -333,11 +333,27 @@ class SessionAgenda:
                     ai_str = f" [AI: {t.get('ai_tool', '?')} — {t.get('ai_purpose', '')}]"
                 lines.append(f"  - {t['description']}{time_str}{ai_str}")
 
-        if snap.get("collaborators_this_week"):
-            lines.append(f"\nCollaborators: {', '.join(snap['collaborators_this_week'])}")
+        if snap.get("tools"):
+            lines.append(f"\nTools and methods: {', '.join(snap['tools'])}")
 
-        if snap.get("notable_events"):
-            lines.append(f"\nNotable events: {snap['notable_events']}")
+        if snap.get("ai_tools"):
+            lines.append(f"AI tools: {', '.join(snap['ai_tools'])}")
+
+        if snap.get("collaborators"):
+            lines.append(f"\nCollaborators: {', '.join(snap['collaborators'])}")
+
+        if snap.get("pain_points"):
+            lines.append("\nPain points:")
+            for pp in snap["pain_points"]:
+                lines.append(f"  - {pp}")
+
+        if snap.get("notable_changes"):
+            lines.append("\nNotable changes:")
+            for nc in snap["notable_changes"]:
+                lines.append(f"  - {nc}")
+
+        if snap.get("session_summary"):
+            lines.append(f"\nSummary: {snap['session_summary']}")
 
         return "\n".join(lines)
 
@@ -410,6 +426,10 @@ class SessionAgenda:
                 output.append("    --- SUBTOPIC ---")
                 output.append(f"    Subtopic ID: {subtopic.subtopic_id}")
                 output.append(f"    Subtopic Description: {subtopic.description}")
+                if subtopic.coverage_criteria:
+                    output.append(f"    Coverage Criteria:")
+                    for criterion in subtopic.coverage_criteria:
+                        output.append(f"        - {criterion}")
                 # TODO I think if it's covered, can give the summary of subtopics; otherwise just notes
                 if subtopic.check_coverage():
                     output.append(f"    Subtopic Status: COVERED")
@@ -451,6 +471,10 @@ class SessionAgenda:
                 output.append("    --- SUBTOPIC ---")
                 output.append(f"    Subtopic ID: {subtopic.subtopic_id}")
                 output.append(f"    Subtopic Description: {subtopic.description}")
+                if subtopic.coverage_criteria:
+                    output.append(f"    Coverage Criteria:")
+                    for criterion in subtopic.coverage_criteria:
+                        output.append(f"        - {criterion}")
                 output.append("")  # blank line between subtopics
 
             output.append("")  # blank line between topics
@@ -459,10 +483,12 @@ class SessionAgenda:
     
     def update_subtopic_coverage(self, subtopic_id: str, aggregated_notes: str):
         """Updates the coverage status of a subtopic."""
-        new_meeting_summary = self.last_meeting_summary + f"\n - {aggregated_notes}"
-        self.update_last_meeting_summary_str(new_meeting_summary)
         self.interview_topic_manager.update_subtopic_coverage(subtopic_id, aggregated_notes)
         
+    def update_subtopic_criteria_coverage(self, subtopic_id: str, statuses: list):
+        """Updates per-criterion coverage for a subtopic."""
+        self.interview_topic_manager.update_subtopic_criteria_coverage(subtopic_id, statuses)
+
     def give_feedback_subtopic_coverage(self, subtopic_id: str, feedback: str):
         self.interview_topic_manager.give_feedback_subtopic_coverage(subtopic_id, feedback)
         
@@ -495,6 +521,14 @@ class SessionAgenda:
         """Adds a new emergent subtopic under the specified topic."""
         return self.interview_topic_manager.add_emergent_subtopic(core_topic_id=topic_id,
                                                                   new_subtopic_description=subtopic_description)
+
+    def add_new_core_topic(self, description: str, subtopics: list) -> str:
+        """Dynamically add a new core topic with given subtopics. Returns the new topic_id."""
+        return self.interview_topic_manager.add_new_core_topic(description=description, subtopics=subtopics)
+
+    def add_task_deep_dive(self, task_name: str, subtopics: list) -> str:
+        """Queue or immediately create a Task Deep Dive topic. Returns 'created:<id>', 'queued', or 'exists'."""
+        return self.interview_topic_manager.add_task_deep_dive(task_name=task_name, subtopics=subtopics)
 
     @classmethod
     def get_historical_session_summaries(cls, user_id: str) -> str:
