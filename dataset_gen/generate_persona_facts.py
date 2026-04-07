@@ -161,7 +161,7 @@ def main():
     parser.add_argument(
         '--topics-path',
         type=str,
-        default='data/configs/topics.json',
+        default='configs/topics.json',
         help='Path to topics.json schema'
     )
     parser.add_argument(

@@ -31,11 +31,11 @@ async def run_terminal_mode(args):
     session_type = args.session_type
     if session_type == "weekly":
         interview_plan_path = os.getenv('INTERVIEW_PLAN_PATH_WEEKLY',
-                                        'data/configs/topics_weekly.json')
+                                        'configs/topics_weekly.json')
         interview_description = "Weekly work check-in: tracking how your tasks and work are evolving"
     else:
         interview_plan_path = os.getenv('INTERVIEW_PLAN_PATH_INTAKE',
-                                        'data/configs/topics_intake.json')
+                                        'configs/topics_intake.json')
         interview_description = os.getenv('INTERVIEW_DESCRIPTION',
                                           "Initial intake interview: understanding your role, tasks, and work patterns")
 

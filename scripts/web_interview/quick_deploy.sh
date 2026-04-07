@@ -22,8 +22,8 @@ NON_SENSITIVE_VARS+="COMPLETION_METRIC=minimum_threshold,"
 # Directories (Pointing to the Persistent Mount /app/data)
 NON_SENSITIVE_VARS+="LOGS_DIR=/app/data/logs,"
 NON_SENSITIVE_VARS+="DATA_DIR=/app/data/data,"
-NON_SENSITIVE_VARS+="INTERVIEW_PLAN_PATH=/app/data/configs/topics.json,"
-NON_SENSITIVE_VARS+="USER_PORTRAIT_PATH=/app/data/configs/user_portrait.json,"
+NON_SENSITIVE_VARS+="INTERVIEW_PLAN_PATH=/app/configs/topics.json,"
+NON_SENSITIVE_VARS+="USER_PORTRAIT_PATH=/app/configs/user_portrait.json,"
 
 # Strategic planner config
 NON_SENSITIVE_VARS+="STRATEGIC_PLANNER_TURN_TRIGGER=3,"
@@ -65,7 +65,7 @@ gsutil mb -p $PROJECT_ID -l $REGION gs://$BUCKET_NAME 2>/dev/null || echo "Bucke
 # This ensures the app can see them when the bucket is mounted.
 echo "📂 Syncing local config files to Bucket..."
 # gcloud storage cp -r ./data/sample_user_profiles gs://$BUCKET_NAME/
-gcloud storage cp -r ./data/configs gs://$BUCKET_NAME/
+gcloud storage cp -r ./configs gs://$BUCKET_NAME/
 
 # Deploy to Cloud Run with mounted storage (Gen2)
 echo "Deploying to Cloud Run..."

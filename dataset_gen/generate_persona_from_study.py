@@ -335,7 +335,7 @@ def main():
         help="Directory containing user-study subdirectories (default: user_study)"
     )
     parser.add_argument(
-        "--topics-path", type=str, default="data/configs/topics.json",
+        "--topics-path", type=str, default="configs/topics.json",
         help="Path to topics.json schema"
     )
     parser.add_argument(
