@@ -118,7 +118,10 @@ class SessionAgenda:
         latest_file = os.path.join(latest_dir, "session_agenda.json")
         
         if os.path.exists(latest_file):
-            return cls.load_from_file(latest_file)
+            agenda = cls.load_from_file(latest_file)
+            # Reset topic coverage so a new session doesn't immediately complete
+            agenda.interview_topic_manager.reset()
+            return agenda
         return cls.initialize_session_agenda(user_id=user_id,
                                              initial_user_portrait_path=initial_user_portrait_path,
                                              interview_plan_path=interview_plan_path,
@@ -420,7 +423,8 @@ class SessionAgenda:
         for topic in topics_list:
             output.append("=== TOPIC ===")
             output.append(f"Topic ID: {topic.topic_id}")
-            output.append(f"Topic Description: {topic.description}\n")
+            output.append(f"Topic Description: {topic.description}")
+            output.append(f"Allow Emergent Subtopics: {'Yes' if topic.allow_emergent else 'No'}\n")
 
             for subtopic in topic:
                 output.append("    --- SUBTOPIC ---")
@@ -465,7 +469,8 @@ class SessionAgenda:
         for topic in topics_list:
             output.append("=== TOPIC ===")
             output.append(f"Topic ID: {topic.topic_id}")
-            output.append(f"Topic Description: {topic.description}\n")
+            output.append(f"Topic Description: {topic.description}")
+            output.append(f"Allow Emergent Subtopics: {'Yes' if topic.allow_emergent else 'No'}\n")
 
             for subtopic in topic:
                 output.append("    --- SUBTOPIC ---")

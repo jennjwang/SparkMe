@@ -13,16 +13,19 @@ from src.utils.constants.colors import ORANGE, RESET
 
 
 class UserAgent(BaseAgent, User):
-    def __init__(self, user_id: str, interview_session, config: dict = None):
+    def __init__(self, user_id: str, interview_session, config: dict = None,
+                 hesitancy: float = 0.0):
         config["model_name"] = os.getenv("USER_MODEL_NAME", os.getenv("MODEL_NAME", "gpt-4.1-mini"))
         config["base_url"] = os.getenv("USER_VLLM_BASE_URL", None)
         BaseAgent.__init__(
-            self, name="UserAgent", 
+            self, name="UserAgent",
             description="Agent that plays the role of the user", config=config)
         User.__init__(self, user_id=user_id,
                       interview_session=interview_session)
+        # hesitancy ∈ [0.0, 1.0]: 0 = fully cooperative, 1 = fully withholding
+        self.hesitancy = max(0.0, min(1.0, hesitancy))
 
-        # Load profile background
+        # Load profile background (flat bio notes)
         profile_path = os.path.join(
             os.getenv("USER_AGENT_PROFILES_DIR"), f"{user_id}/{user_id}_bio_notes.md")
         if os.path.exists(profile_path):
@@ -30,6 +33,16 @@ class UserAgent(BaseAgent, User):
                 self.profile_background = f.read()
         else:
             self.profile_background = ""
+
+        # Load structured ground truth (topics_filled.json) if available
+        structured_path = os.path.join(
+            os.getenv("USER_AGENT_PROFILES_DIR"), f"{user_id}/{user_id}_topics_filled.json")
+        if os.path.exists(structured_path):
+            with open(structured_path, 'r') as f:
+                from src.agents.user.prompts import format_structured_profile
+                self.structured_profile = format_structured_profile(json.load(f))
+        else:
+            self.structured_profile = ""
         
         # Load topics and advance to next topic
         # topics_path = os.path.join(
@@ -138,31 +151,26 @@ class UserAgent(BaseAgent, User):
         """Get the formatted prompt for the LLM"""
         from src.agents.user.prompts import get_prompt
 
+        common = dict(
+            profile_background=self.profile_background,
+            structured_profile=self.structured_profile,
+            conversational_style=self.conversational_style,
+            session_history=self.session_history,
+            hesitancy=self.hesitancy,
+        )
+
         if prompt_type == "score_question":
-            return get_prompt(prompt_type).format(
-                profile_background=self.profile_background,
-                conversational_style=self.conversational_style,
-                session_history=self.session_history,
+            return get_prompt(prompt_type, **common).format(
                 chat_history=self.get_event_stream_str([{"tag": "message"}])
             )
         elif prompt_type == "respond_to_question":
             chat_history = self.get_event_stream_str([{"tag": "message"}])
-            if "<UserAgent>" not in chat_history: # TODO fix this hack
-                return get_prompt("introduction").format(
-                    profile_background=self.profile_background,
-                    conversational_style=self.conversational_style,
-                    session_history=self.session_history,
-                    # score=self.question_score,
-                    # score_reasoning=self.question_score_reasoning,
+            if "<UserAgent>" not in chat_history:  # first turn → introduction
+                return get_prompt("introduction", **common).format(
                     chat_history=chat_history
                 )
             else:
-                return get_prompt(prompt_type).format(
-                    profile_background=self.profile_background,
-                    conversational_style=self.conversational_style,
-                    session_history=self.session_history,
-                    # score=self.question_score,
-                    # score_reasoning=self.question_score_reasoning,
+                return get_prompt(prompt_type, **common).format(
                     chat_history=chat_history
                 )
 

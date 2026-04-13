@@ -149,8 +149,13 @@ class SubTopic(BaseModel):
         return True
             
     def reset(self):
-        """Clears all questions."""
+        """Clears all questions and resets coverage state."""
         self.questions = []
+        self.is_covered = False
+        self.criteria_coverage = [False] * len(self.criteria_coverage)
+        self.final_summary = ""
+        self.feedback_gap = ""
+        self.emergent_insights = []
     
     def to_dict(self) -> dict:
         """Convert SubTopic object to dictionary."""
@@ -190,6 +195,8 @@ class CoreTopic(BaseModel):
     required_subtopics: Dict[str, SubTopic] = Field(default_factory=dict)
     emergent_subtopics: Dict[str, SubTopic] = Field(default_factory=dict)
     keywords: List[str] = Field(default_factory=list)
+    allow_emergent: bool = True
+    allow_strategic_planner: bool = True
     
     def __iter__(self):
         """Iterate over all subtopics (required first, then emergent)."""
@@ -244,6 +251,8 @@ class CoreTopic(BaseModel):
             'required_subtopics': {k: v.to_dict() for k, v in self.required_subtopics.items()},
             'emergent_subtopics': {k: v.to_dict() for k, v in self.emergent_subtopics.items()},
             'keywords': self.keywords,
+            'allow_emergent': self.allow_emergent,
+            'allow_strategic_planner': self.allow_strategic_planner,
         }
 
     @classmethod
@@ -257,6 +266,8 @@ class CoreTopic(BaseModel):
             required_subtopics=required_subtopics,
             emergent_subtopics=emergent_subtopics,
             keywords=core_topic_dict.get('keywords', []),
+            allow_emergent=core_topic_dict.get('allow_emergent', True),
+            allow_strategic_planner=core_topic_dict.get('allow_strategic_planner', True),
         )
         
     @classmethod
@@ -273,6 +284,8 @@ class CoreTopic(BaseModel):
             required_subtopics=active_required_subtopics,
             emergent_subtopics=active_emergent_subtopics,
             keywords=core_topic.keywords,
+            allow_emergent=core_topic.allow_emergent,
+            allow_strategic_planner=core_topic.allow_strategic_planner,
         )
 
     @classmethod
@@ -289,4 +302,6 @@ class CoreTopic(BaseModel):
             required_subtopics=active_required_subtopics,
             emergent_subtopics=active_emergent_subtopics,
             keywords=core_topic.keywords,
+            allow_emergent=core_topic.allow_emergent,
+            allow_strategic_planner=core_topic.allow_strategic_planner,
         )

@@ -1,148 +1,191 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AI Interviewer</title>
     <style>
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: ui-sans-serif, -apple-system, system-ui, 'Segoe UI', Roboto, Arial, sans-serif;
-            background: #f9fafb;
-            color: #374151;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            -webkit-font-smoothing: antialiased;
-        }
-        .top-header {
-            display: flex;
-            align-items: center;
-            justify-content: flex-end;
-            gap: 12px;
-            padding: 16px 32px;
-            border-bottom: 1px solid #e5e7eb;
-            background: #fff;
-        }
-        .username-badge {
-            color: #6b7280;
-            font-size: 14px;
-            background: #f3f4f6;
-            padding: 6px 16px;
-            border-radius: 20px;
-        }
-        .logout-link {
-            color: #6b7280;
-            text-decoration: none;
-            font-size: 14px;
-            padding: 6px 16px;
-            border: 1px solid #e5e7eb;
-            border-radius: 20px;
-            transition: all 0.15s;
-        }
-        .logout-link:hover { color: #111827; border-color: #d1d5db; }
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family:
+          ui-sans-serif,
+          -apple-system,
+          system-ui,
+          "Segoe UI",
+          Roboto,
+          Arial,
+          sans-serif;
+        background: #f9fafb;
+        color: #374151;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        -webkit-font-smoothing: antialiased;
+      }
+      .top-header {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 12px;
+        padding: 16px 32px;
+        border-bottom: 1px solid #e5e7eb;
+        background: #fff;
+      }
+      .username-badge {
+        color: #6b7280;
+        font-size: 14px;
+        background: #f3f4f6;
+        padding: 6px 16px;
+        border-radius: 20px;
+      }
+      .logout-link {
+        color: #6b7280;
+        text-decoration: none;
+        font-size: 14px;
+        padding: 6px 16px;
+        border: 1px solid #e5e7eb;
+        border-radius: 20px;
+        transition: all 0.15s;
+      }
+      .logout-link:hover {
+        color: #111827;
+        border-color: #d1d5db;
+      }
 
-        .welcome-wrapper {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 48px 24px;
-        }
-        .welcome-card {
-            max-width: 600px;
-            width: 100%;
-        }
-        .welcome-card h1 {
-            font-size: 28px;
-            font-weight: 700;
-            color: #111827;
-            margin-bottom: 24px;
-            letter-spacing: -0.02em;
-        }
-        .welcome-card p {
-            color: #6b7280;
-            line-height: 1.8;
-            font-size: 15px;
-            margin-bottom: 20px;
-        }
-        .welcome-card strong { color: #374151; }
+      .welcome-wrapper {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 48px 24px;
+      }
+      .welcome-card {
+        max-width: 600px;
+        width: 100%;
+      }
+      .welcome-card h1 {
+        font-size: 28px;
+        font-weight: 700;
+        color: #111827;
+        margin-bottom: 24px;
+        letter-spacing: -0.02em;
+      }
+      .welcome-card p {
+        color: #6b7280;
+        line-height: 1.8;
+        font-size: 15px;
+        margin-bottom: 20px;
+      }
+      .welcome-card strong {
+        color: #374151;
+      }
 
-        .privacy-notice {
-            background: #fff;
-            border: 1px solid #e5e7eb;
-            border-left: 3px solid #10a37f;
-            padding: 24px 28px;
-            margin: 32px 0;
-            border-radius: 12px;
-        }
-        .privacy-notice h3 {
-            color: #111827;
-            font-size: 15px;
-            font-weight: 600;
-            margin-bottom: 12px;
-        }
-        .privacy-notice p {
-            color: #6b7280;
-            font-size: 14px;
-            line-height: 1.7;
-            margin-bottom: 8px;
-        }
-        .privacy-notice ul {
-            color: #6b7280;
-            font-size: 14px;
-            margin-left: 20px;
-            line-height: 1.9;
-        }
+      .privacy-notice {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-left: 3px solid #10a37f;
+        padding: 24px 28px;
+        margin: 32px 0;
+        border-radius: 12px;
+      }
+      .privacy-notice h3 {
+        color: #111827;
+        font-size: 15px;
+        font-weight: 600;
+        margin-bottom: 12px;
+      }
+      .privacy-notice p {
+        color: #6b7280;
+        font-size: 14px;
+        line-height: 1.7;
+        margin-bottom: 8px;
+      }
+      .privacy-notice ul {
+        color: #6b7280;
+        font-size: 14px;
+        margin-left: 20px;
+        line-height: 1.9;
+      }
 
-        .start-button {
-            display: inline-block;
-            padding: 14px 36px;
-            background: #111827;
-            color: #fff;
-            text-decoration: none;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: 600;
-            transition: background 0.15s;
-            margin-top: 8px;
-        }
-        .start-button:hover { background: #374151; }
+      .start-button {
+        display: inline-block;
+        padding: 14px 36px;
+        background: #111827;
+        color: #fff;
+        text-decoration: none;
+        border-radius: 10px;
+        font-size: 16px;
+        font-weight: 600;
+        transition: background 0.15s;
+        margin-top: 8px;
+      }
+      .start-button:hover {
+        background: #374151;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div class="top-header">
-        <span class="username-badge">{{ username }}</span>
-        <a href="/logout" class="logout-link">Logout</a>
+      <span class="username-badge">{{ username }}</span>
+      <a href="/logout" class="logout-link">Logout</a>
     </div>
 
     <div class="welcome-wrapper">
-        <div class="welcome-card">
-            <h1>Welcome to the AI Interviewer</h1>
-            <p>
-                Thank you for participating in our research study. Each week, the AI Interviewer will conduct a short check-in about your recent work — what tasks you worked on, roughly how much time each took, which tools you used, and who you collaborated with.
-            </p>
-            <p>
-                Your first session is a longer intake (20–30 minutes) that establishes your baseline work profile. Subsequent weekly check-ins take around 10 minutes. The interviewer remembers what you've shared in prior sessions and asks targeted follow-ups, so the conversation becomes more specific over time.
-            </p>
-            <p>
-                <strong>How it works:</strong> You can respond using text or voice. The conversation is open-ended — describe your work in your own words. There are no right or wrong answers.
-            </p>
+      <div class="welcome-card">
+        <h1>Interview with SparkMe</h1>
+        <p>
+          Thank you for participating in our research study. We're developing
+          better methods for capturing what work actually looks like, moving
+          beyond job descriptions to understand how work gets done in practice.
+        </p>
+        <p>
+          SparkMe will conduct a short interview about your work — what tasks
+          you do, roughly how much time each takes, which tools you use, and who
+          you collaborate with. It will ask follow-up questions to fill in gaps
+          and may return to earlier topics as the conversation develops.
+        </p>
+        <!-- <p>
+          Thank you for participating in our research study. Each week, SparkMe
+          will conduct a short check-in about your recent work — what tasks you
+          worked on, roughly how much time each took, which tools you used, and
+          who you collaborated with.
+        </p>
+        <p>
+          Your first session is a longer intake (20–30 minutes) that establishes
+          your baseline work profile. Subsequent weekly check-ins take around 10
+          minutes. The interviewer remembers what you've shared in prior
+          sessions and asks targeted follow-ups, so the conversation becomes
+          more specific over time.
+        </p> -->
+        <p>
+          <strong>How it works:</strong> You can respond using text or voice.
+          The conversation is open-ended — describe your work in your own words.
+          There are no right or wrong answers.
+        </p>
 
-            <div class="privacy-notice">
-                <h3>Privacy Notice</h3>
-                <p>You are <strong>not required</strong> to share any personally identifiable information. We do not collect or store PII.</p>
-                <p><strong>You do not need to provide:</strong></p>
-                <ul>
-                    <li>Full name, age, or date of birth</li>
-                    <li>Physical address or precise location</li>
-                    <li>Contact information (phone, email)</li>
-                    <li>Government IDs or financial information</li>
-                </ul>
-            </div>
-
-            <a href="/chat" class="start-button">Begin Check-In</a>
+        <div class="privacy-notice">
+          <h3>Privacy Notice</h3>
+          <p>
+            You are <strong>not required</strong> to share any personally
+            identifiable information. We do not collect or store PII.
+          </p>
+          <p><strong>You do not need to provide:</strong></p>
+          <ul>
+            <li>Full name, age, or date of birth</li>
+            <li>Physical address or precise location</li>
+            <li>Contact information (phone, email)</li>
+            <li>Government IDs or financial information</li>
+          </ul>
         </div>
+
+        <a href="/chat" class="start-button">Begin Check-In</a>
+      </div>
     </div>
-</body>
+  </body>
 </html>

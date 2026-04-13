@@ -95,6 +95,42 @@
             padding: 48px 24px 32px;
         }
 
+        .system-message {
+            text-align: center;
+            margin: 24px 0;
+            padding: 12px 20px;
+            background: #f3f4f6;
+            border-radius: 8px;
+            color: #6b7280;
+            font-size: 13px;
+            font-style: italic;
+        }
+
+        .session-end-banner {
+            text-align: center;
+            margin: 32px 0 8px;
+            padding: 24px 32px;
+            background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
+            border: 1px solid #bbf7d0;
+            border-radius: 16px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
+        .session-end-banner .end-icon {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+        .session-end-banner .end-text {
+            color: #15803d;
+            font-size: 16px;
+            font-weight: 600;
+            line-height: 1.5;
+        }
+        .session-end-banner .end-subtext {
+            color: #6b7280;
+            font-size: 13px;
+            margin-top: 4px;
+        }
+
         /* ---- Hint ---- */
         .hint-text {
             text-align: center;
@@ -249,25 +285,26 @@
         .typing-indicator {
             display: flex;
             align-items: flex-start;
-            gap: 24px;
-            font-size: 15px;
-            line-height: 1.8;
         }
-        .typing-dots {
-            display: flex; align-items: center; gap: 5px;
-            padding: 12px 0;
+        .typing-bubble {
+            background: #f3f4f6;
+            border-radius: 18px 18px 18px 4px;
+            padding: 14px 18px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
         }
-        .typing-dots span {
-            width: 8px; height: 8px;
+        .typing-bubble span {
+            width: 7px; height: 7px;
             border-radius: 50%;
             background: #9ca3af;
             animation: dotBounce 1.4s ease-in-out infinite;
         }
-        .typing-dots span:nth-child(2) { animation-delay: 0.15s; }
-        .typing-dots span:nth-child(3) { animation-delay: 0.3s; }
+        .typing-bubble span:nth-child(2) { animation-delay: 0.18s; }
+        .typing-bubble span:nth-child(3) { animation-delay: 0.36s; }
         @keyframes dotBounce {
-            0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
-            30% { transform: translateY(-6px); opacity: 1; }
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.45; }
+            30% { transform: translateY(-5px); opacity: 1; }
         }
 
         /* ---- Message fade-in ---- */
@@ -303,10 +340,10 @@
         <div class="brand">SparkMe</div>
         <div class="controls">
             <div class="toggle-switch">
-                <input type="checkbox" id="tts-toggle" checked>
+                <input type="checkbox" id="tts-toggle">
                 <label for="tts-toggle">Voice</label>
             </div>
-            <button class="end-btn" id="end-session-btn" disabled>End Session</button>
+            <button class="end-btn" id="end-session-btn">End Session</button>
         </div>
     </div>
 
@@ -344,11 +381,11 @@
         let audioChunks = [];
         let seenMessageIds = new Set();
         let currentAudio = null;
-        let ttsEnabled = true;
+        let ttsEnabled = false;
         let isSessionCompleted = false;
         let pollingInterval = null;
         let isInitializing = false;
-        const MIN_SESSION_DURATION_MS = 45 * 60 * 1000;
+        const MIN_SESSION_DURATION_MS = 0;
 
         const chatInput = document.getElementById('chat-input');
         chatInput.addEventListener('input', function() {
@@ -457,19 +494,27 @@
                     sessionToken = data.session_token;
                     sessionStartTime = Date.now();
                     updateStatus('');
-                    showTyping();
                     if (!pollingInterval) pollingInterval = setInterval(pollForMessages, 400);
                     setInterval(updateEndSessionButton, 1000);
-                    pollForMessages();
+                    if (data.was_existing) {
+                        // Reconnected to existing session — replay full history
+                        await pollForMessages(true);
+                    } else {
+                        showTyping();
+                        pollForMessages();
+                    }
                 } else updateStatus('Failed to start session');
             } catch (e) { updateStatus('Error starting session'); }
             finally { isInitializing = false; }
         }
 
-        async function pollForMessages() {
+        async function pollForMessages(fullHistory = false) {
             if (!sessionToken) return;
             try {
-                const res = await fetch(`/api/get-messages?session_token=${sessionToken}`);
+                const url = fullHistory
+                    ? `/api/get-messages?session_token=${sessionToken}&full=true`
+                    : `/api/get-messages?session_token=${sessionToken}`;
+                const res = await fetch(url);
                 if (res.status === 400) { sessionToken = null; clearInterval(pollingInterval); return; }
                 const data = await res.json();
                 if (data.success && data.messages) {
@@ -479,13 +524,23 @@
                             if (appendMessage('bot', msg.content, msg.id) && msg.id) playMessageAudio(msg.id);
                         } else if (msg.role === 'User' || msg.role === 'user') {
                             appendMessage('user', msg.content, msg.id);
+                        } else if (msg.role === 'system') {
+                            if (msg.id && !seenMessageIds.has(msg.id)) {
+                                seenMessageIds.add(msg.id);
+                                const div = document.createElement('div');
+                                div.className = 'system-message';
+                                div.textContent = msg.content;
+                                document.querySelector('.chat-inner').appendChild(div);
+                                scrollToBottom();
+                            }
                         }
                     });
                 }
                 if (data.session_completed) {
-                    updateStatus('Session complete. Thank you!');
+                    updateStatus('');
                     isSessionCompleted = true; updateEndSessionButton(); disableChatInputs();
                     if (pollingInterval) { clearInterval(pollingInterval); pollingInterval = null; }
+                    showEndBanner();
                 }
             } catch (e) {}
         }
@@ -555,13 +610,24 @@
             const div = document.createElement('div');
             div.className = 'typing-indicator';
             div.id = 'typing-indicator';
-            div.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>';
+            div.innerHTML = '<div class="typing-bubble"><span></span><span></span><span></span></div>';
             box.appendChild(div);
             scrollToBottom();
         }
         function removeTyping() {
             const el = document.getElementById('typing-indicator');
             if (el) el.remove();
+        }
+
+        function showEndBanner() {
+            if (document.querySelector('.session-end-banner')) return;
+            removeTyping();
+            const banner = document.createElement('div');
+            banner.className = 'session-end-banner';
+            banner.innerHTML = '<div class="end-text">Session ended</div>'
+                + '<div class="end-subtext">Thank you for your participation!</div>';
+            document.querySelector('.chat-inner').appendChild(banner);
+            scrollToBottom();
         }
 
         document.getElementById('chat-form').onsubmit = async function(e) {
@@ -598,7 +664,7 @@
         document.getElementById('record-toggle').onclick = toggleRecording;
 
         document.getElementById('end-session-btn').onclick = async function() {
-            if (!confirm('End this session?') || !sessionToken) return;
+            if (!sessionToken) { updateStatus('No active session.'); return; }
             updateStatus('Ending...'); stopCurrentAudio();
             try {
                 const r = await (await fetch('/api/end-session', {
@@ -606,9 +672,10 @@
                     body: JSON.stringify({ session_token: sessionToken })
                 })).json();
                 if (r.success) {
-                    updateStatus('Session ended. Thank you!');
+                    updateStatus('');
                     isSessionCompleted = true; updateEndSessionButton(); disableChatInputs();
                     if (pollingInterval) { clearInterval(pollingInterval); pollingInterval = null; }
+                    showEndBanner();
                 }
             } catch (e) { updateStatus('Error ending session'); }
         };

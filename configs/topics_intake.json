@@ -1,24 +1,73 @@
 [
   {
     "topic": "Role and Context",
+    "allow_emergent": false,
+    "allow_strategic_planner": false,
     "subtopics": [
       {
-        "description": "Current role title and primary responsibilities",
+        "description": "Their role, tenure, and field — factual only, 2 facts needed, move on immediately once both are present",
         "coverage_criteria": [
-          "Provides the official internal or external job title.",
-          "Identifies the main areas of work the role is accountable for."
+          "Provides their role or title (e.g., job title, academic position, or equivalent) and how long they have been in it.",
+          "Identifies the field, domain, or industry they work in (e.g., tech, healthcare, academia, finance)."
         ]
       }
     ]
   },
   {
     "topic": "Task Inventory",
+    "allow_emergent": true,
+    "allow_strategic_planner": true,
     "subtopics": [
       {
-        "description": "Main activities in a typical week",
+        "description": "Breadth: all the distinct things they do in a typical week",
         "coverage_criteria": [
-          "Names at least 3 distinct activities or tasks.",
-          "Each activity is a meaningful unit of work that the worker actually performs, not just a broad responsibility area, function, or end goal."
+          "Names the distinct tasks they actually perform — concrete activities, not broad responsibilities or goals. If the user lists multiple tasks in one response, treat that as a complete answer unless their list is suspiciously short (fewer than 3 items). Do NOT keep asking 'what else?' — instead, confirm: 'So those are the main things that fill your week?'",
+          "Tasks span the full variety of their work, not just the most obvious or prestigious ones.",
+          "Gives a rough sense of where their time goes across these tasks — which ones dominate the week and which are occasional. Check that the tasks fill up the work week (e.g., 40 hours / 5 days). If not, ask about what fills the remaining time."
+        ]
+      },
+      {
+        "description": "Depth: how the important tasks actually get done, step by step",
+        "coverage_criteria": [
+          "For the most important tasks, describes the actual sequence of steps from start to finish.",
+          "Each walkthrough names the specific tools, systems, or artifacts involved at each step.",
+          "Captures where input comes from (e.g., a request, a dataset, an alert) and what the output or handoff looks like.",
+          "Identifies points where the worker exercises judgment or makes a decision, and what informs that decision.",
+          "Surfaces any workarounds — places where the worker has to work around a broken tool, missing information, or a gap in the process.",
+          "Captures how often each task is performed (daily, weekly, monthly, ad-hoc, event-triggered) and roughly how long it takes per instance or as a share of total work time.",
+          "Identifies what counts as done and done well — the standards, checks, thresholds, or completion conditions used to evaluate the output.",
+          "Names the specific skills, knowledge areas, or capabilities the worker draws on to perform the task.",
+          "Identifies the information sources the worker relies on — policies, procedures, documentation, data feeds, prior cases, or people consulted for guidance."
+        ]
+      }
+    ]
+  },
+  {
+    "topic": "Dependencies and Collaboration",
+    "allow_emergent": true,
+    "allow_strategic_planner": true,
+    "subtopics": [
+      {
+        "description": "Who they depend on and who depends on them",
+        "coverage_criteria": [
+          "Names the roles or teams they interact with most to get their work done.",
+          "Describes how work flows to them and from them — who hands off what, and to whom.",
+          "For the key dependencies, captures whether the handoff is smooth or a source of friction, and why."
+        ]
+      }
+    ]
+  },
+  {
+    "topic": "Pain Points",
+    "allow_emergent": true,
+    "allow_strategic_planner": true,
+    "subtopics": [
+      {
+        "description": "What frustrates them or slows them down",
+        "coverage_criteria": [
+          "Names specific, recurring frustrations tied to concrete tasks or situations.",
+          "For each frustration, captures enough detail to understand what goes wrong, how often, and how much time it costs.",
+          "Gets beyond the first answer — probes for frustrations the worker may have normalized or stopped noticing."
         ]
       }
     ]

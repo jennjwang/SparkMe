@@ -4,6 +4,7 @@ Interview Topic Manager
 This module defines the InterviewTopicManager class, which tracks core topics with their completion status.
 """
 
+import os
 from typing import Dict, List, Optional, Tuple, Union, Any
 
 import faiss
@@ -112,6 +113,8 @@ class InterviewTopicManager(BaseModel):
                 required_subtopics={},
                 emergent_subtopics={},
                 keywords=[],
+                allow_emergent=topic_dict.get('allow_emergent', True),
+                allow_strategic_planner=topic_dict.get('allow_strategic_planner', True),
             )
 
             for j, subtopic in enumerate(topic_dict.get('subtopics', [])):
@@ -296,6 +299,9 @@ class InterviewTopicManager(BaseModel):
         if core_topic is None:
             return False
 
+        if not core_topic.allow_emergent:
+            return False
+
         # Embedding-based deduplication check
         is_duplicate, similarity = self._check_duplicate_subtopic(new_subtopic_description)
         if is_duplicate:
@@ -390,6 +396,14 @@ class InterviewTopicManager(BaseModel):
             
         return core_topic_list
     
+    def any_active_topic_allows_strategic_planner(self) -> bool:
+        """Return True if at least one active topic has allow_strategic_planner=True."""
+        for topic_id in self.active_topic_id_list:
+            topic = self.get_core_topic(topic_id)
+            if topic is not None and topic.allow_strategic_planner:
+                return True
+        return False
+
     def use_emergent_subtopics(self):
         self.enable_emergent_subtopics = True
     
@@ -470,8 +484,15 @@ class InterviewTopicManager(BaseModel):
     
     def revise_agenda_after_update(self):
         # If a pending task deep dive is queued and no deep dive is currently active,
-        # create the next one now.
-        if self.pending_task_deep_dives and not self._has_incomplete_task_deep_dive():
+        # create the next one now (only when the feature is enabled).
+        deep_dive_enabled = os.getenv("ENABLE_TASK_DEEP_DIVE", "false").lower() == "true"
+        if not deep_dive_enabled:
+            # Strip persisted deep dive topics and queued deep dives when feature is off
+            self.pending_task_deep_dives = []
+            dd_ids = [tid for tid in self.core_topic_dict if self._is_task_deep_dive(tid)]
+            for tid in dd_ids:
+                del self.core_topic_dict[tid]
+        elif self.pending_task_deep_dives and not self._has_incomplete_task_deep_dive():
             from src.agents.session_scribe.tools import TASK_DEEP_DIVE_SUBTOPICS
             next_task = self.pending_task_deep_dives.pop(0)
             self.add_task_deep_dive(task_name=next_task, subtopics=TASK_DEEP_DIVE_SUBTOPICS)

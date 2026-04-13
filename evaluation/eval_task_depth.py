@@ -24,25 +24,30 @@ MODEL_CLIENT = None
 MODEL_CONFIG = None
 TOKENIZER = None
 
-# The 5 dimensions to evaluate per task
-TASK_DIMENSIONS = ["what", "duration", "tools", "who", "when"]
+# The 10 dimensions to evaluate per task
+TASK_DIMENSIONS = ["what", "duration", "tools", "who", "when", "method", "judgment", "quality_criteria", "skills", "information_sources"]
 
 JUDGE_PROMPT = """# Instruction
 You are evaluating interview notes to assess the **depth of task descriptions** captured during a work-activity interview.
 
 Your job:
 1. Identify each distinct **task** mentioned in the interview notes.
-2. For each task, determine which of the following **5 dimensions** are explicitly stated or clearly inferable from the notes:
+2. For each task, determine which of the following **10 dimensions** are explicitly stated or clearly inferable from the notes:
    - **what**: What the task is (a description or name of the activity)
    - **duration**: How long the task takes or what fraction of time it occupies
    - **tools**: What software, platforms, or tools are used for the task
    - **who**: Who is involved (collaborators, clients, manager, etc.)
    - **when**: When the task is done (daily, weekly, ad-hoc, specific timing, etc.)
+   - **method**: How the task is carried out — the process, sequence, or technique, beyond simply restating the action
+   - **judgment**: Where the worker exercises discretion — any decision point requiring evaluation, comparison, prioritization, diagnosis, or selection, and the basis for that decision
+   - **quality_criteria**: What counts as done and done well — the standards, checks, thresholds, or completion conditions used to evaluate the output
+   - **skills**: Specific skills, knowledge areas, or capabilities the worker draws on to perform the task
+   - **information_sources**: Where guidance, inputs, or reference material comes from — policies, procedures, data feeds, prior cases, or people the worker draws on
 
 Rules:
 - Count a dimension as present only if it is **explicitly stated** — do not infer.
 - If the notes mention a task but give no details, only "what" is covered.
-- Each task's **depth_score** = number of dimensions present (0–5). Since "what" is always present if the task is identified, the minimum meaningful score is 1.
+- Each task's **depth_score** = number of dimensions present (0–10). Since "what" is always present if the task is identified, the minimum meaningful score is 1.
 - Report one entry per distinct task. If multiple tasks are described together, split them.
 
 # Output Format (JSON)
@@ -55,9 +60,14 @@ Rules:
         "duration": true or false,
         "tools": true or false,
         "who": true or false,
-        "when": true or false
+        "when": true or false,
+        "method": true or false,
+        "judgment": true or false,
+        "quality_criteria": true or false,
+        "skills": true or false,
+        "information_sources": true or false
       },
-      "depth_score": <integer 1-5>
+      "depth_score": <integer 1-10>
     }
   ],
   "num_tasks": <integer>,

@@ -16,7 +16,6 @@ from src.agents.interviewer.interviewer import Interviewer, InterviewerConfig, T
 from src.agents.session_scribe.session_scribe import SessionScribe, SessionScribeConfig
 from src.agents.strategic_planner.strategic_planner import StrategicPlanner, StrategicPlannerConfig
 from src.agents.user.user_agent import UserAgent
-from src.agents.user.distractor_agent import DistractorAgent
 from src.content.session_agenda.session_agenda import SessionAgenda
 from src.utils.data_process import save_feedback_to_csv
 from src.utils.logger.session_logger import SessionLogger, setup_logger
@@ -173,11 +172,10 @@ class InterviewSession:
 
         # User in the interview session
         if interaction_mode == 'agent':
-            agent_type = os.getenv("USER_AGENT_TYPE", "default")
-            AgentClass = DistractorAgent if agent_type == "distractor" else UserAgent
-            self.user: User = AgentClass(
+            hesitancy = float(os.getenv("USER_AGENT_HESITANCY", "0.0"))
+            self.user: User = UserAgent(
                 user_id=self.user_id, interview_session=self,
-                config=user_config)
+                config=user_config, hesitancy=hesitancy)
         elif interaction_mode == 'terminal':
             self.user: User = User(user_id=self.user_id, interview_session=self,
                                    enable_voice_input=user_config \

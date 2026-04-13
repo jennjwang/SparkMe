@@ -15,6 +15,7 @@ engine_constructor = {
     "gpt-4.1": ChatOpenAI,
     "gpt-4.1-mini": ChatOpenAI,
     "gpt-4.1-nano": ChatOpenAI,
+    "gpt-5.1": ChatOpenAI,
     "gpt-5.4-mini": ChatOpenAI,
     "gpt-4o-mini-2024-07-18": ChatOpenAI,
     "gpt-3.5-turbo-0125": ChatOpenAI,
@@ -85,7 +86,11 @@ def get_engine(model_name, **kwargs):
         kwargs["max_tokens"] = token_limit
         return VLLMEngine(model_name=actual_model_name, **kwargs)
 
-    kwargs["max_tokens"] = token_limit
+    # gpt-5.x models require max_completion_tokens instead of max_tokens
+    if model_name.startswith("gpt-5"):
+        kwargs["max_completion_tokens"] = token_limit
+    else:
+        kwargs["max_tokens"] = token_limit
     kwargs["model_name"] = model_name
     return engine_constructor[model_name](**kwargs)
 

@@ -1144,6 +1144,12 @@ async function initSession() {
     document.getElementById('chat-messages').innerHTML = '';
     document.getElementById('typing-indicator').classList.add('show');
     startPolling();
+    if (data.was_existing) {
+      // Reconnected to running session — replay full history
+      const r = await fetch(`/api/get-messages?session_token=${sessionToken}&full=true`);
+      const d = await r.json();
+      if (d.success) (d.messages || []).forEach(addChatMessage);
+    }
   } catch(e) {
     console.error('initSession error', e);
   }

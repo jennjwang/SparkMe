@@ -1,0 +1,12 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - '${_IMAGE}'
+      - '-f'
+      - 'scripts/web_interview/Dockerfile'
+      - '.'
+images:
+  - '${_IMAGE}'
+timeout: 900s

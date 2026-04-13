@@ -168,6 +168,37 @@ class Interviewer(BaseAgent, Participant):
             response = await self.call_engine_async(prompt)
             print(f"{GREEN}Interviewer:\n{response}{RESET}")
             try:
+                # gpt-5.x may return JSON instead of XML — convert it to the
+                # expected XML tool-call format so the rest of the pipeline works.
+                if "<tool_calls>" not in response:
+                    parsed = None
+                    raw = response.strip()
+                    try:
+                        parsed = json.loads(raw)
+                    except (ValueError, Exception):
+                        # LLM may return JSON with unescaped quotes inside string values.
+                        # Fall back to regex extraction: subtopic_id is simple, response
+                        # is everything between "response":" and the last " before "}"
+                        sid_m = re.search(r'"subtopic_id"\s*:\s*"([^"]*)"', raw)
+                        resp_m = re.search(r'"response"\s*:\s*"(.*)"', raw, re.DOTALL)
+                        if sid_m and resp_m:
+                            parsed = {
+                                "subtopic_id": sid_m.group(1),
+                                "response": resp_m.group(1).rstrip("}").rstrip(),
+                            }
+                    if isinstance(parsed, dict) and "response" in parsed:
+                        subtopic_id = str(parsed.get("subtopic_id", ""))
+                        resp_text = parsed["response"]
+                        # Escape XML special chars in the values
+                        for ch, esc in [("&", "&amp;"), ("<", "&lt;"), (">", "&gt;")]:
+                            resp_text = resp_text.replace(ch, esc)
+                            subtopic_id = subtopic_id.replace(ch, esc)
+                        response = (
+                            f"<tool_calls><respond_to_user>"
+                            f"<subtopic_id>{subtopic_id}</subtopic_id>"
+                            f"<response>{resp_text}</response>"
+                            f"</respond_to_user></tool_calls>"
+                        )
                 if "<tool_calls>" not in response and "<respond_to_user>" in response:
                     response = f"<tool_calls>{response}</tool_calls>"
                 await self.handle_tool_calls_async(response)

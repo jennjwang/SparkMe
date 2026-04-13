@@ -621,12 +621,26 @@ def get_messages():
         }), 400
 
     messages = []
+    full_history = request.args.get('full', 'false').lower() == 'true'
     has_user_buffer = session.user and (
         hasattr(session.user, 'get_new_messages') or
         hasattr(session.user, '_message_buffer') or
         hasattr(session.user, 'get_and_clear_messages')
     )
-    if has_user_buffer:
+    if has_user_buffer and full_history:
+        # Reconnect: replay full chat_history so the client can re-render everything
+        messages = [
+            {
+                'id': m.id,
+                'role': m.role,
+                'content': m.content,
+                'type': m.type,
+                'timestamp': m.timestamp.isoformat(),
+            }
+            for m in session.chat_history
+            if m.type == 'conversation'
+        ]
+    elif has_user_buffer:
         if hasattr(session.user, 'get_new_messages'):
             messages = session.user.get_new_messages() or []
         elif hasattr(session.user, '_message_buffer'):
@@ -640,6 +654,8 @@ def get_messages():
             messages = session.user.get_and_clear_messages() or []
     else:
         # Agent mode: UserAgent has no buffer — serve new messages directly from chat_history
+        if full_history:
+            chat_history_offsets[session_token] = 0
         offset = chat_history_offsets.get(session_token, 0)
         new_msgs = session.chat_history[offset:]
         chat_history_offsets[session_token] = offset + len(new_msgs)
@@ -665,15 +681,8 @@ def get_messages():
         elif not session.session_in_progress and len(session.chat_history) > 0:
             is_session_done = True
 
-    if is_session_done:
-        end_msg_id = f"system_end_{session_token}"
-        if not any(m.get('id') == end_msg_id for m in messages):
-            messages.append({
-                'id': end_msg_id,
-                'role': 'Interviewer',
-                'content': "Session has been completed! Thank you for your participation in our interview! Your responses have been recorded!",
-                'timestamp': time.time()
-            })
+    # Session completion is signaled via data.session_completed in the JSON response;
+    # the frontend renders its own end-of-session banner.
 
     # Pre-start TTS generation for interviewer messages as soon as they are delivered,
     # so audio is ready (or nearly ready) by the time the client explicitly requests it.

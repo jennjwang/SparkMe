@@ -2,7 +2,9 @@ import os
 import time
 from typing import Optional
 from openai import OpenAI
+from dotenv import load_dotenv
 
+load_dotenv()
 
 class LLMClient:
     """Standalone OpenAI client for persona generation pipeline"""
@@ -20,32 +22,27 @@ class LLMClient:
 
         self.client = OpenAI(api_key=self.api_key)
 
-    def call_gpt41(
+    def call(
         self,
         prompt: str,
+        model: str = "gpt-4.1",
         temperature: float = 0.7,
         max_tokens: int = 8192,
         retry_attempts: int = 3
     ) -> str:
-        """
-        Call GPT-4.1 for fact generation (high quality)
-
-        Args:
-            prompt: The prompt to send
-            temperature: Sampling temperature (0-2)
-            max_tokens: Maximum tokens to generate
-            retry_attempts: Number of retry attempts on failure
-
-        Returns:
-            Generated text response
-        """
         return self._call_with_retry(
-            model="gpt-4.1",
+            model=model,
             prompt=prompt,
             temperature=temperature,
             max_tokens=max_tokens,
             retry_attempts=retry_attempts
         )
+
+    # Keep backwards-compatible alias
+    def call_gpt41(self, prompt: str, temperature: float = 0.7,
+                   max_tokens: int = 8192, retry_attempts: int = 3) -> str:
+        return self.call(prompt, model="gpt-4.1", temperature=temperature,
+                         max_tokens=max_tokens, retry_attempts=retry_attempts)
 
     def _call_with_retry(
         self,
@@ -58,14 +55,23 @@ class LLMClient:
         """Internal method to call OpenAI API with retry logic"""
         last_exception = None
 
+        # Models >= gpt-5 use max_completion_tokens instead of max_tokens
+        newer_models = {"gpt-5", "gpt-5.4", "gpt-5.4-mini", "gpt-5.4-nano",
+                        "gpt-5.4-pro", "gpt-5.3", "gpt-5.2", "gpt-5.1"}
+        use_completion_tokens = any(model.startswith(m) for m in newer_models)
+
         for attempt in range(retry_attempts):
             try:
-                response = self.client.chat.completions.create(
+                kwargs = dict(
                     model=model,
                     messages=[{"role": "user", "content": prompt}],
                     temperature=temperature,
-                    max_tokens=max_tokens
                 )
+                if use_completion_tokens:
+                    kwargs["max_completion_tokens"] = max_tokens
+                else:
+                    kwargs["max_tokens"] = max_tokens
+                response = self.client.chat.completions.create(**kwargs)
                 return response.choices[0].message.content
 
             except Exception as e:

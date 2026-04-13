@@ -183,6 +183,15 @@ class StrategicPlanner(BaseAgent, Participant):
         if self._planning_in_progress:
             return False
 
+        # Don't trigger if all active topics have opted out of strategic planning
+        topic_manager = self.interview_session.session_agenda.interview_topic_manager
+        if not topic_manager.any_active_topic_allows_strategic_planner():
+            SessionLogger.log_to_file(
+                "execution_log",
+                f"({self.name}) Skipping strategic planning — no active topic allows it"
+            )
+            return False
+
         # Calculate turns since last planning
         turns_since_last = current_turn - self._last_planning_turn
 

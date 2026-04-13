@@ -615,8 +615,10 @@ UPDATE_SUBTOPIC_COVERAGE_CONTEXT = """
 You are a session scribe who assists an interviewer. You observe the dialogue between the interviewer and the candidate, and your role is to determine investigate each subtopic and its notes to determine whether the subtopic has achieved full coverage or not.
 
 Your objectives:
-1. Infer whether each subtopic is best evaluated using the STAR (Situation, Task, Action, Result) framework or a general descriptive evaluation.
-2. If the subtopic is complete, and mark the subtopic as covered and aggregate the subtopic's notes succinctly and faithfully.
+1. Classify each subtopic as **Factual/Background** or **STAR-appropriate**:
+   - **Factual/Background**: asks for simple descriptive facts (role, title, tenure, field, name of a tool, etc.). Mark covered as soon as the core facts are present in the notes — do NOT require STAR elements.
+   - **STAR-appropriate**: describes events, projects, or experiences. Evaluate using the STAR (Situation, Task, Action, Result) framework.
+2. If the subtopic is complete, mark the subtopic as covered and aggregate the subtopic's notes succinctly and faithfully.
 </session_scribe_persona>
 """
 
@@ -653,14 +655,17 @@ UPDATE_SUBTOPIC_COVERAGE_INSTRUCTIONS = """
 
 2. **Determine Subtopic Nature (when no coverage criteria are provided)**
    - If the subtopic does NOT have explicit coverage criteria, infer whether the subtopic is:
+     * **Factual/Background** → if it asks for simple descriptive facts (role, title, tenure, field, tool name, etc.). Mark covered as soon as the key facts are present — STAR does NOT apply.
      * **STAR-appropriate** → if it describes an event, project, or experience involving actions, challenges, or outcomes.
-     * **Descriptive** → if it focuses on background, motivation, interest, reasoning, or conceptual understanding rather than a specific event.
+     * **Descriptive** → if it focuses on motivation, reasoning, or conceptual understanding rather than a specific event.
 
 3. **Evaluate Completeness**
    - **When subtopic-level coverage criteria exist:**
        * Fully covered when all criteria return `true`.
        * However, if notes is already comprehensive, feel free to mark it as covered as there are more important subtopics to be covered in later section.
    - **When using inferred evaluation (no coverage criteria):**
+     - For **Factual/Background** subtopics:
+         * Fully covered when the key facts requested by the subtopic description are present in the notes. Do NOT require STAR elements.
      - For **STAR-appropriate** subtopics:
          * Coverage requires STAR components:
            - **Situation:** Context or background
@@ -958,6 +963,8 @@ UPDATE_LIST_OF_SUBTOPICS_INSTRUCTIONS = """
 4. Add exactly one emergent subtopic—the strongest candidate—or none.
 
 ## Decision rules (apply strictly)
+- **Scope constraint**: The emergent subtopic must be directly relevant to understanding the user's *work activities, tasks, and how they get their job done*. Do NOT add subtopics about the user's personal opinions, feelings, career aspirations, industry trends, or other tangential topics — even if the user mentions them. The interview's purpose is to build a detailed inventory of work tasks and how they are performed.
+- **Emergent-allowed topics only**: Each topic in `topics_list` has an `Allow Emergent Subtopics` field. Only propose emergent subtopics for topics where this is set to "Yes". If a candidate idea maps to a topic with "No", do NOT add it.
 - The idea must fall *within one of the existing topics* and *not related to any existing subtopics*. If it does not clearly map to a parent topic, do NOT add it.
 - The idea must be *novel*: the idea of emergence topic is uncommon, so if it can reasonably be addressed within any existing subtopic (even loosely), do NOT add it.
 - If multiple candidate ideas appear, select **only the strongest single candidate**.
@@ -968,13 +975,14 @@ Score each candidate based on:
   Score = Novelty x Expected Information Gain x Direct Relevance
 Where:
 - Novelty = how meaningfully different it is from all existing subtopics.
-- Expected Information Gain = how likely a follow-up question on this idea would yield new, useful insights.
-- Direct Relevance = how clearly the idea aligns with its parent topic.
+- Expected Information Gain = how likely a follow-up question on this idea would yield new, useful insights about the user's concrete work tasks and processes.
+- Direct Relevance = how clearly the idea aligns with its parent topic and the interview's goal of understanding work activities.
 
 ## Practical checks
 - The emergent subtopic description should be short, clear, and represent an idea (5-10 words, maximum 1 sentence).
 - Avoid redundancy, rephrasings, or overly narrow micro-subtopics.
 - Do not add subtopics that drift outside the interview's intended scope.
+- Ask yourself: "Would this subtopic help us understand a specific work task, how it's done, or the conditions around it?" If not, do NOT add it.
 
 ## Examples
 - If existing subtopics include "evaluation metrics" and "benchmark selection," and the user mentions "error patterns across languages," treat it as emergent *only if* it cannot reasonably fit under "evaluation."
@@ -1181,12 +1189,14 @@ Return a JSON object with exactly these fields. Use only information from the me
 {{
   "Functional Role": "Job title and primary responsibilities in 1-2 sentences",
   "Team Structure": "Who the user reports to, peers, direct reports, and team size",
-  "Seniority": "Career level and years of relevant experience",
+  "Seniority": "Career level, years of relevant experience, and degree of autonomy",
+  "Work Rhythm": "Balance of meetings vs. focus time, and whether the schedule is predictable or reactive",
   "Collaboration and Delegation": "How the user works with others, delegates, or depends on collaborators",
-  "Tools and Methods": ["List of specific tools, software, or methods the user relies on"],
+  "Tools and Methods": ["List of specific non-AI tools, software, or platforms the user relies on"],
+  "AI Tools": ["List of AI or automation tools used, with the specific task or workflow each supports"],
   "Task Inventory": ["List of recurring tasks or responsibilities the user performs"],
   "Motivations and Goals": ["What the user cares about or is trying to achieve in their role"],
-  "Known Pain Points": ["Frustrations, bottlenecks, or challenges the user faces"],
+  "Known Pain Points": ["Frustrations, bottlenecks, or challenges the user faces — including informal or shadow work"],
   "Known Bright Spots": ["Things going well, sources of satisfaction, or areas of strength"]
 }}
 

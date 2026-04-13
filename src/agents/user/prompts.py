@@ -1,30 +1,70 @@
 from src.utils.llm.prompt_utils import format_prompt
 
-def get_prompt(prompt_type: str):
+
+def format_structured_profile(topics_data: list) -> str:
+    """Format a topics_filled.json list into a readable structured profile string."""
+    if not topics_data:
+        return ""
+    lines = ["<structured_profile>"]
+    for topic in topics_data:
+        lines.append(f"\n## {topic.get('topic', '')}")
+        for sub in topic.get("subtopics", []):
+            lines.append(f"\n{sub['subtopic_id']} {sub['subtopic_description']}:")
+            for note in sub.get("notes", []):
+                lines.append(f"  - {note}")
+    lines.append("\n</structured_profile>")
+    return "\n".join(lines)
+
+
+def get_hesitancy_instructions(hesitancy: float) -> str:
+    """Return hesitancy instructions scaled from cooperative (0.0) to withholding (1.0)."""
+    if hesitancy < 0.25:
+        return HESITANCY_COOPERATIVE
+    elif hesitancy < 0.5:
+        return HESITANCY_MILD
+    elif hesitancy < 0.75:
+        return HESITANCY_MODERATE
+    else:
+        return HESITANCY_HIGH
+
+
+def get_prompt(prompt_type: str, profile_background: str = "",
+               structured_profile: str = "", conversational_style: str = "",
+               session_history: str = "", hesitancy: float = 0.0):
+
+    profile_block = format_prompt(PROFILE_BACKGROUND_PROMPT, {
+        "profile_background": profile_background,
+        "structured_profile": structured_profile,
+        "conversational_style": conversational_style,
+        "session_history": session_history,
+    })
+    hesitancy_block = get_hesitancy_instructions(hesitancy)
 
     if prompt_type == "respond_to_question":
+        instructions = format_prompt(RESPOND_INSTRUCTIONS_PROMPT,
+                                     {"hesitancy_instructions": hesitancy_block})
         return format_prompt(RESPOND_TO_QUESTION_PROMPT, {
             "CONTEXT": RESPOND_CONTEXT,
-            "PROFILE_BACKGROUND": PROFILE_BACKGROUND_PROMPT,
+            "PROFILE_BACKGROUND": profile_block,
             "CHAT_HISTORY": CHAT_HISTORY,
-            "INSTRUCTIONS": RESPOND_INSTRUCTIONS_PROMPT,
-            "OUTPUT_FORMAT": RESPONSE_OUTPUT_FORMAT_PROMPT
+            "INSTRUCTIONS": instructions,
+            "OUTPUT_FORMAT": RESPONSE_OUTPUT_FORMAT_PROMPT,
         })
     elif prompt_type == "score_question":
         return format_prompt(SCORE_QUESTION_PROMPT, {
             "CONTEXT": SCORE_QUESTION_CONTEXT,
-            "PROFILE_BACKGROUND": PROFILE_BACKGROUND_PROMPT,
+            "PROFILE_BACKGROUND": profile_block,
             "CHAT_HISTORY": CHAT_HISTORY,
             "INSTRUCTIONS": SCORE_QUESTION_INSTRUCTIONS_PROMPT,
-            "OUTPUT_FORMAT": SCORE_QUESTION_OUTPUT_FORMAT_PROMPT
+            "OUTPUT_FORMAT": SCORE_QUESTION_OUTPUT_FORMAT_PROMPT,
         })
     elif prompt_type == "introduction":
-      return format_prompt(INTRODUCTION_PROMPT, {
+        return format_prompt(INTRODUCTION_PROMPT, {
             "CONTEXT": INTRODUCTION_CONTEXT,
-            "PROFILE_BACKGROUND": PROFILE_BACKGROUND_PROMPT,
+            "PROFILE_BACKGROUND": profile_block,
             "CHAT_HISTORY": CHAT_HISTORY,
             "INSTRUCTIONS": INTRODUCTION_INSTRUCTIONS_PROMPT,
-            "OUTPUT_FORMAT": INTRODUCTION_OUTPUT_FORMAT_PROMPT
+            "OUTPUT_FORMAT": INTRODUCTION_OUTPUT_FORMAT_PROMPT,
         })
 
 
@@ -54,6 +94,8 @@ This is your background information.
 {profile_background}
 </profile_background>
 
+{structured_profile}
+
 Here are summaries from your previous interview sessions:
 <session_history>
 {session_history}
@@ -74,6 +116,8 @@ Here is the conversation history of your interview session so far. You are the <
 
 RESPOND_INSTRUCTIONS_PROMPT = """
 <instructions>
+{hesitancy_instructions}
+
 # GENERAL INTERVIEW RULES
 - Always answer the question asked.
 - Never skip a question.
@@ -265,3 +309,26 @@ The numerical score [1-5] that you give to the interviewer's last question. Noth
 </response_content>
 </output_format>
 """
+
+# ---------------------------------------------------------------------------
+# Hesitancy instructions (injected into RESPOND_INSTRUCTIONS_PROMPT)
+# ---------------------------------------------------------------------------
+
+HESITANCY_COOPERATIVE = """# SHARING LEVEL: Fully cooperative
+Share information openly and completely. When asked a direct question, give a direct answer.
+You may proactively mention related details if they naturally follow from what was asked."""
+
+HESITANCY_MILD = """# SHARING LEVEL: Mildly hesitant
+Answer questions, but keep responses on the brief side. Stick to what was explicitly asked.
+Do not volunteer extra details unprompted. Occasionally pause before answering complex questions."""
+
+HESITANCY_MODERATE = """# SHARING LEVEL: Moderately hesitant
+You are somewhat guarded. Tend to give general or high-level answers first.
+If the interviewer probes further, you may share a bit more, but never give the full picture unprompted.
+Deflect vague questions with "it depends" or "it's a bit complicated" before deciding whether to continue."""
+
+HESITANCY_HIGH = """# SHARING LEVEL: Highly withholding
+You actively avoid sharing specific details about your work. You are polite but consistently evasive.
+Use tactics such as: vague generalities ("the usual stuff"), redirecting to feelings, minimizing
+("nothing too exciting"), or claiming you'd have to think about it. Never volunteer concrete facts.
+Only share the bare minimum if pressed very specifically."""
