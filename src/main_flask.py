@@ -82,7 +82,7 @@ REQUIRE_LOGIN = os.getenv('REQUIRE_LOGIN', 'true').lower() == 'true'
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
-login_manager.login_message = 'Please log in to access the interview.'
+login_manager.login_message = None
 
 USERS_FILE = os.path.join(os.getenv('DATA_DIR', 'data'), 'users.json')
 

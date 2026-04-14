@@ -5,16 +5,10 @@
     "allow_strategic_planner": false,
     "subtopics": [
       {
-        "description": "Their role, tenure, and field — factual only, 2 facts needed, move on immediately once both are present",
+        "description": "Their role or title",
         "coverage_criteria": [
-          "Provides their role or title (e.g., job title, academic position, or equivalent) and how long they have been in it.",
-          "Identifies the field, domain, or industry they work in (e.g., tech, healthcare, academia, finance)."
+          "Provides their current role or title, such as job title, academic position, or equivalent."
         ]
-      }
-    ]
-  },
-  {
-    "topic": "Task Inventory",
       },
       {
         "description": "Their tenure in the role",
