@@ -65,8 +65,10 @@ class LLMClient:
                 kwargs = dict(
                     model=model,
                     messages=[{"role": "user", "content": prompt}],
-                    temperature=temperature,
                 )
+                # gpt-5+ models don't support custom temperature (only default of 1)
+                if not use_completion_tokens:
+                    kwargs["temperature"] = temperature
                 if use_completion_tokens:
                     kwargs["max_completion_tokens"] = max_tokens
                 else:

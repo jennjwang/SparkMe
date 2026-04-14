@@ -1,80 +1,128 @@
 [
-    {
-        "topic": "Tasks and Deliverables",
-        "subtopics": [
-            {
-                "description": "What tasks did you work on this week, and what (if anything) changed compared to last week?",
-                "coverage_criteria": [
-                    "Tasks worked on this week are identified",
-                    "Any tasks dropped, added, or shifted in priority vs last week are noted",
-                    "Time allocation across tasks plausibly accounts for a full work week"
-                ]
-            },
-            {
-                "description": "How did you spend your time this week — and did the balance shift from last week?",
-                "coverage_criteria": [
-                    "Approximate time share per task type is captured",
-                    "Any notable shift in time allocation vs last week is noted"
-                ]
-            }
+  {
+    "topic": "Tasks and Deliverables",
+    "subtopics": [
+      {
+        "description": "What tasks did you work on this week, and what (if anything) changed compared to last week?",
+        "coverage_criteria": [
+          "Tasks worked on this week are identified",
+          "Any tasks dropped, added, or shifted in priority vs last week are noted",
+          "Time allocation across tasks plausibly accounts for a full work week"
         ]
-    },
-    {
-        "topic": "Tools and Methods",
-        "subtopics": [
-            {
-                "description": "What tools or methods did you use this week — any new ones, or any you stopped using?",
-                "coverage_criteria": [
-                    "Tools used this week are identified",
-                    "Any tools added or dropped vs last week are noted"
-                ]
-            },
-            {
-                "description": "Did you use any AI tools this week — and how did your usage or trust in them compare to last week?",
-                "coverage_criteria": [
-                    "AI tool usage (or non-usage) this week is captured",
-                    "What the AI tool was used for is noted",
-                    "Any change in how much they trusted or relied on it vs last week is noted"
-                ]
-            }
+      },
+      {
+        "description": "How did you spend your time this week — and did the balance shift from last week?",
+        "coverage_criteria": [
+          "Approximate time share per task type is captured",
+          "Any notable shift in time allocation vs last week is noted"
         ]
-    },
-    {
-        "topic": "Collaboration",
-        "subtopics": [
-            {
-                "description": "Who did you work with or for this week — and did that change from last week?",
-                "coverage_criteria": [
-                    "Collaborators this week are identified",
-                    "Any new or dropped collaborations vs last week are noted"
-                ]
-            },
-            {
-                "description": "Were there any changes in how you delegated or coordinated work this week?",
-                "coverage_criteria": [
-                    "Delegation or coordination patterns this week are described",
-                    "Any shift in those patterns vs last week is noted"
-                ]
-            }
+      }
+    ]
+  },
+  {
+    "topic": "Tools and Methods",
+    "subtopics": [
+      {
+        "description": "What tools or methods did you use this week — any new ones, or any you stopped using?",
+        "coverage_criteria": [
+          "Tools used this week are identified",
+          "Any tools added or dropped vs last week are noted"
         ]
-    },
-    {
-        "topic": "Pain Points and Bright Spots",
-        "subtopics": [
-            {
-                "description": "What was the biggest frustration or inefficiency this week — and is it new or ongoing from last week?",
-                "coverage_criteria": [
-                    "Main frustration or pain point this week is identified",
-                    "Whether it is new or a continuation from last week is noted"
-                ]
-            },
-            {
-                "description": "What went well or felt particularly effective this week — anything different from last week?",
-                "coverage_criteria": [
-                    "A positive or effective moment this week is identified",
-                    "Whether it represents a change or improvement vs last week is noted"
-                ]
-            }
+      },
+      {
+        "description": "Did you use any AI tools this week — and how did your usage or trust in them compare to last week?",
+        "coverage_criteria": [
+          "AI tool usage (or non-usage) this week is captured",
+          "What the AI tool was used for is noted",
+          "Any change in how much they trusted or relied on it vs last week is noted"
         ]
-    }
+      }
+    ]
+  },
+  {
+    "topic": "Collaboration",
+    "subtopics": [
+      {
+        "description": "Who did you work with or for this week — and did that change from last week?",
+        "coverage_criteria": [
+          "Collaborators this week are identified",
+          "Any new or dropped collaborations vs last week are noted"
+        ]
+      },
+      {
+        "description": "Were there any changes in how you delegated or coordinated work this week?",
+        "coverage_criteria": [
+          "Delegation or coordination patterns this week are described",
+          "Any shift in those patterns vs last week is noted"
+        ]
+      }
+    ]
+  },
+  {
+    "topic": "Pain Points and Bright Spots",
+    "subtopics": [
+      {
+        "description": "What was the biggest frustration or inefficiency this week — and is it new or ongoing from last week?",
+        "coverage_criteria": [
+          "Main frustration or pain point this week is identified",
+          "Whether it is new or a continuation from last week is noted"
+        ]
+      },
+      {
+        "description": "What went well or felt particularly effective this week — anything different from last week?",
+        "coverage_criteria": [
+          "A positive or effective moment this week is identified",
+          "Whether it represents a change or improvement vs last week is noted"
+        ]
+      }
+    ]
+  },
+  {
+    "topic": "Dependencies and Collaboration",
+    "allow_emergent": true,
+    "allow_strategic_planner": true,
+    "subtopics": [
+      {
+        "description": "Who they depend on and who depends on them",
+        "coverage_criteria": [
+          "Names the roles or teams they interact with most to get their work done.",
+          "Describes how work flows to them and from them — who hands off what, and to whom.",
+          "For the key dependencies, captures whether the handoff is smooth or a source of friction, and why."
+        ]
+      }
+    ]
+  },
+  {
+    "topic": "Pain Points",
+    "allow_emergent": true,
+    "allow_strategic_planner": true,
+    "subtopics": [
+      {
+        "description": "What frustrates them or slows them down",
+        "coverage_criteria": [
+          "Names specific, recurring frustrations tied to concrete tasks or situations.",
+          "For each frustration, captures enough detail to understand what goes wrong, how often, and how much time it costs.",
+          "Gets beyond the first answer — probes for frustrations the worker may have normalized or stopped noticing."
+        ]
+      }
+    ]
+  },
+
+  {
+    "topic": "Task Inventory",
+    "priority_weight": 1.0,
+    "allow_emergent": true,
+    "allow_strategic_planner": true,
+    "subtopics": [
+      {
+        "description": "Breadth: all the distinct things they do in a typical week",
+        "coverage_criteria": [
+          "Names the distinct tasks they actually perform — concrete activities, not broad responsibilities or goals.",
+          "Make sure to ask for a complete list of tasks, not just the most important ones.",
+          "Do NOT keep asking 'what else?' or probe for additional tasks — instead, move on to time allocation or confirm: 'So those are the main things that fill your week?'",
+          "Gives a rough sense of where their time goes across these tasks — which ones dominate the week and which are occasional."
+        ]
+      }
+    ]
+  }
 ]

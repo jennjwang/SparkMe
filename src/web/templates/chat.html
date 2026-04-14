@@ -78,6 +78,14 @@
         .end-btn:hover:not(:disabled) { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
         .end-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
+        .session-timer {
+            font-size: 13px;
+            color: #6b7280;
+            font-variant-numeric: tabular-nums;
+            min-width: 40px;
+            text-align: right;
+        }
+
         /* ---- Main Chat Area ---- */
         .chat-wrapper {
             flex: 1;
@@ -339,6 +347,7 @@
     <div class="top-bar">
         <div class="brand">SparkMe</div>
         <div class="controls">
+            <span class="session-timer" id="session-timer"></span>
             <div class="toggle-switch">
                 <input type="checkbox" id="tts-toggle">
                 <label for="tts-toggle">Voice</label>
@@ -376,10 +385,12 @@
     <script>
         let sessionToken = null;
         let sessionStartTime = null;
+        let timerInterval = null;
         let isRecording = false;
         let mediaRecorder = null;
         let audioChunks = [];
         let seenMessageIds = new Set();
+        let pendingAudioMessages = new Set();
         let currentAudio = null;
         let ttsEnabled = false;
         let isSessionCompleted = false;
@@ -394,6 +405,20 @@
         });
 
         function updateStatus(msg) { document.getElementById('status').textContent = msg; }
+
+        function startTimer() {
+            const el = document.getElementById('session-timer');
+            timerInterval = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - sessionStartTime) / 1000);
+                const m = Math.floor(elapsed / 60).toString().padStart(2, '0');
+                const s = (elapsed % 60).toString().padStart(2, '0');
+                el.textContent = `${m}:${s}`;
+            }, 1000);
+        }
+
+        function stopTimer() {
+            if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+        }
 
         function scrollToBottom() {
             const w = document.querySelector('.chat-wrapper');
@@ -435,51 +460,51 @@
             return true;
         }
 
-        // AudioContext — unlocked once on first user gesture, stays unlocked forever
-        let audioCtx = null;
-        let currentSource = null;
-
-        function getAudioContext() {
-            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            return audioCtx;
-        }
-
-        // Unlock on first interaction
-        function unlockAudio() {
-            getAudioContext();
-        }
-        document.addEventListener('click', unlockAudio, { once: true });
-        document.addEventListener('keydown', unlockAudio, { once: true });
+        let currentAudioEl = null;
 
         function stopCurrentAudio() {
-            if (currentSource) {
-                try { currentSource.stop(); } catch(e) {}
-                currentSource = null;
+            if (currentAudioEl) {
+                currentAudioEl.pause();
+                currentAudioEl.src = '';
+                currentAudioEl = null;
             }
             updateStatus('');
         }
 
-        async function playMessageAudio(messageId, retries = 20) {
+        function playMessageAudio(messageId) {
             if (!messageId || !ttsEnabled) return;
-            for (let i = 0; i < retries; i++) {
-                try {
-                    const res = await fetch(`/api/get-voice-response?session_token=${sessionToken}&message_id=${messageId}`);
-                    if (res.status === 202) { await new Promise(r => setTimeout(r, 300)); continue; }
-                    if (!res.ok) { console.warn(`TTS fetch failed: ${res.status}`); return; }
-                    const arrayBuffer = await res.arrayBuffer();
-                    const ctx = getAudioContext();
-                    const decoded = await ctx.decodeAudioData(arrayBuffer);
+            stopCurrentAudio();
+            const audio = new Audio(
+                `/api/stream-voice-response?session_token=${sessionToken}&message_id=${messageId}`
+            );
+            currentAudioEl = audio;
+            audio.onended = () => { if (currentAudioEl === audio) currentAudioEl = null; updateStatus(''); };
+            audio.onerror = (e) => { console.warn('TTS stream error:', e); if (currentAudioEl === audio) currentAudioEl = null; };
+            audio.play().catch(e => console.warn('Audio play failed:', e));
+        }
 
-                    stopCurrentAudio();
-                    const source = ctx.createBufferSource();
-                    source.buffer = decoded;
-                    source.connect(ctx.destination);
-                    source.onended = () => { currentSource = null; updateStatus(''); };
-                    source.start(0);
-                    currentSource = source;
-                    return;
-                } catch (e) { console.warn(`TTS attempt ${i+1} failed:`, e); }
+        async function showMessageWithAudio(msg) {
+            const audioEl = new Audio(
+                `/api/stream-voice-response?session_token=${sessionToken}&message_id=${msg.id}`
+            );
+            audioEl.preload = 'auto';
+
+            await new Promise(resolve => {
+                const timer = setTimeout(resolve, 4000);
+                audioEl.addEventListener('canplay', () => { clearTimeout(timer); resolve(); }, { once: true });
+                audioEl.addEventListener('error', () => { clearTimeout(timer); resolve(); }, { once: true });
+            });
+
+            appendMessage('bot', msg.content, msg.id);
+            removeTyping();
+            pendingAudioMessages.delete(msg.id);
+
+            if (ttsEnabled) {
+                stopCurrentAudio();
+                currentAudioEl = audioEl;
+                audioEl.onended = () => { if (currentAudioEl === audioEl) currentAudioEl = null; updateStatus(''); };
+                audioEl.onerror = (e) => { console.warn('TTS stream error:', e); if (currentAudioEl === audioEl) currentAudioEl = null; };
+                audioEl.play().catch(e => console.warn('Audio play failed:', e));
             }
         }
 
@@ -488,11 +513,15 @@
             isInitializing = true;
             try {
                 updateStatus('Starting session...');
-                const res = await fetch('/api/start-session', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+                const urlParams = new URLSearchParams(window.location.search);
+                const availableTime = urlParams.get('available_time');
+                const body = availableTime ? JSON.stringify({ available_time: parseInt(availableTime) }) : '{}';
+                const res = await fetch('/api/start-session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body });
                 const data = await res.json();
                 if (data.success) {
                     sessionToken = data.session_token;
                     sessionStartTime = Date.now();
+                    startTimer();
                     updateStatus('');
                     if (!pollingInterval) pollingInterval = setInterval(pollForMessages, 400);
                     setInterval(updateEndSessionButton, 1000);
@@ -520,8 +549,15 @@
                 if (data.success && data.messages) {
                     data.messages.forEach(msg => {
                         if (msg.role === 'Interviewer' || msg.role === 'assistant') {
-                            removeTyping();
-                            if (appendMessage('bot', msg.content, msg.id) && msg.id) playMessageAudio(msg.id);
+                            if (seenMessageIds.has(msg.id) || pendingAudioMessages.has(msg.id)) return;
+                            if (ttsEnabled && msg.id && !fullHistory) {
+                                pendingAudioMessages.add(msg.id);
+                                showMessageWithAudio(msg);
+                            } else {
+                                if (appendMessage('bot', msg.content, msg.id)) {
+                                    removeTyping();
+                                }
+                            }
                         } else if (msg.role === 'User' || msg.role === 'user') {
                             appendMessage('user', msg.content, msg.id);
                         } else if (msg.role === 'system') {
@@ -536,11 +572,15 @@
                         }
                     });
                 }
-                if (data.session_completed) {
+                if (data.session_completed && !isSessionCompleted) {
                     updateStatus('');
-                    isSessionCompleted = true; updateEndSessionButton(); disableChatInputs();
-                    if (pollingInterval) { clearInterval(pollingInterval); pollingInterval = null; }
-                    showEndBanner();
+                    isSessionCompleted = true; stopTimer(); updateEndSessionButton(); disableChatInputs();
+                    // Keep polling for 1.5s to catch any goodbye message that is
+                    // buffered just before the session_in_progress flag flips.
+                    setTimeout(() => {
+                        if (pollingInterval) { clearInterval(pollingInterval); pollingInterval = null; }
+                        showEndBanner();
+                    }, 1500);
                 }
             } catch (e) {}
         }
@@ -555,32 +595,63 @@
             }
         }
 
-        // Detect best supported audio format
-        let recMimeType = 'audio/webm';
-        if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) recMimeType = 'audio/webm;codecs=opus';
-        else if (MediaRecorder.isTypeSupported('audio/mp4')) recMimeType = 'audio/mp4';
+        let recordingStartTime = null;
+        let recActualMimeType = '';
+        const MIN_RECORDING_MS = 500;
+
+        let currentStream = null;
 
         function startRecording(stream) {
-            mediaRecorder = new MediaRecorder(stream, { mimeType: recMimeType });
+            currentStream = stream;
+            const track = stream.getAudioTracks()[0];
+            console.log('[Mic] Track:', track.label, 'enabled:', track.enabled, 'muted:', track.muted, 'readyState:', track.readyState);
+            mediaRecorder = new MediaRecorder(stream);
+            recActualMimeType = mediaRecorder.mimeType;
+            console.log('[Mic] MediaRecorder mimeType:', recActualMimeType);
             audioChunks = [];
-            mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
-            mediaRecorder.onstop = sendAudioToServer;
-            mediaRecorder.start();
+            recordingStartTime = Date.now();
+            mediaRecorder.ondataavailable = e => {
+                console.log('[Mic] chunk:', e.data.size, 'bytes');
+                if (e.data.size > 0) audioChunks.push(e.data);
+            };
+            mediaRecorder.onstop = () => {
+                console.log('[Mic] Total chunks:', audioChunks.length, 'total bytes:', audioChunks.reduce((s, c) => s + c.size, 0));
+                if (currentStream) {
+                    currentStream.getTracks().forEach(t => t.stop());
+                    currentStream = null;
+                }
+                sendAudioToServer();
+            };
+            mediaRecorder.start(250);
             updateStatus('Recording...');
         }
 
         async function sendAudioToServer() {
             if (!sessionToken) return;
-            updateStatus('Processing...');
-            const ext = recMimeType.includes('mp4') ? 'mp4' : 'webm';
+            const elapsed = Date.now() - (recordingStartTime || 0);
+            if (elapsed < MIN_RECORDING_MS || audioChunks.length === 0) {
+                updateStatus('Recording too short — please hold the button longer.');
+                setTimeout(() => updateStatus(''), 3000);
+                return;
+            }
+            updateStatus('Transcribing...');
+            const ext = recActualMimeType.includes('mp4') ? 'mp4' : 'webm';
             const fd = new FormData();
-            fd.append('audio', new Blob(audioChunks, { type: recMimeType }), `recording.${ext}`);
+            fd.append('audio', new Blob(audioChunks, { type: recActualMimeType }), `recording.${ext}`);
             fd.append('session_token', sessionToken);
+            fd.append('transcribe_only', 'true');
             try {
                 const res = await fetch('/api/send-voice', { method: 'POST', body: fd });
                 const data = await res.json();
                 console.log('[send-voice] response:', res.status, data);
-                if (data.success) { appendMessage('user', data.transcribed_text, 'user-' + Date.now()); showTyping(); updateStatus(''); }
+                if (data.success) {
+                    chatInput.value = data.transcribed_text;
+                    chatInput.style.height = 'auto';
+                    chatInput.style.height = Math.min(chatInput.scrollHeight, 160) + 'px';
+                    chatInput.focus();
+                    updateStatus('Review your message, then press Enter to send.');
+                    setTimeout(() => updateStatus(''), 5000);
+                }
                 else updateStatus('Voice error: ' + (data.error || 'unknown'));
             } catch (e) { console.error('[send-voice] fetch error:', e); updateStatus('Error sending voice'); }
         }
@@ -673,7 +744,7 @@
                 })).json();
                 if (r.success) {
                     updateStatus('');
-                    isSessionCompleted = true; updateEndSessionButton(); disableChatInputs();
+                    isSessionCompleted = true; stopTimer(); updateEndSessionButton(); disableChatInputs();
                     if (pollingInterval) { clearInterval(pollingInterval); pollingInterval = null; }
                     showEndBanner();
                 }

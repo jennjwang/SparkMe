@@ -141,8 +141,7 @@
         <h1>Interview with SparkMe</h1>
         <p>
           Thank you for participating in our research study. We're developing
-          better methods for capturing what work actually looks like, moving
-          beyond job descriptions to understand how work gets done in practice.
+          better methods for capturing what work actually looks like.
         </p>
         <p>
           SparkMe will conduct a short interview about your work — what tasks
@@ -184,7 +183,56 @@
           </ul>
         </div>
 
-        <a href="/chat" class="start-button">Begin Check-In</a>
+        <div style="margin-bottom: 20px">
+          <label
+            for="available-time"
+            style="
+              display: block;
+              font-size: 15px;
+              font-weight: 600;
+              color: #374151;
+              margin-bottom: 8px;
+            "
+          >
+            How much time do you have?
+          </label>
+          <select
+            id="available-time"
+            style="
+              padding: 10px 16px;
+              font-size: 15px;
+              border: 1px solid #d1d5db;
+              border-radius: 8px;
+              background: #fff;
+              color: #374151;
+              width: 100%;
+              max-width: 280px;
+            "
+          >
+            <option value="10">About 10 minutes</option>
+            <option value="15">About 15 minutes</option>
+            <option value="20" selected>About 20 minutes</option>
+            <option value="30">About 30 minutes</option>
+            <option value="45">About 45 minutes</option>
+            <option value="60">About 60 minutes</option>
+          </select>
+        </div>
+
+        <a
+          href="#"
+          class="start-button"
+          onclick="
+            startInterview();
+            return false;
+          "
+          >Begin Check-In</a
+        >
+        <script>
+          function startInterview() {
+            const minutes = document.getElementById("available-time").value;
+            window.location.href = "/chat?available_time=" + minutes;
+          }
+        </script>
       </div>
     </div>
   </body>

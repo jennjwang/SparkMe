@@ -5,7 +5,7 @@ This module defines the InterviewTopicManager class, which tracks core topics wi
 """
 
 import os
-from typing import Dict, List, Optional, Tuple, Union, Any
+from typing import ClassVar, Dict, List, Optional, Tuple, Union, Any
 
 import faiss
 import numpy as np
@@ -28,7 +28,7 @@ class InterviewTopicManager(BaseModel):
     coverage_stats: Dict[str, Any] = Field(default_factory=list)
     enable_emergent_subtopics: bool = False
 
-    # Queue of task names waiting to become Task Deep Dive topics
+    # Queue of task names waiting for the next deep dive batch
     pending_task_deep_dives: List[str] = Field(default_factory=list)
 
     # Embedding-based dedup for emergent subtopics
@@ -115,6 +115,7 @@ class InterviewTopicManager(BaseModel):
                 keywords=[],
                 allow_emergent=topic_dict.get('allow_emergent', True),
                 allow_strategic_planner=topic_dict.get('allow_strategic_planner', True),
+                priority_weight=topic_dict.get('priority_weight', 1.0),
             )
 
             for j, subtopic in enumerate(topic_dict.get('subtopics', [])):
@@ -125,6 +126,7 @@ class InterviewTopicManager(BaseModel):
                 else:
                     subtopic_description = subtopic
                     subtopic_criteria = []
+                subtopic_priority = subtopic.get('priority_weight', 1.0) if isinstance(subtopic, dict) else 1.0
                 curr_subtopic = SubTopic(
                     subtopic_id=subtopic_id,
                     core_topic_id=topic_id,
@@ -132,13 +134,20 @@ class InterviewTopicManager(BaseModel):
                     questions=[],
                     is_covered=False,
                     coverage_criteria=subtopic_criteria,
+                    priority_weight=subtopic_priority,
                 )
                 curr_core_topic.add_required_subtopic(curr_subtopic)
 
             manager.add_core_topic(curr_core_topic)
-            
-            if i == 0 or i == 1:
-                manager.add_topic_id_as_active_topic(topic_id)
+
+        # Activate the 2 highest-priority topics initially
+        sorted_topics = sorted(
+            manager.core_topic_dict.values(),
+            key=lambda t: t.priority_weight,
+            reverse=True
+        )
+        for topic in sorted_topics[:2]:
+            manager.add_topic_id_as_active_topic(topic.topic_id)
         
         # Register evaluator
         evaluator_registry = get_registry()
@@ -161,27 +170,29 @@ class InterviewTopicManager(BaseModel):
         topic = self.core_topic_dict.get(topic_id)
         return topic is not None and topic.description.startswith("Task Deep Dive:")
 
-    def _has_incomplete_task_deep_dive(self) -> bool:
-        """Return True if any Task Deep Dive topic is not yet complete."""
-        return any(
-            self._is_task_deep_dive(tid) and not self.check_core_topic_completion(tid)
-            for tid in self.core_topic_dict
+    MAX_CONCURRENT_DEEP_DIVES: ClassVar[int] = 3
+
+    def _count_incomplete_deep_dives(self) -> int:
+        """Return the number of incomplete Task Deep Dive topics."""
+        return sum(
+            1 for tid in self.core_topic_dict
+            if self._is_task_deep_dive(tid) and not self.check_core_topic_completion(tid)
         )
 
     def add_task_deep_dive(self, task_name: str, subtopics: List[Dict[str, Any]]) -> str:
-        """Add a Task Deep Dive topic for task_name, or queue it if one is already in progress.
+        """Add a Task Deep Dive topic for task_name, or queue it if the batch is full.
 
         Returns:
             "created:<topic_id>" if the topic was created immediately.
-            "queued" if a deep dive is already active — task_name is queued for later.
+            "queued" if the max concurrent deep dives are already in progress.
+            "exists" if a deep dive for this task already exists.
         """
         # Skip if already exists
         description = f"Task Deep Dive: {task_name}"
         if any(t.description == description for t in self.core_topic_dict.values()):
             return "exists"
 
-        if self._has_incomplete_task_deep_dive():
-            # Queue for later — only if not already queued
+        if self._count_incomplete_deep_dives() >= self.MAX_CONCURRENT_DEEP_DIVES:
             if task_name not in self.pending_task_deep_dives:
                 self.pending_task_deep_dives.append(task_name)
             return "queued"
@@ -483,22 +494,22 @@ class InterviewTopicManager(BaseModel):
         return subtopic.update_coverage_feedback_gap(feedback=feedback)
     
     def revise_agenda_after_update(self):
-        # If a pending task deep dive is queued and no deep dive is currently active,
-        # create the next one now (only when the feature is enabled).
         deep_dive_enabled = os.getenv("ENABLE_TASK_DEEP_DIVE", "false").lower() == "true"
         if not deep_dive_enabled:
-            # Strip persisted deep dive topics and queued deep dives when feature is off
+            # Strip persisted deep dive topics when feature is off
             self.pending_task_deep_dives = []
             dd_ids = [tid for tid in self.core_topic_dict if self._is_task_deep_dive(tid)]
             for tid in dd_ids:
                 del self.core_topic_dict[tid]
-        elif self.pending_task_deep_dives and not self._has_incomplete_task_deep_dive():
+        elif self.pending_task_deep_dives:
+            # Fill up to MAX_CONCURRENT_DEEP_DIVES from the queue
             from src.agents.session_scribe.tools import TASK_DEEP_DIVE_SUBTOPICS
-            next_task = self.pending_task_deep_dives.pop(0)
-            self.add_task_deep_dive(task_name=next_task, subtopics=TASK_DEEP_DIVE_SUBTOPICS)
+            while (self.pending_task_deep_dives
+                   and self._count_incomplete_deep_dives() < self.MAX_CONCURRENT_DEEP_DIVES):
+                next_task = self.pending_task_deep_dives.pop(0)
+                self.add_task_deep_dive(task_name=next_task, subtopics=TASK_DEEP_DIVE_SUBTOPICS)
 
-        # Build active topic list — at most 3, but Task Deep Dive topics take priority:
-        # if any incomplete deep dive exists, only deep dives are active.
+        # Build active topic list — deep dive topics take priority over regular topics.
         incomplete_deep_dives = [
             tid for tid in self.core_topic_dict
             if self._is_task_deep_dive(tid) and not self.check_core_topic_completion(tid)
@@ -506,13 +517,18 @@ class InterviewTopicManager(BaseModel):
 
         self.active_topic_id_list = []
         if incomplete_deep_dives:
-            # Only the current (first) incomplete deep dive is active
-            self.active_topic_id_list = [incomplete_deep_dives[0]]
+            # All incomplete deep dives in the current batch are active
+            self.active_topic_id_list = list(incomplete_deep_dives)
         else:
-            # No deep dive in progress — normal topic rotation
-            for topic_id in self.core_topic_dict:
-                if not self.check_core_topic_completion(topic_id):
-                    self.active_topic_id_list.append(topic_id)
+            # No deep dive in progress — activate up to 3 highest-priority incomplete topics
+            sorted_topics = sorted(
+                self.core_topic_dict.values(),
+                key=lambda t: t.priority_weight,
+                reverse=True
+            )
+            for topic in sorted_topics:
+                if not self.check_core_topic_completion(topic.topic_id):
+                    self.active_topic_id_list.append(topic.topic_id)
                 if len(self.active_topic_id_list) == 3:
                     break
 

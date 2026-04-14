@@ -223,6 +223,11 @@ class BaseAgent:
                             raise RuntimeError(error_msg) from e
         return result
 
+    # Tools that deliver a message to the user and end the current turn.
+    # After one of these fires, any remaining tool calls in the same response
+    # are ignored to prevent the LLM from sending multiple messages at once.
+    TERMINAL_TOOLS: set = {"respond_to_user", "end_conversation"}
+
     async def handle_tool_calls_async(self, response: str, raise_error: bool = False):
         """Asynchronous tool handling for I/O bound operations"""
         result = None
@@ -235,9 +240,21 @@ class BaseAgent:
                 ]
                 
                 parsed_calls = parse_tool_calls(tool_calls_xml)
+                terminal_fired = False
                 for call in parsed_calls:
+                    tool_name = call['tool_name']
+
+                    # Only one terminal tool per response — skip extras
+                    if tool_name in self.TERMINAL_TOOLS and terminal_fired:
+                        SessionLogger.log_to_file(
+                            "execution_log",
+                            f"({self.name}) Skipping duplicate terminal tool "
+                            f"call: {tool_name}",
+                            log_level="warning"
+                        )
+                        continue
+
                     try:
-                        tool_name = call['tool_name']
                         arguments = call['arguments']
                         tool = self.tools[tool_name]
                         
@@ -248,6 +265,10 @@ class BaseAgent:
                             result = tool._run(**arguments)
                         self.add_event(sender="system", 
                                        tag=tool_name, content=result)
+
+                        if tool_name in self.TERMINAL_TOOLS:
+                            terminal_fired = True
+
                     except Exception as e:
                         error_msg = f"Error calling tool {tool_name}: {e}"
                         self.add_event(sender="system", tag="error",

@@ -73,7 +73,7 @@ class RespondToUser(BaseTool):
         return "Response sent to the user."
 
 class EndConversationInput(BaseModel):
-    goodbye: str = Field(description="The goodbye message to the user. Tell the user that you are looking forward to talking to them in the next session.")
+    goodbye: str = Field(description="The closing message to the user. Start with a brief, natural acknowledgment of what they just said (one sentence, specific to their last response — not generic filler). Then signal the session is complete and thank them warmly. Do not ask any questions.")
 
 class EndConversation(BaseTool):
     """Tool for ending the conversation."""
@@ -88,16 +88,16 @@ class EndConversation(BaseTool):
         description="Callback function to be called when conversation ends"
     )
 
-    def _run(
+    async def _run(
         self,
         goodbye: str,
         run_manager: Optional[CallbackManagerForToolRun] = None,
     ) -> Any:
         self.on_goodbye(goodbye)
-        
-        time.sleep(1)
-        
+
+        await asyncio.sleep(1)
+
         # Call the end callback if provided
         self.on_end()
-            
+
         return "Conversation ended successfully."

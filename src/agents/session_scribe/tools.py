@@ -1,5 +1,6 @@
 from typing import Type, Optional, List, Callable, Dict, Any, Union
 import json
+import pathlib
 
 
 from langchain_core.callbacks.manager import CallbackManagerForToolRun
@@ -568,83 +569,10 @@ class AddHistoricalQuestion(BaseTool):
             raise ToolException(f"Error storing question: {e}")
 
 
-TASK_DEEP_DIVE_SUBTOPICS = [
-    {
-        "description": "Action: step-by-step process and time breakdown",
-        "coverage_criteria": [
-            "Describes the sequential steps taken to complete this task from start to finish.",
-            "Estimates the time spent on each major step or phase within the task.",
-            "Identifies any steps that are repeated, looped, or conditional on prior outcomes.",
-        ],
-    },
-    {
-        "description": "Object: what is being worked on",
-        "coverage_criteria": [
-            "Names the specific artifact, document, system, or entity that is the primary target of this task.",
-            "Specifies the format or medium of the object (e.g., spreadsheet, code file, customer record, physical item).",
-            "Distinguishes between the inputs consumed and the outputs produced by this task.",
-        ],
-    },
-    {
-        "description": "Outcome: how task completion is determined",
-        "coverage_criteria": [
-            "States the explicit signal or criterion used to decide the task is done (e.g., approval received, metric threshold met, file submitted).",
-            "Identifies who or what validates the completion (self-review, manager sign-off, automated check, customer acceptance).",
-            "Describes what happens if the outcome criteria are not met (rework loop, escalation, abandon).",
-        ],
-    },
-    {
-        "description": "Tools: tools and methods used for this task",
-        "coverage_criteria": [
-            "Lists each specific tool, software, or method used at each step of the task.",
-            "Identifies which tools are required versus optional or supplementary.",
-            "Notes any manual workarounds used in the absence of a proper tool.",
-        ],
-    },
-    {
-        "description": "AI involvement: how AI is or isn't used in this task",
-        "coverage_criteria": [
-            "Explicitly states whether any generative AI or automation tools are used for this task (Yes/No).",
-            "If Yes, describes which specific AI tool is used and at which step of the task it is applied.",
-            "Distinguishes between company-mandated AI usage and personal/ad-hoc AI workarounds.",
-            "If No, describes whether AI has been considered and why it is not used.",
-        ],
-    },
-    {
-        "description": "Flow of work: where output goes and who initiates",
-        "coverage_criteria": [
-            "Identifies who or what triggers the start of this task (manager request, scheduled event, incoming dependency, self-initiated).",
-            "Traces where the output of this task is consumed next (downstream role, system, client, archive).",
-            "Describes any handoff steps between this task and the next stage in the workflow.",
-        ],
-    },
-    {
-        "description": "Team: support structure and accountability",
-        "coverage_criteria": [
-            "Identifies who is accountable if this task fails or is delayed.",
-            "Lists any roles that provide support, review, or input during this task.",
-            "Specifies whether this task is performed solo, collaboratively, or with a defined backup/escalation path.",
-        ],
-    },
-    {
-        "description": "Experience requirements: skills and expertise needed for this task",
-        "coverage_criteria": [
-            "Names the core technical or domain skills required to perform this task competently.",
-            "Identifies any certifications, training, or prior experience that are prerequisites.",
-            "Estimates how long it typically takes someone new to become independently proficient at this task.",
-            "Describes any tacit knowledge or judgment calls that are hard to learn from documentation alone.",
-        ],
-    },
-    {
-        "description": "Pain points and highlights: frustrations and satisfactions specific to this task",
-        "coverage_criteria": [
-            "Identifies the single biggest frustration or inefficiency associated with this task.",
-            "Categorizes the source of friction as Tool-based, Process-based, or Personnel-based.",
-            "Names one aspect of this task that is consistently satisfying or energizing.",
-            "Proposes one change (tool, process, or resource) that would most improve this task.",
-        ],
-    },
-]
+_DEEP_DIVE_CONFIG_PATH = pathlib.Path(__file__).resolve().parents[3] / "configs" / "task_deep_dive_subtopics.json"
+
+with open(_DEEP_DIVE_CONFIG_PATH, "r") as _f:
+    TASK_DEEP_DIVE_SUBTOPICS = json.load(_f)
 
 
 class AddTaskDeepDiveTopicInput(BaseModel):
@@ -681,7 +609,7 @@ class AddTaskDeepDiveTopic(BaseTool):
             if result == "queued":
                 return (
                     f"Task Deep Dive for '{task_name}' has been queued. "
-                    f"It will be created automatically once the current Task Deep Dive is complete."
+                    f"It will be created automatically once a current deep dive batch completes."
                 )
             elif result == "exists":
                 return f"Task Deep Dive for '{task_name}' already exists — skipping."

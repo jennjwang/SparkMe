@@ -83,7 +83,7 @@
 </head>
 <body>
     <div class="card">
-        <h2>Welcome back</h2>
+        <h2>What's your name?</h2>
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
@@ -92,11 +92,9 @@
             {% endif %}
         {% endwith %}
         <form method="POST" action="/login">
-            <input type="text" name="username" placeholder="Username" required autofocus>
-            <input type="password" name="password" placeholder="Password" required>
+            <input type="text" name="username" placeholder="Your name" required autofocus>
             <button type="submit">Continue</button>
         </form>
-        <div class="link">Don't have an account? <a href="/register">Sign up</a></div>
     </div>
 </body>
 </html>

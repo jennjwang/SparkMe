@@ -9,6 +9,7 @@ import asyncio
 import os
 import random
 import json
+import time
 from typing import TYPE_CHECKING, Dict, List, Tuple
 from typing_extensions import TypedDict
 
@@ -99,13 +100,29 @@ class StrategicPlanner(BaseAgent, Participant):
         self.rollout_horizon = int(os.getenv("STRATEGIC_PLANNER_ROLLOUT_HORIZON", "3"))
         self.max_strategic_questions = int(os.getenv("STRATEGIC_PLANNER_MAX_QUESTIONS", "5"))
 
-        # Utility function weights
-        self.alpha = float(os.getenv("STRATEGIC_PLANNER_ALPHA", "0.5"))  # Coverage weight
-        self.beta = float(os.getenv("STRATEGIC_PLANNER_BETA", "0.3"))  # Cost penalty
-        self.gamma = float(os.getenv("STRATEGIC_PLANNER_GAMMA", "0.2"))  # Emergence reward
-        self.min_novelty_score = _parse_min_novelty_score(
+        # Base utility function weights (read once from env; adapted over time)
+        self._alpha_base = float(os.getenv("STRATEGIC_PLANNER_ALPHA", "0.5"))  # Coverage weight
+        self._beta_base  = float(os.getenv("STRATEGIC_PLANNER_BETA",  "0.3"))  # Cost penalty
+        self._gamma_base = float(os.getenv("STRATEGIC_PLANNER_GAMMA", "0.2"))  # Emergence reward
+        self._min_novelty_base = _parse_min_novelty_score(
             os.getenv("STRATEGIC_PLANNER_MIN_NOVELTY"), 3
         )
+
+        # Scale base beta by available time at session start — less time = higher cost penalty.
+        # Reference: 30 min is "normal" (beta unchanged). 10 min → 3x, 60 min → 0.5x.
+        available_time = interview_session.session_agenda.available_time_minutes
+        if available_time and available_time > 0:
+            self._beta_base = self._beta_base * (30.0 / available_time)
+
+        # Live weights (updated each planning cycle based on elapsed time)
+        self.alpha = self._alpha_base
+        self.beta  = self._beta_base
+        self.gamma = self._gamma_base
+        self.min_novelty_score = self._min_novelty_base
+
+        # Track session wall-clock start for elapsed-time calculations
+        self._session_start_time: float = time.time()
+        self._priority_amplifier: float = 1.0  # scales with elapsed time in _update_weights_for_time
 
         # Strategic state (NOT loaded from file, starts fresh each session)
         session_id = interview_session.session_id
@@ -135,6 +152,55 @@ class StrategicPlanner(BaseAgent, Participant):
                 min_novelty_score=self.min_novelty_score,
             ),
         }
+
+    def _get_elapsed_fraction(self) -> float:
+        """Return the fraction of available session time already elapsed (0.0 → 1.0).
+
+        Falls back to 0.0 if no available_time_minutes is set, so weights stay
+        at their base values for open-ended sessions.
+        """
+        available_time = self.interview_session.session_agenda.available_time_minutes
+        if not available_time or available_time <= 0:
+            return 0.0
+        elapsed_minutes = (time.time() - self._session_start_time) / 60.0
+        return min(1.0, elapsed_minutes / available_time)
+
+    def _update_weights_for_time(self) -> None:
+        """Adapt utility weights and priority amplifier based on elapsed session time.
+
+        As the session progresses (f → 1):
+          α (coverage)  scales up to 2× — urgency to cover remaining topics
+          β (cost)      scales up to 3× — shorter paths become much more valuable
+          γ (emergence) scales down to 30% — less time for open-ended exploration
+          min_novelty   increases by up to 2 levels — only surface highly novel insights
+          priority_amplifier increases — high-priority subtopics get relatively more weight
+        """
+        f = self._get_elapsed_fraction()
+
+        self.alpha = self._alpha_base * (1.0 + f)           # 1× → 2×
+        self.beta  = self._beta_base  * (1.0 + 2.0 * f)     # 1× → 3×
+        self.gamma = self._gamma_base * (1.0 - 0.7 * f)     # 1× → 0.3×
+        self.min_novelty_score = min(5, self._min_novelty_base + int(round(2 * f)))
+        self._priority_amplifier = 1.0 + f                  # 1.0 → 2.0
+
+        # Push updated alpha/gamma into the SuggestStrategicQuestions tool
+        tool = self.tools.get("suggest_strategic_questions")
+        if tool is not None:
+            tool.alpha = self.alpha
+            tool.gamma = self.gamma
+
+        # Push updated min_novelty into the IdentifyEmergentInsights tool
+        insight_tool = self.tools.get("identify_emergent_insights")
+        if insight_tool is not None:
+            insight_tool.min_novelty_score = self.min_novelty_score
+
+        SessionLogger.log_to_file(
+            "execution_log",
+            f"[NOTIFY] ({self.name}) Time-adaptive weights updated "
+            f"(elapsed={f:.0%}): α={self.alpha:.3f}, β={self.beta:.3f}, "
+            f"γ={self.gamma:.3f}, min_novelty={self.min_novelty_score}, "
+            f"priority_amplifier={self._priority_amplifier:.2f}"
+        )
 
     async def on_message(self, message: Message):
         """
@@ -226,6 +292,9 @@ class StrategicPlanner(BaseAgent, Participant):
             self._planning_in_progress = True
 
             try:
+                # Recompute time-adaptive weights before each planning cycle
+                self._update_weights_for_time()
+
                 SessionLogger.log_to_file(
                     "execution_log",
                     f"[NOTIFY] ({self.name}) === Starting Strategic Planning ==="
@@ -433,17 +502,27 @@ class StrategicPlanner(BaseAgent, Participant):
                 f"({self.name}) Judge predicted {len(newly_covered)} newly-covered subtopics (marginal): {newly_covered}"
             )
 
-        # Coverage delta is simply the count of newly covered subtopics
-        newly_covered_count = len(newly_covered)
+        # Coverage delta weighted by topic and subtopic priority.
+        # _priority_amplifier > 1 widens the gap between high- and low-priority
+        # subtopics as time runs out, so the planner focuses on what matters most.
+        weighted_coverage = 0.0
+        for subtopic_id in newly_covered:
+            topic_id = subtopic_id.split(".")[0]
+            topic = manager.get_core_topic(topic_id)
+            topic_weight = topic.priority_weight if topic else 1.0
+            subtopic = topic.get_subtopic(subtopic_id) if topic else None
+            subtopic_weight = subtopic.priority_weight if subtopic else 1.0
+            amplified_weight = (topic_weight * subtopic_weight) ** self._priority_amplifier
+            weighted_coverage += amplified_weight
 
-        # Calculate utility: U = α·(newly_covered_count) - β·Cost + γ·Emergence
+        # Calculate utility: U = α·Σ(w_i·covered_i) - β·Cost + γ·Emergence
         utility_score = (
-            self.alpha * newly_covered_count -
+            self.alpha * weighted_coverage -
             self.beta * cost_estimate +
             self.gamma * emergence_potential
         )
 
-        return newly_covered_count, utility_score
+        return len(newly_covered), utility_score
 
     async def _predict_conversation_rollout(self):
         """

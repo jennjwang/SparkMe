@@ -15,60 +15,53 @@
   },
   {
     "topic": "Task Inventory",
-    "allow_emergent": true,
-    "allow_strategic_planner": true,
-    "subtopics": [
+      },
       {
-        "description": "Breadth: all the distinct things they do in a typical week",
+        "description": "Their tenure in the role",
         "coverage_criteria": [
-          "Names the distinct tasks they actually perform — concrete activities, not broad responsibilities or goals. If the user lists multiple tasks in one response, treat that as a complete answer unless their list is suspiciously short (fewer than 3 items). Do NOT keep asking 'what else?' — instead, confirm: 'So those are the main things that fill your week?'",
-          "Tasks span the full variety of their work, not just the most obvious or prestigious ones.",
-          "Gives a rough sense of where their time goes across these tasks — which ones dominate the week and which are occasional. Check that the tasks fill up the work week (e.g., 40 hours / 5 days). If not, ask about what fills the remaining time."
+          "States how long they have been in their current role or position (in years, months, etc.)."
         ]
       },
       {
-        "description": "Depth: how the important tasks actually get done, step by step",
+        "description": "Their domain or industry",
         "coverage_criteria": [
-          "For the most important tasks, describes the actual sequence of steps from start to finish.",
-          "Each walkthrough names the specific tools, systems, or artifacts involved at each step.",
-          "Captures where input comes from (e.g., a request, a dataset, an alert) and what the output or handoff looks like.",
-          "Identifies points where the worker exercises judgment or makes a decision, and what informs that decision.",
-          "Surfaces any workarounds — places where the worker has to work around a broken tool, missing information, or a gap in the process.",
-          "Captures how often each task is performed (daily, weekly, monthly, ad-hoc, event-triggered) and roughly how long it takes per instance or as a share of total work time.",
-          "Identifies what counts as done and done well — the standards, checks, thresholds, or completion conditions used to evaluate the output.",
-          "Names the specific skills, knowledge areas, or capabilities the worker draws on to perform the task.",
-          "Identifies the information sources the worker relies on — policies, procedures, documentation, data feeds, prior cases, or people consulted for guidance."
+          "Names a field, industry, or area (e.g., AI, healthcare, finance). A broad field name is sufficient — do NOT probe for sub-specialties, research focus, or sub-areas within the field."
         ]
       }
     ]
   },
   {
-    "topic": "Dependencies and Collaboration",
-    "allow_emergent": true,
-    "allow_strategic_planner": true,
+    "topic": "Task Inventory",
+    "allow_emergent": false,
+    "allow_strategic_planner": false,
+    "priority_weight": 1.0,
     "subtopics": [
       {
-        "description": "Who they depend on and who depends on them",
+        "description": "Breadth: the list of tasks the person performs in a typical week.",
         "coverage_criteria": [
-          "Names the roles or teams they interact with most to get their work done.",
-          "Describes how work flows to them and from them — who hands off what, and to whom.",
-          "For the key dependencies, captures whether the handoff is smooth or a source of friction, and why."
-        ]
-      }
-    ]
-  },
-  {
-    "topic": "Pain Points",
-    "allow_emergent": true,
-    "allow_strategic_planner": true,
-    "subtopics": [
+          "Names the distinct tasks they actually perform — specific actions and objects, NOT abstract categories like 'research' or 'admin'",
+          "Every task should have a single action and object, not a general category or responsibility.",
+          "Make sure to ask for a complete list of tasks, not just the most important ones.",
+          "Do NOT keep asking for specifics if the person has already listed their main activities. Confirm that the list is complete and move on."
+        ],
+        "priority_weight": 1.0
+      },
       {
-        "description": "What frustrates them or slows them down",
+        "description": "Time allocation: how much time they spend on each task, as a percentage of their total work week",
         "coverage_criteria": [
-          "Names specific, recurring frustrations tied to concrete tasks or situations.",
-          "For each frustration, captures enough detail to understand what goes wrong, how often, and how much time it costs.",
-          "Gets beyond the first answer — probes for frustrations the worker may have normalized or stopped noticing."
-        ]
+          "The participant provides an approximate percentage of time they spend on each task.",
+          "The percentages add up to 100% of their total work week."
+        ],
+        "priority_weight": 0.8
+      },
+      {
+        "description": "Priority tasks: which tasks are most important, central, or impactful in their work",
+        "coverage_criteria": [
+          "Names the tasks the participant considers highest priority or most central to their role.",
+          "Distinguishes priority from time-spent — a task can be low-frequency but high-stakes.",
+          "Name the tasks that the participant considers a bottleneck in their work."
+        ],
+        "priority_weight": 1.0
       }
     ]
   }

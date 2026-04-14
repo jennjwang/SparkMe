@@ -1,0 +1,41 @@
+[
+  {
+    "description": "Action: step-by-step process",
+    "coverage_criteria": [
+      "Describes the sequential steps taken to complete this task from start to finish."
+    ],
+    "priority_weight": 0.8
+  },
+  {
+    "description": "Object: what is being worked on",
+    "coverage_criteria": [
+      "Names the specific artifact, document, system, or entity that is the primary target of this task.",
+      "Distinguishes between the inputs consumed and the outputs produced by this task."
+    ],
+    "priority_weight": 0.8
+  },
+  {
+    "description": "Outcome: how task completion is determined",
+    "coverage_criteria": [
+      "States the explicit signal or criterion used to decide the task is done (e.g., approval received, metric threshold met, file submitted)."
+    ],
+    "priority_weight": 0.8
+  },
+  {
+    "description": "Tools: tools and methods used for this task",
+    "coverage_criteria": [
+      "Lists each specific tool, software, or method used at each step of the task."
+    ],
+    "priority_weight": 0.5
+  },
+  {
+    "description": "Experience requirements: skills, expertise, and personal differentiation in this task",
+    "coverage_criteria": [
+      "Names the core technical or domain skills required to perform this task competently.",
+      "Identifies any training, certifications, or prior experience that are prerequisites or that significantly accelerate learning.",
+      "Describes tacit knowledge or judgment calls that are hard to learn from documentation alone.",
+      "Captures what the person believes they do differently or better than others performing the same task."
+    ],
+    "priority_weight": 1
+  }
+]

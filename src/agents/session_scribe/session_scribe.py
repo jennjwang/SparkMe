@@ -295,11 +295,11 @@ class SessionScribe(BaseAgent, Participant):
             #         interviewer_message, user_message), # Technically this should have lock for session agenda but ... we'll see
             #     # self._locked_identify_emergent_insights(interviewer_message, user_message) # Quick analysis for emergent insights
             # )
-            await self._locked_write_memory_notes_and_question_bank(interviewer_message, user_message)
-
-            # Run subtopic coverage and snapshot comparison in parallel (separate locks)
+            # Run memory/notes and coverage in parallel — they use separate locks
+            # (_notes_lock vs _session_agenda_lock) and write independent state
             parallel_tasks = [
-                self._locked_update_subtopic_coverage(interviewer_message, user_message)
+                self._locked_write_memory_notes_and_question_bank(interviewer_message, user_message),
+                self._locked_update_subtopic_coverage(interviewer_message, user_message),
             ]
             if (getattr(self.interview_session, "session_type", "intake") == "weekly"
                     and self.interview_session.session_agenda.last_week_snapshot):
@@ -308,15 +308,20 @@ class SessionScribe(BaseAgent, Participant):
                 )
             await asyncio.gather(*parallel_tasks)
 
-            if getattr(self.interview_session, "session_type", "intake") == "intake":
+        finally:
+            await self._decrement_pending_tasks()
+
+        # Fire portrait update after releasing processing_in_progress so it
+        # doesn't block the Interviewer from asking the next question
+        if getattr(self.interview_session, "session_type", "intake") == "intake":
+            async def _portrait_task():
                 try:
                     await self.interview_session._generate_and_save_user_portrait()
                 except Exception as e:
                     SessionLogger.log_to_file(
                         "execution_log", f"[PORTRAIT] Error updating user portrait: {e}"
                     )
-        finally:
-            await self._decrement_pending_tasks()
+            asyncio.create_task(_portrait_task())
 
     async def _locked_write_memory_notes_and_question_bank(self, interviewer_message: Message, user_message: Message) -> None:
         """Wrapper to handle update_memory_bank_and_session with lock"""

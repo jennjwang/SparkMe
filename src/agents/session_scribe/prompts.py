@@ -683,13 +683,15 @@ UPDATE_SUBTOPIC_COVERAGE_INSTRUCTIONS = """
    - For fully covered subtopics, synthesize the notes into a coherent and concise final summary capturing the essence of what was discussed.
    - Avoid repetition or rephrasing—focus on integration and clarity.
 
-5. **Task Deep Dive Topic Creation (Task Inventory topic only)**
-   - When processing any subtopic under the **Task Inventory** topic, scan the subtopic's notes for distinct tasks the user has named or described.
-   - For each task that the user has clearly described (i.e., named and given at least a brief description of what it involves), call `add_task_deep_dive_topic` once with the task's name.
+5. **Task Deep Dive Topic Creation (Priority tasks subtopic only)**
+   - Only create Task Deep Dives from the **Priority tasks** subtopic notes — the subtopic where the participant names which tasks they consider most important.
+   - Do NOT create deep dives based on the Breadth subtopic (the full task list) alone. The breadth list is for context; the priority subtopic is the signal.
+   - Create deep dives in batches of up to 3 at a time. Call `add_task_deep_dive_topic` for up to 3 priority tasks per processing round. Additional tasks will be picked up in subsequent rounds as current deep dives complete.
    - Only create a Task Deep Dive topic for tasks that:
-     * Have been explicitly named or described by the user (not just implied).
+     * Are named in the Priority tasks subtopic notes as important, central, or high-priority.
+     * Are concrete, named activities (e.g., "running experiments", "writing code") — not vague responsibilities or goals.
      * Do NOT already have a "Task Deep Dive: [task name]" topic in the topics list.
-   - Call `add_task_deep_dive_topic` before calling `update_subtopic_coverage` for that subtopic.
+   - Call all `add_task_deep_dive_topic` calls before calling `update_subtopic_coverage` for that subtopic.
 
 6. **Tool Invocation**
    - For subtopics WITH coverage criteria: always call `update_criteria_coverage` first (even if not all criteria are met yet).
@@ -709,13 +711,13 @@ For each subtopic, you should:
    - If yes: evaluate each criterion against the notes, then call `update_criteria_coverage`.
    - If no: infer if STAR is relevant or not.
 2. Evaluate overall completeness.
-3. If this subtopic belongs to the Task Inventory topic, check notes for any named tasks. For each new task not yet having a Task Deep Dive topic, plan to call `add_task_deep_dive_topic`.
+3. If this subtopic is the **Priority tasks** subtopic, check its notes for tasks the participant named as most important. For each such task not yet having a Task Deep Dive topic, plan to call `add_task_deep_dive_topic`.
 4. For fully covered subtopics, aggregate the notes and call `update_subtopic_coverage`.
 </thinking>
 
 <tool_calls>
-    <!-- Call add_task_deep_dive_topic once per distinct named task from the Task Inventory topic.
-         Only call this when the task is clearly named and no Task Deep Dive topic exists for it yet. -->
+    <!-- Call add_task_deep_dive_topic only for tasks from the Priority tasks subtopic notes.
+         Do NOT create deep dives from the breadth list alone. -->
     <add_task_deep_dive_topic>
         <task_name>Short descriptive name for the task (e.g., "Weekly status report")</task_name>
     </add_task_deep_dive_topic>
@@ -749,7 +751,7 @@ UPDATE_SUBTOPIC_NOTES_CONTEXT = """
 <session_scribe_persona>
 You are a session scribe who assists an interviewer.
 You observe the dialogue between the interviewer and the candidate, and your role is to look into each subtopic and update the subtopic's notes based on the given additional context.
-Notes may be duplicated across subtopics if relevant.
+Only add a note to a subtopic if the context directly and specifically addresses that subtopic. Do NOT copy general conversational content into unrelated subtopics.
 </session_scribe_persona>
 """
 
@@ -780,9 +782,9 @@ UPDATE_SUBTOPIC_NOTES_INSTRUCTIONS = """
 ## Process
 
 1. Review the context reference given.
-2. For each subtopic, create or update a list of short notes (1-2 sentences each).
-3. Include only relevant facts from the context; do not invent details.
-4. Notes can repeat across subtopics if relevant to the subtopic and applicable.
+2. For each subtopic, determine whether the context directly addresses that specific subtopic. Only proceed if there is a clear match.
+3. If the context addresses a subtopic, write a short note (1-2 sentences) capturing the relevant fact.
+4. Do NOT write a note to a subtopic just because it is uncovered — only write notes when the context actually contains information about that subtopic.
 5. Output only the structured notes (no extra commentary).
 </instructions>
 """

@@ -96,6 +96,7 @@ class InterviewSession:
         self.user_id = user_config.get("user_id", "default_user")
         self._initial_additional_context_path = interview_config.get("additional_context_path", None)
         self._interview_description = interview_config.get("interview_description", "any topic")
+        self._available_time = interview_config.get("available_time")  # minutes
         self.session_type = interview_config.get("session_type", "intake")
 
         # Session agenda setup
@@ -105,6 +106,7 @@ class InterviewSession:
                                                                     interview_description=self._interview_description,
                                                                     interview_evaluation=interview_config.get('interview_evaluation'))
         self.session_id = self.session_agenda.session_id + 1
+        self.session_agenda.available_time_minutes = self._available_time
 
         # Memory bank setup
         memory_bank_type = bank_config.get("memory_bank_type", "vector_db")
@@ -147,6 +149,7 @@ class InterviewSession:
         self.interaction_mode = interaction_mode
         self.session_in_progress = True
         self.session_completed = False
+        self._session_ending = False  # Set when graceful end is in flight
         self._session_timeout = False
         self.paused = False           # session-level pause (for visualizer)
         self.step_requested = False   # single-step control
@@ -167,8 +170,13 @@ class InterviewSession:
 
         # Last message timestamp tracking for session timeout
         self._last_message_time = datetime.now()
+        self._session_start_time = datetime.now()
         self._last_user_message = None
         self.timeout_minutes = int(os.getenv("SESSION_TIMEOUT_MINUTES", 10))
+
+        # Time-limit extension state
+        self._time_limit_triggered = False   # True once the time check fires
+        self._awaiting_time_extension = False  # True while waiting for user's yes/no
 
         # User in the interview session
         if interaction_mode == 'agent':
@@ -302,6 +310,50 @@ class InterviewSession:
             )
         )
 
+        # Pre-flight checks for user messages — run BEFORE creating subscriber
+        # tasks so that flags like `paused` are visible to subscribers immediately.
+        time_extension_intercept = False
+        if message.role == "User":
+            self._last_user_message = message
+            self._user_message_count += 1
+            BaseAgent.current_turn = self._user_message_count
+
+            snapshot_path = self.token_tracker.save_snapshot()
+            SessionLogger.log_to_file(
+                "execution_log",
+                f"[TOKEN_TRACKING] Saved token usage snapshot to {snapshot_path}",
+                log_level="info"
+            )
+
+            if self.max_turns is not None and \
+                    self._user_message_count >= self.max_turns:
+                SessionLogger.log_to_file(
+                    "execution_log",
+                    f"[TURNS] Maximum turns ({self.max_turns}) reached. "
+                    f"Ending session."
+                )
+                self.session_in_progress = False
+                final_summary_path = self.token_tracker.save_final_summary()
+                SessionLogger.log_to_file(
+                    "execution_log",
+                    f"[TOKEN_TRACKING] Saved final token usage summary to {final_summary_path}",
+                    log_level="info"
+                )
+
+            elif self._awaiting_time_extension and not self._session_ending:
+                time_extension_intercept = True
+                self._awaiting_time_extension = False
+
+            elif (not self._time_limit_triggered
+                  and not self._awaiting_time_extension
+                  and not self._session_ending
+                  and self.session_agenda.available_time_minutes):
+                elapsed = (datetime.now() - self._session_start_time).total_seconds() / 60
+                if elapsed >= self.session_agenda.available_time_minutes:
+                    self._time_limit_triggered = True
+                    self._awaiting_time_extension = True
+                    self.paused = True  # block interviewer before its task starts
+
         # Create independent tasks for each subscriber
         tasks = []
         for sub in subscribers:
@@ -312,57 +364,26 @@ class InterviewSession:
         # Allow tasks to run concurrently without waiting for each other
         await asyncio.sleep(0)  # Explicitly yield control
 
-        # Special handling for user messages after notifying participants
+        # Post-subscriber triggers (run as tasks so they don't block notification)
         if message.role == "User":
-            self._last_user_message = message
-            self._user_message_count += 1
-
-            # Update the turn counter for token tracking
-            BaseAgent.current_turn = self._user_message_count
-
-            # Save token usage snapshot every turn
-            snapshot_path = self.token_tracker.save_snapshot()
-            SessionLogger.log_to_file(
-                "execution_log",
-                f"[TOKEN_TRACKING] Saved token usage snapshot to {snapshot_path}",
-                log_level="info"
-            )
-
-            # Check if we need to trigger a report update
             if (self._user_message_count % self._check_interval == 0 and
                 not self.auto_report_update_in_progress):
                 asyncio.create_task(self._check_and_trigger_report_update())
 
-            # Check if max turns reached
-            if self.max_turns is not None and \
-                    self._user_message_count >= self.max_turns:
-                SessionLogger.log_to_file(
-                    "execution_log",
-                    f"[TURNS] Maximum turns ({self.max_turns}) reached. "
-                    f"Ending session."
-                )
-                self.session_in_progress = False
-                # Save final token usage summary
-                final_summary_path = self.token_tracker.save_final_summary()
-                SessionLogger.log_to_file(
-                    "execution_log",
-                    f"[TOKEN_TRACKING] Saved final token usage summary to {final_summary_path}",
-                    log_level="info"
-                )
-            elif self.session_agenda.all_core_topics_completed():
+            if self.session_agenda.all_core_topics_completed() and not self._session_ending:
                 SessionLogger.log_to_file(
                     "execution_log",
                     f"[TOPICS] All topics for this session have been completed. "
-                    f"Ending session."
+                    f"Sending graceful goodbye."
                 )
-                self.session_in_progress = False
-                # Save final token usage summary
-                final_summary_path = self.token_tracker.save_final_summary()
-                SessionLogger.log_to_file(
-                    "execution_log",
-                    f"[TOKEN_TRACKING] Saved final token usage summary to {final_summary_path}",
-                    log_level="info"
-                )
+                self._session_ending = True
+                asyncio.create_task(self._graceful_session_end())
+
+            elif time_extension_intercept:
+                asyncio.create_task(self._handle_time_extension_response(message.content))
+
+            elif self.paused and self._awaiting_time_extension:
+                asyncio.create_task(self._offer_time_extension())
 
     def add_message_to_chat_history(self, role: str, content: str = "", 
                                     message_type: str = MessageType.CONVERSATION,
@@ -770,6 +791,106 @@ class InterviewSession:
                     else (duration + self._accumulated_auto_update_time),
                 accumulated_auto_time=self._accumulated_auto_update_time
                 # Simulate baseline mode without auto-updates
+            )
+
+    async def _offer_time_extension(self):
+        """Ask the participant if they want to continue for 5 more minutes."""
+        # Pause the interviewer so it doesn't generate a question while waiting
+        self.paused = True
+        available = self.session_agenda.available_time_minutes
+        msg = (
+            f"We've reached the {available}-minute mark — thank you for your time so far! "
+            f"Do you have another 5 minutes to continue, or would you prefer to wrap up here?"
+        )
+        self.add_message_to_chat_history(role="Interviewer", content=msg)
+        SessionLogger.log_to_file(
+            "execution_log",
+            f"[TIME] Offered {available}-min extension to participant"
+        )
+
+    async def _handle_time_extension_response(self, user_reply: str):
+        """Interpret the participant's yes/no and either extend or end gracefully."""
+        from src.utils.llm.engines import get_engine, invoke_engine
+        try:
+            classify_prompt = (
+                f"The interviewer asked the participant if they have 5 more minutes. "
+                f"The participant replied: \"{user_reply}\"\n"
+                f"Reply with only one word: YES if they want to continue, NO if they want to stop."
+            )
+            engine = get_engine(os.getenv("MODEL_NAME", "gpt-4.1-mini"))
+            result = await asyncio.to_thread(invoke_engine, engine, classify_prompt)
+            verdict = (result.content if hasattr(result, "content") else str(result)).strip().upper()
+        except Exception:
+            verdict = "NO"
+
+        if "YES" in verdict:
+            # Extend by 5 minutes and let the interview continue
+            self.session_agenda.available_time_minutes += 5
+            self._time_limit_triggered = False  # allow another check in 5 min
+            self._awaiting_time_extension = False
+            self.paused = False  # resume the interviewer
+            self.add_message_to_chat_history(
+                role="Interviewer",
+                content="Great, let's keep going for a few more minutes!"
+            )
+            SessionLogger.log_to_file("execution_log", "[TIME] Participant extended — adding 5 minutes")
+        else:
+            # End gracefully
+            SessionLogger.log_to_file("execution_log", "[TIME] Participant chose to end — sending goodbye")
+            self._session_ending = True
+            await self._graceful_session_end()
+
+    async def _graceful_session_end(self):
+        """Send a closing message from the interviewer, then end the session."""
+        try:
+            from src.utils.llm.engines import get_engine, invoke_engine
+            # Include recent chat so the closing message reflects what was actually discussed.
+            recent = self.chat_history[-10:] if len(self.chat_history) >= 10 else self.chat_history
+            history_str = "\n".join(
+                f"{m.role}: {m.content}" for m in recent if m.type == "conversation"
+            )
+            closing_prompt = (
+                "You are an interviewer closing out a session. Here is the recent conversation:\n\n"
+                f"{history_str}\n\n"
+                "Write a 2-3 sentence closing message. "
+                "Start with a brief, natural acknowledgment of the participant's last response "
+                "(one sentence that reflects something specific they just said — not generic filler). "
+                "Then signal that the session is complete and thank them warmly. "
+                "Only reference things that actually came up in the conversation. "
+                "Do not ask any questions."
+            )
+            engine = get_engine(os.getenv("MODEL_NAME", "gpt-4.1-mini"))
+            response = await asyncio.to_thread(invoke_engine, engine, closing_prompt)
+            goodbye_msg = response.content if hasattr(response, "content") else str(response)
+            # Send via chat history so the user sees it
+            self.add_message_to_chat_history(role="Interviewer", content=goodbye_msg)
+        except Exception as e:
+            SessionLogger.log_to_file(
+                "execution_log",
+                f"[GOODBYE] Error generating closing message: {e}"
+            )
+            self.add_message_to_chat_history(
+                role="Interviewer",
+                content="Thank you so much for your time today — I really appreciate you sharing all of that. We're all wrapped up!"
+            )
+
+        # Yield to the event loop so _notify_participants can run and populate
+        # the user's message buffer before we signal the frontend to stop polling.
+        await asyncio.sleep(1)
+
+        self.session_in_progress = False
+        try:
+            final_summary_path = self.token_tracker.save_final_summary()
+            SessionLogger.log_to_file(
+                "execution_log",
+                f"[TOKEN_TRACKING] Saved final token usage summary to {final_summary_path}",
+                log_level="info"
+            )
+        except Exception as e:
+            SessionLogger.log_to_file(
+                "execution_log",
+                f"[TOKEN_TRACKING] Error saving final summary: {e}",
+                log_level="warning"
             )
 
     def end_session(self):

@@ -1,3 +1,4 @@
+import asyncio
 import os
 import re
 from typing import TYPE_CHECKING, TypedDict, Tuple
@@ -47,31 +48,27 @@ class Interviewer(BaseAgent, Participant):
             interview_session=interview_session)
 
         self.interview_description = config.get("interview_description")
+        self._turn_to_respond = False
+        self._message_sent_this_turn = False
+
         self.tools = {
             "recall": Recall(memory_bank=self.interview_session.memory_bank),
             "respond_to_user": RespondToUser(
                 tts_config=config.get("tts", {}),
                 base_path= \
                     f"{os.getenv('DATA_DIR', 'data')}/{config.get('user_id')}/",
-                on_response=self._handle_response,
+                on_response=self._guarded_handle_response,
                 on_turn_complete=lambda: setattr(
                     self, '_turn_to_respond', False)
             ),
-            # "end_conversation": EndConversation(
-            #     on_goodbye=lambda goodbye: (
-            #         self.add_event(sender=self.name,
-            #                        tag="goodbye", content=goodbye),
-            #         self.interview_session.add_message_to_chat_history(
-            #             role=self.title, content=goodbye)
-            #     ),
-            #     on_end=lambda: (
-            #         setattr(self, '_turn_to_respond', False),
-            #         self.interview_session.end_session()
-            #     )
-            # )
+            "end_conversation": EndConversation(
+                on_goodbye=self._guarded_send_goodbye,
+                on_end=lambda: (
+                    setattr(self, '_turn_to_respond', False),
+                    self.interview_session.end_session()
+                )
+            )
         }
-
-        self._turn_to_respond = False
 
     def _handle_quantify_response(self, quantified_response: str,
                                   original_response: str) -> Tuple[str, Rubric]:
@@ -112,6 +109,34 @@ class Interviewer(BaseAgent, Participant):
 
         return final_question_text, final_rubric
 
+    async def _guarded_handle_response(self, response: str, subtopic_id: str = "") -> str:
+        """Gate: only the first message per turn reaches the user."""
+        if self._message_sent_this_turn:
+            SessionLogger.log_to_file(
+                "execution_log",
+                f"(Interviewer) Blocked duplicate respond_to_user this turn: "
+                f"{response[:150]}",
+                log_level="warning"
+            )
+            return response
+        self._message_sent_this_turn = True
+        return await self._handle_response(response, subtopic_id)
+
+    def _guarded_send_goodbye(self, goodbye: str) -> None:
+        """Gate: only the first message per turn reaches the user (for end_conversation)."""
+        if self._message_sent_this_turn:
+            SessionLogger.log_to_file(
+                "execution_log",
+                f"(Interviewer) Blocked duplicate end_conversation this turn: "
+                f"{goodbye[:150]}",
+                log_level="warning"
+            )
+            return
+        self._message_sent_this_turn = True
+        self.add_event(sender=self.name, tag="goodbye", content=goodbye)
+        self.interview_session.add_message_to_chat_history(
+            role=self.title, content=goodbye)
+
     async def _handle_response(self, response: str, subtopic_id: str = "") -> str:
         """Handle responses from the RespondToUser tool by quantifying it and adding them to chat history.
         
@@ -131,7 +156,12 @@ class Interviewer(BaseAgent, Participant):
         # If we disable quantification
         quantified_question = response
         rubric = None
-        
+
+        # Don't send a question if the session is already ending gracefully
+        if getattr(self.interview_session, '_session_ending', False):
+            self._turn_to_respond = False
+            return quantified_question
+
         self.interview_session.add_message_to_chat_history(
             role=self.title,
             content=quantified_question,
@@ -145,6 +175,8 @@ class Interviewer(BaseAgent, Participant):
 
     async def on_message(self, message: Message):
 
+        self._message_sent_this_turn = False
+
         if message:
             SessionLogger.log_to_file(
                 "execution_log",
@@ -152,20 +184,61 @@ class Interviewer(BaseAgent, Participant):
             )
             self.add_event(sender=message.role, tag="message",
                            content=message.content)
-
         # Opening turn of a fresh session with no prior summary: let LLM generate first question
         is_weekly = getattr(self.interview_session, "session_type", "intake") == "weekly"
 
         # If session is paused, wait until resumed or a step is requested
         await self.interview_session.wait_if_paused()
 
+        # Speculative execution: start the LLM call immediately so it runs
+        # concurrently with the scribe's processing.  The prompt may use
+        # slightly stale coverage (previous turn), but this cuts latency from
+        # (scribe_time + LLM_time) down to max(scribe_time, LLM_time).
+        speculative_prompt: str | None = None
+        speculative_task = None
+        pre_scribe_coverage: frozenset | None = None
+        if message is not None:
+            pre_scribe_coverage = self._get_coverage_snapshot()
+            speculative_prompt = self._get_prompt()
+            speculative_task = asyncio.create_task(
+                self.call_engine_async(speculative_prompt)
+            )
+
+        # Wait for the scribe to finish processing the current turn so coverage is up to date
+        if message is not None:
+            scribe = getattr(self.interview_session, 'session_scribe', None)
+            if scribe is not None:
+                for _ in range(100):  # max ~10s wait
+                    if not getattr(scribe, 'processing_in_progress', False):
+                        break
+                    await asyncio.sleep(0.1)
+
+        # If the scribe updated coverage, the speculative prompt is stale — discard it
+        # and regenerate with the fresh state to avoid acting on stale coverage.
+        if message is not None and speculative_task is not None:
+            post_scribe_coverage = self._get_coverage_snapshot()
+            if post_scribe_coverage != pre_scribe_coverage:
+                speculative_task.cancel()
+                speculative_task = None
+                speculative_prompt = None
+
         self._turn_to_respond = True
         iterations = 0
 
-        while self._turn_to_respond and iterations < self._max_consideration_iterations:
-            prompt = self._get_prompt()
+        while (self._turn_to_respond
+               and iterations < self._max_consideration_iterations
+               and not getattr(self.interview_session, '_session_ending', False)):
+            # First iteration: reuse the speculative LLM call started before
+            # the scribe wait.  Subsequent iterations (e.g. recall tool)
+            # always build a fresh prompt with up-to-date session state.
+            if iterations == 0 and speculative_task is not None:
+                prompt = speculative_prompt
+                response = await speculative_task
+                speculative_task = None  # consumed
+            else:
+                prompt = self._get_prompt()
+                response = await self.call_engine_async(prompt)
             self.add_event(sender=self.name, tag="llm_prompt", content=prompt)
-            response = await self.call_engine_async(prompt)
             print(f"{GREEN}Interviewer:\n{response}{RESET}")
             try:
                 # gpt-5.x may return JSON instead of XML — convert it to the
@@ -205,7 +278,7 @@ class Interviewer(BaseAgent, Participant):
             except Exception as e:
                 print(f"Error calling tool: {e}. Use the raw response as the output.")
                 if response.strip():
-                    await self._handle_response(response)
+                    await self._guarded_handle_response(response)
 
             iterations += 1
             if iterations >= self._max_consideration_iterations:
@@ -215,6 +288,20 @@ class Interviewer(BaseAgent, Participant):
                     content=f"Exceeded maximum number of consideration "
                     f"iterations ({self._max_consideration_iterations})"
                 )
+
+    def _get_coverage_snapshot(self) -> frozenset:
+        """Return a frozenset of subtopic_ids that are currently marked as covered.
+
+        Used to detect whether the scribe updated coverage while the speculative
+        LLM call was in flight, so we can discard a stale speculative response.
+        """
+        covered = set()
+        topic_manager = self.interview_session.session_agenda.interview_topic_manager
+        for core_topic in topic_manager.core_topic_dict.values():
+            for subtopic in core_topic:
+                if subtopic.is_covered:
+                    covered.add(subtopic.subtopic_id)
+        return frozenset(covered)
 
     def _get_prompt(self):
         '''Gets the prompt for the interviewer. '''
@@ -267,10 +354,33 @@ class Interviewer(BaseAgent, Participant):
                 .get_last_week_snapshot_str()
             )
 
+        # Provide dynamic remaining time so the LLM can pace topic selection.
+        # Time checks are handled by the session layer — the LLM must never
+        # mention time or ask the user about extending.
+        available_time = self.interview_session.session_agenda.available_time_minutes
+        session_start = self.interview_session._session_start_time
+        if available_time and available_time > 0 and session_start:
+            from datetime import datetime
+            elapsed_minutes = (datetime.now() - session_start).total_seconds() / 60.0
+            remaining_minutes = max(0, available_time - elapsed_minutes)
+            available_time_context = (
+                f"Time remaining: approximately {remaining_minutes:.0f} minutes out of {available_time} total. "
+                f"Use this to pace your topic selection: prioritize higher-weight topics first, "
+                f"skip or abbreviate lower-priority ones if time is short."
+            )
+        elif available_time and available_time > 0:
+            available_time_context = (
+                f"The session has {available_time} minutes total. "
+                f"Prioritize higher-weight topics first."
+            )
+        else:
+            available_time_context = ""
+
         # Create format parameters based on prompt type
         format_params = {
             "user_portrait": user_portrait_str,
             "interview_description": self.interview_description,
+            "available_time_context": available_time_context,
             "last_meeting_summary": last_meeting_summary_str,
             "last_week_snapshot": last_week_snapshot_str,
             "chat_history": '\n'.join(recent_events),

@@ -37,6 +37,9 @@ class SessionAgenda:
         self.strategic_priorities: Dict[str, dict] = data.get("strategic_priorities", {})
         self.emergent_insights: List[dict] = data.get("emergent_insights", [])
 
+        # Participant's available time for this session (set at session start)
+        self.available_time_minutes: Optional[int] = data.get("available_time_minutes")
+
     @classmethod
     def load_from_file(cls, file_path):
         """Loads a SessionAgenda from a JSON file."""
@@ -118,10 +121,18 @@ class SessionAgenda:
         latest_file = os.path.join(latest_dir, "session_agenda.json")
         
         if os.path.exists(latest_file):
-            agenda = cls.load_from_file(latest_file)
-            # Reset topic coverage so a new session doesn't immediately complete
-            agenda.interview_topic_manager.reset()
-            return agenda
+            prior = cls.load_from_file(latest_file)
+            # Always re-initialize topics from the current config so changes take effect.
+            # Preserve cross-session state (user portrait, last meeting summary) from the prior agenda.
+            fresh = cls.initialize_session_agenda(user_id=user_id,
+                                                  initial_user_portrait_path=initial_user_portrait_path,
+                                                  interview_plan_path=interview_plan_path,
+                                                  interview_description=interview_description,
+                                                  interview_evaluation=interview_evaluation)
+            fresh.user_portrait = prior.user_portrait
+            fresh.last_meeting_summary = prior.last_meeting_summary
+            fresh.session_id = prior.session_id
+            return fresh
         return cls.initialize_session_agenda(user_id=user_id,
                                              initial_user_portrait_path=initial_user_portrait_path,
                                              interview_plan_path=interview_plan_path,
@@ -424,12 +435,14 @@ class SessionAgenda:
             output.append("=== TOPIC ===")
             output.append(f"Topic ID: {topic.topic_id}")
             output.append(f"Topic Description: {topic.description}")
+            output.append(f"Topic Priority Weight: {topic.priority_weight}")
             output.append(f"Allow Emergent Subtopics: {'Yes' if topic.allow_emergent else 'No'}\n")
 
             for subtopic in topic:
                 output.append("    --- SUBTOPIC ---")
                 output.append(f"    Subtopic ID: {subtopic.subtopic_id}")
                 output.append(f"    Subtopic Description: {subtopic.description}")
+                output.append(f"    Subtopic Priority Weight: {subtopic.priority_weight}")
                 if subtopic.coverage_criteria:
                     output.append(f"    Coverage Criteria:")
                     for criterion in subtopic.coverage_criteria:
@@ -470,12 +483,14 @@ class SessionAgenda:
             output.append("=== TOPIC ===")
             output.append(f"Topic ID: {topic.topic_id}")
             output.append(f"Topic Description: {topic.description}")
+            output.append(f"Topic Priority Weight: {topic.priority_weight}")
             output.append(f"Allow Emergent Subtopics: {'Yes' if topic.allow_emergent else 'No'}\n")
 
             for subtopic in topic:
                 output.append("    --- SUBTOPIC ---")
                 output.append(f"    Subtopic ID: {subtopic.subtopic_id}")
                 output.append(f"    Subtopic Description: {subtopic.description}")
+                output.append(f"    Subtopic Priority Weight: {subtopic.priority_weight}")
                 if subtopic.coverage_criteria:
                     output.append(f"    Coverage Criteria:")
                     for criterion in subtopic.coverage_criteria:
