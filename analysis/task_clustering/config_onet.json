@@ -1,0 +1,28 @@
+{
+  "input": {
+    "path": "analysis/onet/data/canonical_tasks.json",
+    "text_field": "canonical_statement",
+    "source_field": "category",
+    "timestamp_field": null,
+    "items_field": "canonical_tasks"
+  },
+
+  "output": {
+    "state": "analysis/task_clustering/output/onet_clusters.json",
+    "hierarchy": "analysis/task_clustering/output/onet_hierarchy.json"
+  },
+
+  "taxonomy": null,
+  "criteria": "analysis/task_clustering/criteria.txt",
+  "resume": null,
+
+  "algorithm": {
+    "model": "gpt-5.4",
+    "lambda": 0.1,
+    "eps": 0.5,
+    "max_split_size": 5,
+    "split_depth_limit": 1,
+    "fade_interval_interviews": 10,
+    "no_splits": false
+  }
+}

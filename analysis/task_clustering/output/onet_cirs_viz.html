@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Task Cluster Visualizer</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+          background: #f0f2f5; color: #1a1a2e; min-height: 100vh; }
+
+  /* ── Header ── */
+  .header { background: #fff; border-bottom: 1px solid #e0e0e0;
+             padding: 16px 24px; position: sticky; top: 0; z-index: 100;
+             box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+  .header h1 { font-size: 18px; font-weight: 700; margin-bottom: 12px; }
+  .stats { font-size: 13px; color: #666; margin-bottom: 12px; }
+
+  /* ── Participant chips ── */
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px;
+           border-radius: 20px; font-size: 13px; font-weight: 500; cursor: pointer;
+           border: 2px solid transparent; transition: all .15s; user-select: none; }
+  .chip.active   { color: #fff; }
+  .chip.inactive { background: #f5f5f5 !important; color: #999; border-color: #ddd; }
+  .chip .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+
+  /* ── Tree ── */
+  .tree { padding: 24px; display: flex; flex-wrap: wrap; gap: 20px;
+           align-items: flex-start; }
+
+  /* ── Root card ── */
+  .root-card { background: #fff; border-radius: 12px; width: 340px;
+                box-shadow: 0 2px 12px rgba(0,0,0,.08);
+                border: 2px solid transparent; transition: all .2s; overflow: hidden; }
+  .root-card.new-cluster { border-color: #40C057; }
+  .new-badge { display: inline-block; font-size: 10px; font-weight: 700; color: #fff;
+                background: #40C057; border-radius: 4px; padding: 1px 5px;
+                letter-spacing: .3px; margin-left: 6px; vertical-align: middle; }
+  .root-card.empty { opacity: .45; border-color: #e0e0e0; }
+  .root-card.newly-empty { animation: flash-red .4s ease; }
+  .root-card.newly-filled { animation: flash-green .4s ease; }
+
+  .root-header { padding: 14px 16px 10px; cursor: pointer; }
+  .root-header:hover { background: #fafafa; }
+  .root-label { font-size: 13px; font-weight: 600; text-transform: uppercase;
+                  letter-spacing: .5px; color: #888; margin-bottom: 4px; }
+  .root-leader { font-size: 15px; font-weight: 600; line-height: 1.35;
+                  margin-bottom: 8px; color: #1a1a2e; }
+  .root-meta { display: flex; align-items: center; gap: 10px; font-size: 12px; color: #888; }
+  .count-badge { background: #f0f0f0; border-radius: 10px; padding: 2px 8px;
+                  font-weight: 600; color: #444; transition: all .2s; }
+  .count-badge.changed { background: #ffe8b0; color: #b07800; }
+
+  /* participant bar */
+  .pbar { height: 6px; border-radius: 3px; overflow: hidden;
+           display: flex; margin-top: 8px; background: #f0f0f0; }
+  .pbar-seg { height: 100%; transition: width .25s; }
+
+  /* ── Direct items (items assigned to root, not a child) ── */
+  .direct-section { padding: 0 16px 4px; }
+  .direct-section .section-label { font-size: 11px; font-weight: 600; color: #aaa;
+                                     text-transform: uppercase; letter-spacing: .4px;
+                                     padding: 6px 0 4px; }
+
+  /* ── Children ── */
+  .children { padding: 8px 12px 12px; display: flex; flex-direction: column; gap: 8px; }
+  .child-card { border-radius: 8px; border: 1.5px solid #eee;
+                 overflow: hidden; transition: all .2s; }
+  .child-card.empty { opacity: .4; }
+  .child-header { padding: 10px 12px 6px; cursor: pointer; }
+  .child-header:hover { background: #fafafa; }
+  .child-leader { font-size: 13px; font-weight: 600; line-height: 1.3; margin-bottom: 4px; }
+  .child-meta { font-size: 12px; color: #888; display: flex; align-items: center; gap: 8px; }
+
+  /* ── Task items list ── */
+  .items-list { border-top: 1px solid #f0f0f0; max-height: 0; overflow: hidden;
+                 transition: max-height .25s ease; }
+  .items-list.open { max-height: 600px; overflow-y: auto; }
+  .task-item { padding: 8px 14px; border-bottom: 1px solid #f8f8f8;
+                font-size: 12px; line-height: 1.45; display: flex; gap: 8px;
+                align-items: flex-start; transition: opacity .2s; }
+  .task-item.hidden { display: none; }
+  .task-item .src-dot { width: 8px; height: 8px; border-radius: 50%;
+                          flex-shrink: 0; margin-top: 4px; }
+  .task-body { display: flex; flex-direction: column; gap: 2px; }
+  .task-text { color: #333; }
+  .task-src  { font-size: 11px; color: #aaa; }
+
+  /* ── Empty state ── */
+  .empty-msg { font-size: 12px; color: #bbb; padding: 8px 14px; font-style: italic; }
+
+  @keyframes flash-red   { 0%,100%{border-color:transparent} 50%{border-color:#fa5252} }
+  @keyframes flash-green { 0%,100%{border-color:transparent} 50%{border-color:#40c057} }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Task Cluster Visualizer</h1>
+  <div class="stats" id="stats"></div>
+  <div class="chips" id="chips"></div>
+</div>
+<div class="tree" id="tree"></div>
+
+<script>
+const COLORS = ["#4C6EF5", "#FA5252", "#40C057", "#FAB005", "#BE4BDB", "#15AABF", "#FD7E14", "#20C997", "#E64980", "#74C0FC"];
+const DATA   = {
+  "participants": [
+    "Computer and Information Research Scientists"
+  ],
+  "items": [
+    {
+      "id": "a579b808-d5ff-4ea0-9bb5-196d8299198c",
+      "text": "Review research literature to identify relevant prior work and techniques.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": ""
+    },
+    {
+      "id": "f6002d08-24c7-419c-a8e5-7193abdcdb31",
+      "text": "Compare and select AI methods for identified research problems to choose approaches for experimentation.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": "14629"
+    },
+    {
+      "id": "d5b58853-1ec2-4603-9dae-0f4bc2d7e863",
+      "text": "Consult domain experts to identify research problems that can be addressed with AI methods.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": "14627"
+    },
+    {
+      "id": "728c0778-7c2b-4acf-a166-379b4b3f1235",
+      "text": "Design experiments and prototype model architectures to test research hypotheses and evaluate AI methods.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": ""
+    },
+    {
+      "id": "81d93785-4d37-4289-bbd5-9e88879c82da",
+      "text": "Write code for model training, inference, and research prototypes to produce runnable experimental systems.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": ""
+    },
+    {
+      "id": "d253b7f1-f556-4227-9378-f0e995b0c4b8",
+      "text": "Debug research code and distributed systems to resolve failures in experimental and production workflows.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": "14623"
+    },
+    {
+      "id": "aad836a4-042b-4d5e-8038-fcd46b85a7f5",
+      "text": "Analyze model outputs and platform data to identify patterns, biases, and decision-relevant findings.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": ""
+    },
+    {
+      "id": "b36670da-d4c1-46ad-b48f-69e9650a3435",
+      "text": "Annotate datasets to create ground-truth labels for model evaluation.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": ""
+    },
+    {
+      "id": "681a20b3-503b-47eb-9411-522d3a0d783e",
+      "text": "Organize experimental results, model checkpoints, and configuration files to track ablation studies.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": ""
+    },
+    {
+      "id": "ecb7d206-056b-45cd-bafd-9b1a96e5eb81",
+      "text": "Write research findings and experimental results in papers or documentation to record and communicate outcomes.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": "14635"
+    },
+    {
+      "id": "d0f9d8e0-5da7-4184-8b9d-9450e64a2d01",
+      "text": "Write code for large-scale distributed systems to deliver scalable and reliable system functionality.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": "14633"
+    },
+    {
+      "id": "1b7a46a5-9d39-463f-8ad8-10855f279438",
+      "text": "Break down ambiguous technical problems into structured components to define implementation and design steps.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": "14623"
+    },
+    {
+      "id": "224eaca1-b822-444d-809b-d051d030a94a",
+      "text": "Prototype natural-language interfaces for experiment data to enable users to query results in plain language.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": "14626"
+    },
+    {
+      "id": "f0a2b4b1-442b-4006-9906-777a93af45f2",
+      "text": "Develop large language models and training or inference methods to produce new AI capabilities.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": "14626"
+    },
+    {
+      "id": "034728df-e3f6-4f49-b00a-4beb9ba635ff",
+      "text": "Design agentic workflows for AI systems to make them reusable across applications.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": "14626"
+    },
+    {
+      "id": "b2e9408b-0d8a-4359-9945-ec4520000fa3",
+      "text": "Build conversational agents to deliver agent-based interactions.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": "14633"
+    },
+    {
+      "id": "a4b72fa2-2441-4789-ba22-7802267c5106",
+      "text": "Review pull requests to identify where AI assistance can be added to the development workflow.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": "14632"
+    },
+    {
+      "id": "59cea311-559b-4567-9067-1d578af62032",
+      "text": "Coordinate peer review platform workflows to keep review operations running smoothly.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": "14628"
+    },
+    {
+      "id": "a631256b-7a3e-4713-b899-b94fa998743c",
+      "text": "Resolve user issues on the peer review platform to restore platform functionality.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": "14628"
+    }
+  ],
+  "clusters": [
+    {
+      "id": "14623",
+      "leader": "Analyze problems to develop solutions involving computer hardware and software.",
+      "level": 0,
+      "parent_id": null,
+      "children": [],
+      "anchored": true,
+      "weight": 1.1
+    },
+    {
+      "id": "14626",
+      "leader": "Apply theoretical expertise and innovation to create or apply new technology, such as adapting principles for applying computers to new uses.",
+      "level": 0,
+      "parent_id": null,
+      "children": [],
+      "anchored": true,
+      "weight": 2.88
+    },
+    {
+      "id": "14624",
+      "leader": "Assign or schedule tasks to meet work priorities and goals.",
+      "level": 0,
+      "parent_id": null,
+      "children": [],
+      "anchored": true,
+      "weight": 0.27
+    },
+    {
+      "id": "14628",
+      "leader": "Meet with managers, vendors, and others to solicit cooperation and resolve problems.",
+      "level": 0,
+      "parent_id": null,
+      "children": [],
+      "anchored": true,
+      "weight": 2.2
+    },
+    {
+      "id": "14633",
+      "leader": "Design computers and the software that runs them.",
+      "level": 0,
+      "parent_id": null,
+      "children": [],
+      "anchored": true,
+      "weight": 2.27
+    },
+    {
+      "id": "14629",
+      "leader": "Conduct logical analyses of business, scientific, engineering, and other technical problems, formulating mathematical models of problems for solution by computers.",
+      "level": 0,
+      "parent_id": null,
+      "children": [],
+      "anchored": true,
+      "weight": 0.54
+    },
+    {
+      "id": "14625",
+      "leader": "Evaluate project plans and proposals to assess feasibility issues.",
+      "level": 0,
+      "parent_id": null,
+      "children": [],
+      "anchored": true,
+      "weight": 0.27
+    },
+    {
+      "id": "14635",
+      "leader": "Participate in multidisciplinary projects in areas such as virtual reality, human-computer interaction, or robotics.",
+      "level": 0,
+      "parent_id": null,
+      "children": [],
+      "anchored": true,
+      "weight": 1.27
+    },
+    {
+      "id": "14627",
+      "leader": "Consult with users, management, vendors, and technicians to determine computing needs and system requirements.",
+      "level": 0,
+      "parent_id": null,
+      "children": [],
+      "anchored": true,
+      "weight": 0.54
+    },
+    {
+      "id": "14630",
+      "leader": "Develop and interpret organizational goals, policies, and procedures.",
+      "level": 0,
+      "parent_id": null,
+      "children": [],
+      "anchored": true,
+      "weight": 0.27
+    },
+    {
+      "id": "14632",
+      "leader": "Develop performance standards, and evaluate work in light of established standards.",
+      "level": 0,
+      "parent_id": null,
+      "children": [],
+      "anchored": true,
+      "weight": 1.27
+    }
+  ],
+  "root_ids": [
+    "14626",
+    "14633",
+    "14628",
+    "14635",
+    "14632",
+    "14623",
+    "14629",
+    "14627",
+    "14624",
+    "14625",
+    "14630"
+  ],
+  "orphaned": [
+    {
+      "id": "a579b808-d5ff-4ea0-9bb5-196d8299198c",
+      "text": "Review research literature to identify relevant prior work and techniques.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": ""
+    },
+    {
+      "id": "728c0778-7c2b-4acf-a166-379b4b3f1235",
+      "text": "Design experiments and prototype model architectures to test research hypotheses and evaluate AI methods.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": ""
+    },
+    {
+      "id": "81d93785-4d37-4289-bbd5-9e88879c82da",
+      "text": "Write code for model training, inference, and research prototypes to produce runnable experimental systems.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": ""
+    },
+    {
+      "id": "aad836a4-042b-4d5e-8038-fcd46b85a7f5",
+      "text": "Analyze model outputs and platform data to identify patterns, biases, and decision-relevant findings.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": ""
+    },
+    {
+      "id": "b36670da-d4c1-46ad-b48f-69e9650a3435",
+      "text": "Annotate datasets to create ground-truth labels for model evaluation.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": ""
+    },
+    {
+      "id": "681a20b3-503b-47eb-9411-522d3a0d783e",
+      "text": "Organize experimental results, model checkpoints, and configuration files to track ablation studies.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": ""
+    }
+  ]
+};
+
+/* ── Build lookup tables ── */
+const clusterMap = {};
+DATA.clusters.forEach(c => clusterMap[c.id] = c);
+
+const itemsByCluster = {};
+DATA.items.forEach(item => {
+  if (!itemsByCluster[item.cluster_id]) itemsByCluster[item.cluster_id] = [];
+  itemsByCluster[item.cluster_id].push(item);
+});
+
+const orphaned = DATA.orphaned || [];
+
+const participantColor = {};
+DATA.participants.forEach((p, i) => participantColor[p] = COLORS[i % COLORS.length]);
+
+/* ── State ── */
+const active = new Set(DATA.participants);
+
+/* ── Render chips ── */
+function renderChips() {
+  const el = document.getElementById('chips');
+  el.innerHTML = '';
+  DATA.participants.forEach(p => {
+    const chip = document.createElement('label');
+    chip.className = 'chip ' + (active.has(p) ? 'active' : 'inactive');
+    chip.style.background = active.has(p) ? participantColor[p] : '';
+    chip.innerHTML = `<span class="dot" style="background:${active.has(p)?'#fff':participantColor[p]}"></span>${p}`;
+    chip.onclick = () => toggleParticipant(p);
+    el.appendChild(chip);
+  });
+}
+
+/* ── Toggle participant ── */
+function toggleParticipant(p) {
+  const wasBefore = snapshotCounts();
+  if (active.has(p)) active.delete(p); else active.add(p);
+  renderChips();
+  updateTree(wasBefore);
+  updateStats();
+}
+
+function snapshotCounts() {
+  const snap = {};
+  DATA.clusters.forEach(c => {
+    snap[c.id] = countActive(c.id);
+  });
+  return snap;
+}
+
+function countActive(clusterId) {
+  return (itemsByCluster[clusterId] || []).filter(i => active.has(i.source)).length;
+}
+
+/* ── Build tree DOM ── */
+function buildTree() {
+  const tree = document.getElementById('tree');
+  tree.innerHTML = '';
+  const hasTaxonomy = DATA.clusters.some(c => c.anchored);
+  DATA.root_ids.forEach(rid => {
+    tree.appendChild(buildRoot(rid, hasTaxonomy));
+  });
+  if (orphaned.length > 0) {
+    tree.appendChild(buildOrphanedCard());
+  }
+}
+
+function buildOrphanedCard() {
+  const card = document.createElement('div');
+  card.className = 'root-card';
+  card.id = 'card-orphaned';
+  card.style.borderColor = '#e0e0e0';
+
+  const header = document.createElement('div');
+  header.className = 'root-header';
+  header.innerHTML = `
+    <div class="root-label" style="color:#c0392b">Pruned / Uncategorized</div>
+    <div class="root-leader" style="color:#888;font-style:italic">Tasks whose clusters were removed by fading</div>
+    <div class="root-meta">
+      <span class="count-badge" id="badge-orphaned">${orphaned.length} tasks</span>
+    </div>
+  `;
+  const list = document.createElement('div');
+  list.className = 'items-list';
+  orphaned.forEach(item => list.appendChild(buildTaskItem(item)));
+  header.onclick = () => list.classList.toggle('open');
+  card.appendChild(header);
+  card.appendChild(list);
+  return card;
+}
+
+function buildRoot(rootId, hasTaxonomy) {
+  const c = clusterMap[rootId];
+  const children = (c.children || []).filter(cid => clusterMap[cid]);
+  const isNew = hasTaxonomy && !c.anchored;
+
+  const card = document.createElement('div');
+  card.className = 'root-card' + (isNew ? ' new-cluster' : '');
+  card.id = `card-${rootId}`;
+
+  /* header */
+  const header = document.createElement('div');
+  header.className = 'root-header';
+  const newBadge = isNew ? '<span class="new-badge">NEW</span>' : '';
+  header.innerHTML = `
+    <div class="root-label">Category${newBadge}</div>
+    <div class="root-leader">${c.leader}</div>
+    <div class="root-meta">
+      <span class="count-badge" id="badge-${rootId}">0 tasks</span>
+      <span id="pmeta-${rootId}"></span>
+    </div>
+    <div class="pbar" id="pbar-${rootId}"></div>
+  `;
+  header.onclick = () => {
+    const dl = card.querySelector('.direct-items-list');
+    if (dl) dl.classList.toggle('open');
+  };
+  card.appendChild(header);
+
+  /* direct items (assigned to root, not a child) */
+  const directItems = (itemsByCluster[rootId] || []);
+  if (directItems.length > 0) {
+    const section = document.createElement('div');
+    section.className = 'direct-section';
+    section.innerHTML = `<div class="section-label">General (unassigned to sub-type)</div>`;
+    const list = document.createElement('div');
+    list.className = 'items-list direct-items-list';
+    directItems.forEach(item => {
+      list.appendChild(buildTaskItem(item));
+    });
+    section.appendChild(list);
+    card.appendChild(section);
+  }
+
+  /* children */
+  if (children.length > 0) {
+    const childContainer = document.createElement('div');
+    childContainer.className = 'children';
+    children.forEach(cid => childContainer.appendChild(buildChild(cid)));
+    card.appendChild(childContainer);
+  }
+
+  return card;
+}
+
+function buildChild(childId) {
+  const c = clusterMap[childId];
+  const card = document.createElement('div');
+  card.className = 'child-card';
+  card.id = `card-${childId}`;
+
+  const header = document.createElement('div');
+  header.className = 'child-header';
+  header.innerHTML = `
+    <div class="child-leader">${c.leader}</div>
+    <div class="child-meta">
+      <span class="count-badge" id="badge-${childId}">0 tasks</span>
+      <div class="pbar" id="pbar-${childId}" style="width:100%;height:5px;border-radius:3px;overflow:hidden;display:flex;background:#f0f0f0;"></div>
+    </div>
+  `;
+  const list = document.createElement('div');
+  list.className = 'items-list';
+  (itemsByCluster[childId] || []).forEach(item => list.appendChild(buildTaskItem(item)));
+  if (!itemsByCluster[childId]?.length) {
+    list.innerHTML = '<div class="empty-msg">No tasks assigned</div>';
+  }
+
+  header.onclick = () => list.classList.toggle('open');
+  card.appendChild(header);
+  card.appendChild(list);
+  return card;
+}
+
+function buildTaskItem(item) {
+  const el = document.createElement('div');
+  el.className = 'task-item';
+  el.id = `item-${item.id}`;
+  el.innerHTML = `
+    <span class="src-dot" style="background:${participantColor[item.source] || '#ccc'}"></span>
+    <span class="task-body">
+      <span class="task-text">${item.text}</span>
+      <span class="task-src">${item.source}</span>
+    </span>
+  `;
+  return el;
+}
+
+/* ── Update tree after toggle ── */
+function updateTree(prevCounts) {
+  DATA.items.forEach(item => {
+    const el = document.getElementById(`item-${item.id}`);
+    if (!el) return;
+    el.classList.toggle('hidden', !active.has(item.source));
+  });
+
+  DATA.clusters.forEach(c => {
+    const count = countActive(c.id);
+    const prev  = prevCounts ? (prevCounts[c.id] || 0) : -1;
+
+    /* badge */
+    const badge = document.getElementById(`badge-${c.id}`);
+    if (badge) {
+      badge.textContent = count === 1 ? '1 task' : `${count} tasks`;
+      badge.classList.toggle('changed', prev !== -1 && count !== prev);
+    }
+
+    /* participant bar */
+    updatePbar(c.id);
+
+    /* card fade */
+    const card = document.getElementById(`card-${c.id}`);
+    if (!card) return;
+    const wasEmpty = prev === 0;
+    const nowEmpty = count === 0;
+    card.classList.toggle('empty', nowEmpty);
+    if (!wasEmpty && nowEmpty && prev !== -1) card.classList.add('newly-empty');
+    if (wasEmpty  && !nowEmpty && prev !== -1) card.classList.add('newly-filled');
+    setTimeout(() => card.classList.remove('newly-empty','newly-filled'), 500);
+  });
+}
+
+function updatePbar(clusterId) {
+  const pbar = document.getElementById(`pbar-${clusterId}`);
+  if (!pbar) return;
+  const items = itemsByCluster[clusterId] || [];
+  const total = items.filter(i => active.has(i.source)).length;
+  if (total === 0) { pbar.innerHTML = ''; return; }
+
+  const counts = {};
+  items.forEach(i => { if (active.has(i.source)) counts[i.source] = (counts[i.source]||0)+1; });
+  pbar.innerHTML = Object.entries(counts).map(([src, n]) =>
+    `<div class="pbar-seg" style="width:${(n/total*100).toFixed(1)}%;background:${participantColor[src]||'#ccc'}"></div>`
+  ).join('');
+}
+
+function updateStats() {
+  const totalActive = DATA.items.filter(i => active.has(i.source)).length;
+  const activePeople = active.size;
+  document.getElementById('stats').textContent =
+    `${activePeople} of ${DATA.participants.length} participants · ${totalActive} of ${DATA.items.length} tasks shown`;
+}
+
+/* ── Init ── */
+renderChips();
+buildTree();
+updateTree(null);
+updateStats();
+</script>
+</body>
+</html>

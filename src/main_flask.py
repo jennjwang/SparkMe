@@ -291,12 +291,12 @@ def login():
         username = request.form.get('username', '').strip()
 
         if not username:
-            flash('Please enter your name', 'error')
+            flash('Please enter your Stanford ID', 'error')
             return render_template('login.html')
 
         users = load_users()
 
-        # Find existing user by name, or create a new one
+        # Find existing user by Stanford ID, or create a new one
         user_id = None
         for uid, user_data in users.items():
             if user_data['username'] == username:

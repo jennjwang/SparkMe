@@ -1,0 +1,9 @@
+# Task similarity criteria for clustering worker-reported task statements.
+# These are guidelines for when two tasks belong in the SAME cluster.
+# One rule per line. Lines starting with # are ignored.
+
+Same core action and object domain (e.g. both involve reviewing code with teammates) OR
+One is a specific instance of the other (attending standups IS sharing progress updates with the team) OR
+One is a subtask of the other
+A job analyst would describe them with the same canonical task statement
+Tasks represent the same type of work even if phrased differently by different people

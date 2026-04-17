@@ -1,0 +1,28 @@
+{
+  "input": {
+    "path": "analysis/task_clustering/input_onet_cirs.json",
+    "text_field": "canonical_statement",
+    "source_field": "category",
+    "timestamp_field": null,
+    "items_field": "canonical_tasks"
+  },
+
+  "output": {
+    "state": "analysis/task_clustering/output/onet_cirs_clusters.json",
+    "hierarchy": "analysis/task_clustering/output/onet_cirs_hierarchy.json"
+  },
+
+  "taxonomy": "analysis/task_clustering/taxonomy_cirs.json",
+  "criteria": "analysis/task_clustering/criteria.txt",
+  "resume": null,
+
+  "algorithm": {
+    "model": "gpt-5.4",
+    "lambda": 0.1,
+    "eps": 0.5,
+    "max_split_size": 5,
+    "split_depth_limit": 1,
+    "fade_interval_interviews": 3,
+    "no_splits": false
+  }
+}

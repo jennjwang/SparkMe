@@ -1,0 +1,29 @@
+[
+  {
+    "id": "dc71b8f3-f5c6-49db-a484-0e323b6c1988",
+    "leader": "Write and review code for distributed systems to improve scalability and reliability.",
+    "weight": 1.8661,
+    "member_count": 3,
+    "level": 0,
+    "anchored": false,
+    "children": []
+  },
+  {
+    "id": "dbbde00d-df89-43d4-9a75-9b9e6a717eea",
+    "leader": "Develop new methods in large language model (LLM) training and inference, with a special focus on agentic workflow, to drive AI innovation.",
+    "weight": 1.3995,
+    "member_count": 3,
+    "level": 0,
+    "anchored": false,
+    "children": []
+  },
+  {
+    "id": "a82769b8-96d4-4126-8d85-92559709812a",
+    "leader": "Conduct independent research, including implementation, literature review, and brainstorming new ideas, using AI tools to increase productivity.",
+    "weight": 0.933,
+    "member_count": 3,
+    "level": 0,
+    "anchored": false,
+    "children": []
+  }
+]

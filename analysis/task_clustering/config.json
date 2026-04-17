@@ -1,0 +1,28 @@
+{
+  "input": {
+    "path": "analysis/task_clustering/output/screened_study_tasks.json",
+    "text_field": "task_statement",
+    "source_field": "occupation",
+    "timestamp_field": null,
+    "items_field": "tasks"
+  },
+
+  "output": {
+    "state": "analysis/task_clustering/output/clusters.json",
+    "hierarchy": "analysis/task_clustering/output/clusters_hierarchy.json"
+  },
+
+  "taxonomy": null,
+  "criteria": null,
+  "resume": null,
+
+  "algorithm": {
+    "model": "gpt-5.4",
+    "lambda": 0.1,
+    "eps": 0.5,
+    "max_split_size": 10,
+    "split_depth_limit": 1,
+    "fade_interval_interviews": 4,
+    "no_splits": false
+  }
+}

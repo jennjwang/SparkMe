@@ -22,13 +22,6 @@
     "priority_weight": 0.8
   },
   {
-    "description": "Tools: tools and methods used for this task",
-    "coverage_criteria": [
-      "Lists each specific tool, software, or method used at each step of the task."
-    ],
-    "priority_weight": 0.5
-  },
-  {
     "description": "Experience requirements: skills, expertise, and personal differentiation in this task",
     "coverage_criteria": [
       "Names the core technical or domain skills required to perform this task competently.",
@@ -37,5 +30,12 @@
       "Captures what the person believes they do differently or better than others performing the same task."
     ],
     "priority_weight": 1
+  },
+  {
+    "description": "Tools: tools and methods used for this task",
+    "coverage_criteria": [
+      "Lists each specific tool, software, or method used at each step of the task."
+    ],
+    "priority_weight": 0.5
   }
 ]

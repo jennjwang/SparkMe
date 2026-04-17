@@ -11,19 +11,19 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg:        #0f1117;
-      --surface:   #1a1d27;
-      --surface2:  #22263a;
-      --border:    #2e3245;
-      --text:      #e2e8f0;
-      --muted:     #7c8aa8;
-      --accent:    #6366f1;       /* indigo */
-      --green:     #22c55e;
-      --amber:     #f59e0b;
-      --purple:    #a855f7;
-      --red:       #ef4444;
-      --user-bg:   #1e2a4a;
-      --bot-bg:    #1e2a1e;
+      --bg:        #f8fafc;
+      --surface:   #ffffff;
+      --surface2:  #f1f5f9;
+      --border:    #e2e8f0;
+      --text:      #1e293b;
+      --muted:     #64748b;
+      --accent:    #4f46e5;       /* indigo */
+      --green:     #16a34a;
+      --amber:     #d97706;
+      --purple:    #7c3aed;
+      --red:       #dc2626;
+      --user-bg:   #eff6ff;
+      --bot-bg:    #f0fdf4;
       --tag-h:     14px;
       --radius:    10px;
       --font:      'Inter', system-ui, sans-serif;
@@ -108,7 +108,7 @@
       cursor: pointer;
       transition: background 0.15s, border-color 0.15s;
     }
-    .btn-ctrl:hover { background: var(--surface3, #2a2a3a); border-color: var(--accent); }
+    .btn-ctrl:hover { background: var(--surface3, #e8edf5); border-color: var(--accent); }
     .btn-ctrl:disabled { opacity: 0.35; cursor: default; }
     .btn-ctrl.active { border-color: var(--amber); color: var(--amber); }
     #agent-controls { display: none; gap: 6px; align-items: center; }
@@ -167,8 +167,8 @@
       display: flex; align-items: center; justify-content: center;
       font-size: 11px; font-weight: 700; flex-shrink: 0;
     }
-    .avatar.bot  { background: #1e3a2a; color: var(--green); }
-    .avatar.user { background: #1e2a4a; color: var(--accent); }
+    .avatar.bot  { background: #dcfce7; color: var(--green); }
+    .avatar.user { background: #e0e7ff; color: var(--accent); }
 
     .bubble {
       max-width: 82%;
@@ -335,7 +335,7 @@
       cursor: pointer;
       user-select: none;
     }
-    .topic-header:hover { background: #272b40; }
+    .topic-header:hover { background: #e8edf5; }
     .topic-label {
       display: flex;
       align-items: center;
@@ -379,15 +379,15 @@
     }
     .subtopic-row.covered {
       border-color: var(--green);
-      background: rgba(34,197,94,0.05);
+      background: rgba(22,163,74,0.07);
     }
     .subtopic-row.in-progress {
       border-color: var(--amber);
-      background: rgba(245,158,11,0.05);
+      background: rgba(217,119,6,0.07);
     }
     .subtopic-row.emergent {
       border-color: var(--purple);
-      background: rgba(168,85,247,0.05);
+      background: rgba(124,58,237,0.07);
     }
     .subtopic-icon { font-size: 14px; flex-shrink: 0; }
     .subtopic-desc {
@@ -403,7 +403,7 @@
     .subtopic-notes {
       padding: 4px 8px;
       border-left: 2px solid var(--amber);
-      background: rgba(245,158,11,0.04);
+      background: rgba(217,119,6,0.07);
       border-radius: 0 4px 4px 0;
       display: flex;
       flex-direction: column;
@@ -417,7 +417,7 @@
     .subtopic-rationale {
       padding: 4px 8px;
       border-left: 2px solid var(--green);
-      background: rgba(34,197,94,0.04);
+      background: rgba(22,163,74,0.07);
       border-radius: 0 4px 4px 0;
     }
     .subtopic-rationale-label {
@@ -436,7 +436,7 @@
     .subtopic-criteria {
       padding: 4px 8px;
       border-left: 2px solid var(--accent);
-      background: rgba(99,102,241,0.04);
+      background: rgba(79,70,229,0.07);
       border-radius: 0 4px 4px 0;
     }
     .subtopic-criteria-label {
@@ -460,9 +460,9 @@
       color: var(--muted);
       border: 1px solid var(--border);
     }
-    .meta-chip.green  { background: rgba(34,197,94,0.1);  color: var(--green);  border-color: var(--green);  }
-    .meta-chip.amber  { background: rgba(245,158,11,0.1); color: var(--amber);  border-color: var(--amber);  }
-    .meta-chip.purple { background: rgba(168,85,247,0.1); color: var(--purple); border-color: var(--purple); }
+    .meta-chip.green  { background: rgba(22,163,74,0.1);  color: var(--green);  border-color: var(--green);  }
+    .meta-chip.amber  { background: rgba(217,119,6,0.1);  color: var(--amber);  border-color: var(--amber);  }
+    .meta-chip.purple { background: rgba(124,58,237,0.1); color: var(--purple); border-color: var(--purple); }
 
     /* =========================================================
        MEMORIES TAB
@@ -496,22 +496,20 @@
     }
     .memory-body { flex: 1; min-width: 0; }
     .memory-title {
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--text);
-      margin-bottom: 3px;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
     .memory-text {
-      font-size: 11px;
-      color: var(--muted);
-      line-height: 1.5;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
+      font-size: 13px;
+      color: var(--text);
+      line-height: 1.6;
     }
     .memory-time {
       font-size: 10px;
@@ -525,9 +523,9 @@
       font-size: 10px;
       padding: 1px 6px;
       border-radius: 8px;
-      background: rgba(99,102,241,0.1);
+      background: rgba(79,70,229,0.1);
       color: var(--accent);
-      border: 1px solid rgba(99,102,241,0.3);
+      border: 1px solid rgba(79,70,229,0.3);
     }
     .memory-sources {
       margin-top: 6px;
@@ -559,9 +557,9 @@
       font-size: 9px;
       padding: 1px 5px;
       border-radius: 6px;
-      background: rgba(99,102,241,0.15);
+      background: rgba(79,70,229,0.12);
       color: var(--accent);
-      border: 1px solid rgba(99,102,241,0.3);
+      border: 1px solid rgba(79,70,229,0.3);
       margin-left: 4px;
       vertical-align: middle;
     }
@@ -594,7 +592,7 @@
       transition: border-color 0.3s, background 0.3s;
     }
     .portrait-card.wide { grid-column: 1 / -1; }
-    .portrait-card.filled { border-color: var(--green); background: rgba(34,197,94,0.03); }
+    .portrait-card.filled { border-color: var(--green); background: rgba(22,163,74,0.06); }
     .portrait-key {
       display: flex;
       align-items: center;
@@ -686,7 +684,7 @@
     }
 
     .insight-card {
-      background: var(--surface);
+      background: rgba(124,58,237,0.04);
       border: 1px solid var(--purple);
       border-radius: 8px;
       padding: 12px 14px;
@@ -704,9 +702,9 @@
       font-size: 10px;
       padding: 2px 7px;
       border-radius: 10px;
-      background: rgba(168,85,247,0.15);
+      background: rgba(124,58,237,0.12);
       color: var(--purple);
-      border: 1px solid rgba(168,85,247,0.4);
+      border: 1px solid rgba(124,58,237,0.35);
     }
     .insight-desc { font-size: 12px; color: var(--text); line-height: 1.5; }
     .insight-evidence {
@@ -736,7 +734,7 @@
       cursor: pointer;
       user-select: none;
     }
-    .rollout-header:hover { background: #272b40; }
+    .rollout-header:hover { background: #e8edf5; }
     .rollout-title {
       font-size: 11px;
       font-weight: 700;
@@ -781,13 +779,13 @@
       margin-bottom: 4px;
     }
     .sim-bubble.interviewer {
-      background: rgba(34,197,94,0.08);
-      border: 1px solid rgba(34,197,94,0.25);
+      background: rgba(22,163,74,0.08);
+      border: 1px solid rgba(22,163,74,0.25);
       color: var(--text);
     }
     .sim-bubble.participant {
-      background: rgba(99,102,241,0.08);
-      border: 1px solid rgba(99,102,241,0.25);
+      background: rgba(79,70,229,0.08);
+      border: 1px solid rgba(79,70,229,0.25);
       color: var(--text);
     }
     .sim-bubble-label {
@@ -835,10 +833,10 @@
       height: 10px;
       border-radius: 50%;
       border: 2px solid var(--border);
-      background: var(--bg);
+      background: var(--surface);
     }
-    .timeline-dot.bot  { border-color: var(--green);  background: rgba(34,197,94,0.2);  }
-    .timeline-dot.user { border-color: var(--accent); background: rgba(99,102,241,0.2); }
+    .timeline-dot.bot  { border-color: var(--green);  background: rgba(22,163,74,0.2);   }
+    .timeline-dot.user { border-color: var(--accent); background: rgba(79,70,229,0.2);  }
     .timeline-card {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -872,7 +870,7 @@
       display: none;
       text-align: center;
       padding: 12px;
-      background: rgba(34,197,94,0.08);
+      background: rgba(22,163,74,0.1);
       border: 1px solid var(--green);
       border-radius: 8px;
       margin-bottom: 12px;

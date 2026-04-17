@@ -1,0 +1,316 @@
+[
+  {
+    "category": "Computer and Information Research Scientists",
+    "occupations": [
+      "AI Researcher",
+      "Graduate Student (Software Engineering)",
+      "PhD Student",
+      "PhD Student (AI for Climate Science)",
+      "Research Assistant",
+      "Research Scientist (Fintech)"
+    ],
+    "n_participants": 6,
+    "n_raw_tasks": 31,
+    "n_screened_out": 2,
+    "n_rewritten": 18,
+    "canonical_tasks": [
+      {
+        "canonical_statement": "Review research literature to identify relevant prior work and techniques.",
+        "abbreviated_phrase": "literature review",
+        "source_count": 2,
+        "source_statements": [
+          "Read current state-of-the-art research papers in AI and climate science to identify new techniques and ideas for improving climate prediction.",
+          "Sift through large volumes of new literature in the vision-language model (VLM) space to identify relevant papers for research.",
+          "Conduct independent research, including implementation, literature review, and brainstorming new ideas, using AI tools to increase productivity.",
+          "Use AI tools to conduct deep research before meetings with advisors to discuss prior works and assess feasibility of proposed research topics."
+        ],
+        "merge_type": "partial_overlap",
+        "notes": "Merged literature-scanning and prior-work review tasks across AI/climate and VLM contexts. AI tools were explicitly mentioned by one participant and can generalize to the broader review activity.",
+        "statement_parts": {
+          "action": "Review",
+          "object": "research literature",
+          "outcome": "to identify relevant prior work and techniques"
+        }
+      },
+      {
+        "canonical_statement": "Compare and select AI methods for identified research problems to choose approaches for experimentation.",
+        "abbreviated_phrase": "method selection",
+        "source_count": 1,
+        "source_statements": [
+          "Survey, compare, and select AI techniques for adaptation and application to identified climate science problems."
+        ],
+        "merge_type": "single",
+        "notes": "Distinct from literature review because it focuses on evaluating candidate methods for a specific problem and deciding what to test.",
+        "statement_parts": {
+          "action": "Compare and select",
+          "object": "AI methods for identified research problems",
+          "outcome": "to choose approaches for experimentation"
+        }
+      },
+      {
+        "canonical_statement": "Consult domain experts to identify research problems that can be addressed with AI methods.",
+        "abbreviated_phrase": "expert consultation",
+        "source_count": 1,
+        "source_statements": [
+          "Collaborate and communicate with climate science experts to identify key problems and challenges in the field that can be addressed using AI techniques."
+        ],
+        "merge_type": "single",
+        "notes": "Kept separate because it centers on eliciting problem definitions from experts rather than reviewing literature or selecting methods.",
+        "statement_parts": {
+          "action": "Consult",
+          "object": "domain experts",
+          "outcome": "to identify research problems that can be addressed with AI methods"
+        }
+      },
+      {
+        "canonical_statement": "Design experiments and prototype model architectures to test research hypotheses and evaluate AI methods.",
+        "abbreviated_phrase": "experiment design",
+        "source_count": 3,
+        "source_statements": [
+          "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+          "Design experiments and explore new NLP architectures to ensure technical rigor in model evaluation frameworks.",
+          "Brainstorm and prototype new architectures for multimodal alignment or novel evaluation metrics to validate research hypotheses."
+        ],
+        "merge_type": "partial_overlap",
+        "notes": "Merged experiment design, execution, and architecture prototyping because all describe setting up and running research tests. Preserved both hypothesis-testing and evaluation aspects.",
+        "statement_parts": {
+          "action": "Design",
+          "object": "experiments and prototype model architectures",
+          "outcome": "to test research hypotheses and evaluate AI methods"
+        }
+      },
+      {
+        "canonical_statement": "Write code for model training, inference, and research prototypes to produce runnable experimental systems.",
+        "abbreviated_phrase": "research coding",
+        "source_count": 4,
+        "source_statements": [
+          "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+          "Develop and run code for experiments, model inference, and training scripts to translate theoretical NLP concepts into tangible results.",
+          "Offload repetitive boilerplate coding, data preparation, and verification tasks to AI tools to reduce tedium and focus on research.",
+          "Perform coding tasks to solve problems in the context of AI research and product development."
+        ],
+        "merge_type": "partial_overlap",
+        "notes": "Merged coding tasks tied to AI research and experimentation. Included AI-assisted boilerplate coding as a variant of the same core activity.",
+        "statement_parts": {
+          "action": "Write",
+          "object": "code for model training, inference, and research prototypes",
+          "outcome": "to produce runnable experimental systems"
+        }
+      },
+      {
+        "canonical_statement": "Debug research code and distributed systems to resolve failures in experimental and production workflows.",
+        "abbreviated_phrase": "code debugging",
+        "source_count": 2,
+        "source_statements": [
+          "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+          "Debug issues in large-scale distributed systems to ensure reliability and efficiency."
+        ],
+        "merge_type": "partial_overlap",
+        "notes": "Merged debugging activities because both involve diagnosing and fixing technical issues, while preserving that one occurs in research code and the other in distributed systems.",
+        "statement_parts": {
+          "action": "Debug",
+          "object": "research code and distributed systems",
+          "outcome": "to resolve failures in experimental and production workflows"
+        }
+      },
+      {
+        "canonical_statement": "Analyze model outputs and platform data to identify patterns, biases, and decision-relevant findings.",
+        "abbreviated_phrase": "data analysis",
+        "source_count": 2,
+        "source_statements": [
+          "Analyze model outputs to identify patterns or biases that inform evaluation frameworks.",
+          "Perform data analysis on the peer review platform to support decision-making and improve platform outcomes.",
+          "Use AI tools to explore data, prototype solutions, and understand complex system behavior to work more efficiently and focus on higher-level problem solving."
+        ],
+        "merge_type": "partial_overlap",
+        "notes": "Merged analysis of model outputs, operational platform data, and AI-assisted data exploration because all involve examining data to extract actionable findings.",
+        "statement_parts": {
+          "action": "Analyze",
+          "object": "model outputs and platform data",
+          "outcome": "to identify patterns, biases, and decision-relevant findings"
+        }
+      },
+      {
+        "canonical_statement": "Annotate datasets to create ground-truth labels for model evaluation.",
+        "abbreviated_phrase": "data annotation",
+        "source_count": 1,
+        "source_statements": [
+          "Handle data annotation workflows to ensure high-quality ground truth data for robust evaluations."
+        ],
+        "merge_type": "single",
+        "notes": "Distinct manual data-preparation task requiring labeling rather than analysis or coding.",
+        "statement_parts": {
+          "action": "Annotate",
+          "object": "datasets",
+          "outcome": "to create ground-truth labels for model evaluation"
+        }
+      },
+      {
+        "canonical_statement": "Organize experimental results, model checkpoints, and configuration files to track ablation studies.",
+        "abbreviated_phrase": "experiment tracking",
+        "source_count": 1,
+        "source_statements": [
+          "Organize and manage experimental results, model checkpoints, and configuration files during ablation studies to facilitate actionable insights."
+        ],
+        "merge_type": "single",
+        "notes": "Kept separate because it is specifically about experiment artifact tracking with a named tool.",
+        "statement_parts": {
+          "action": "Organize",
+          "object": "experimental results, model checkpoints, and configuration files",
+          "outcome": "to track ablation studies"
+        }
+      },
+      {
+        "canonical_statement": "Write research findings and experimental results in papers or documentation to record and communicate outcomes.",
+        "abbreviated_phrase": "research writing",
+        "source_count": 1,
+        "source_statements": [
+          "Write up research findings and results from experiments for documentation or publication."
+        ],
+        "merge_type": "single",
+        "notes": "Distinct dissemination task focused on producing written research outputs.",
+        "statement_parts": {
+          "action": "Write",
+          "object": "research findings and experimental results in papers or documentation",
+          "outcome": "to record and communicate outcomes"
+        }
+      },
+      {
+        "canonical_statement": "Write code for large-scale distributed systems to deliver scalable and reliable system functionality.",
+        "abbreviated_phrase": "distributed systems coding",
+        "source_count": 1,
+        "source_statements": [
+          "Write and review code for distributed systems to improve scalability and reliability."
+        ],
+        "merge_type": "single",
+        "notes": "Kept separate from research coding because it targets distributed systems engineering rather than model experimentation.",
+        "statement_parts": {
+          "action": "Write",
+          "object": "code for large-scale distributed systems",
+          "outcome": "to deliver scalable and reliable system functionality"
+        }
+      },
+      {
+        "canonical_statement": "Break down ambiguous technical problems into structured components to define implementation and design steps.",
+        "abbreviated_phrase": "problem decomposition",
+        "source_count": 1,
+        "source_statements": [
+          "Break down ambiguous or messy technical problems into structured components to enable problem-solving and system design."
+        ],
+        "merge_type": "single",
+        "notes": "Distinct analytical planning task that precedes coding or experimentation.",
+        "statement_parts": {
+          "action": "Break down",
+          "object": "ambiguous technical problems into structured components",
+          "outcome": "to define implementation and design steps"
+        }
+      },
+      {
+        "canonical_statement": "Prototype natural-language interfaces for experiment data to enable users to query results in plain language.",
+        "abbreviated_phrase": "NL data interface",
+        "source_count": 1,
+        "source_statements": [
+          "Prototype AI-assisted interfaces for querying experiment data in natural language to reduce user friction and speed up data access."
+        ],
+        "merge_type": "single",
+        "notes": "Separate interface prototyping task with a specific user-facing artifact.",
+        "statement_parts": {
+          "action": "Prototype",
+          "object": "natural-language interfaces for experiment data",
+          "outcome": "to enable users to query results in plain language"
+        }
+      },
+      {
+        "canonical_statement": "Develop large language models and training or inference methods to produce new AI capabilities.",
+        "abbreviated_phrase": "LLM development",
+        "source_count": 2,
+        "source_statements": [
+          "Develop new methods in large language model (LLM) training and inference, with a special focus on agentic workflow, to drive AI innovation.",
+          "Serve as a research associate to help build a large language model (LLM) for a university in the UAE."
+        ],
+        "merge_type": "partial_overlap",
+        "notes": "Merged building an LLM with developing new LLM training/inference methods because both center on creating LLM systems, though one emphasizes methodological innovation.",
+        "statement_parts": {
+          "action": "Develop",
+          "object": "large language models and training or inference methods",
+          "outcome": "to produce new AI capabilities"
+        }
+      },
+      {
+        "canonical_statement": "Design agentic workflows for AI systems to make them reusable across applications.",
+        "abbreviated_phrase": "agent workflow design",
+        "source_count": 1,
+        "source_statements": [
+          "Design agentic workflows to ensure they can be scaled up easily across different applications."
+        ],
+        "merge_type": "single",
+        "notes": "Kept separate from LLM development and agent implementation because it focuses on workflow architecture.",
+        "statement_parts": {
+          "action": "Design",
+          "object": "agentic workflows for AI systems",
+          "outcome": "to make them reusable across applications"
+        }
+      },
+      {
+        "canonical_statement": "Build conversational agents to deliver agent-based interactions.",
+        "abbreviated_phrase": "conversation agents",
+        "source_count": 1,
+        "source_statements": [
+          "Use agentic workflow to build conversation agents using a proprietary framework."
+        ],
+        "merge_type": "single",
+        "notes": "Distinct implementation task for a specific class of AI application.",
+        "statement_parts": {
+          "action": "Build",
+          "object": "conversational agents",
+          "outcome": "to deliver agent-based interactions"
+        }
+      },
+      {
+        "canonical_statement": "Review pull requests to identify where AI assistance can be added to the development workflow.",
+        "abbreviated_phrase": "PR review",
+        "source_count": 1,
+        "source_statements": [
+          "Review pull requests (PR reviews), a repetitive and less enjoyable task, and identify opportunities where AI assistance could improve manageability."
+        ],
+        "merge_type": "single",
+        "notes": "Separate code-review task focused on process improvement opportunities.",
+        "statement_parts": {
+          "action": "Review",
+          "object": "pull requests",
+          "outcome": "to identify where AI assistance can be added to the development workflow"
+        }
+      },
+      {
+        "canonical_statement": "Coordinate peer review platform workflows to keep review operations running smoothly.",
+        "abbreviated_phrase": "workflow coordination",
+        "source_count": 1,
+        "source_statements": [
+          "Manage workflows for a peer review platform to ensure smooth operation and support for an NLP organization."
+        ],
+        "merge_type": "single",
+        "notes": "Distinct operational coordination task tied to a platform rather than research or coding.",
+        "statement_parts": {
+          "action": "Coordinate",
+          "object": "peer review platform workflows",
+          "outcome": "to keep review operations running smoothly"
+        }
+      },
+      {
+        "canonical_statement": "Resolve user issues on the peer review platform to restore platform functionality.",
+        "abbreviated_phrase": "user issue resolution",
+        "source_count": 1,
+        "source_statements": [
+          "Provide technical support for the peer review platform to resolve user issues and maintain platform functionality."
+        ],
+        "merge_type": "single",
+        "notes": "Kept separate because troubleshooting user-reported platform issues is different from workflow coordination or data analysis.",
+        "statement_parts": {
+          "action": "Resolve",
+          "object": "user issues on the peer review platform",
+          "outcome": "to restore platform functionality"
+        }
+      }
+    ]
+  }
+]

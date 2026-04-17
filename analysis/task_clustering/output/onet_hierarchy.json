@@ -1,0 +1,48 @@
+[
+  {
+    "id": "e477a016-0554-4cb4-983d-b91ee867be51",
+    "leader": "Develop and review instructional training materials",
+    "weight": 1.3397,
+    "member_count": 0,
+    "level": 0,
+    "anchored": false,
+    "children": [
+      {
+        "id": "c329ea3e-937c-4cbf-bade-f637007b9c29",
+        "leader": "Create training materials",
+        "weight": 0.8038,
+        "member_count": 3,
+        "level": 1,
+        "anchored": false,
+        "children": []
+      },
+      {
+        "id": "49f382d8-cd2d-4f1a-9afd-8ec55ba5e7d6",
+        "leader": "Review and produce content",
+        "weight": 0.5359,
+        "member_count": 2,
+        "level": 1,
+        "anchored": false,
+        "children": []
+      }
+    ]
+  },
+  {
+    "id": "d9e33946-7f47-4028-81c1-b393abc3fde2",
+    "leader": "Set prices and execute market trades",
+    "weight": 1.0718,
+    "member_count": 2,
+    "level": 0,
+    "anchored": false,
+    "children": []
+  },
+  {
+    "id": "e25596c0-5556-4d9f-9574-1177fc56d9b0",
+    "leader": "Capture and edit video content",
+    "weight": 1.0718,
+    "member_count": 2,
+    "level": 0,
+    "anchored": false,
+    "children": []
+  }
+]

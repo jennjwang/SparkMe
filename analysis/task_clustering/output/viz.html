@@ -1,0 +1,1700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Task Cluster Visualizer</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+          background: #f0f2f5; color: #1a1a2e; min-height: 100vh; }
+
+  /* ── Header ── */
+  .header { background: #fff; border-bottom: 1px solid #e0e0e0;
+             padding: 16px 24px; position: sticky; top: 0; z-index: 100;
+             box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+  .header h1 { font-size: 18px; font-weight: 700; margin-bottom: 12px; }
+  .stats { font-size: 13px; color: #666; margin-bottom: 12px; }
+
+  /* ── Participant chips ── */
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px;
+           border-radius: 20px; font-size: 13px; font-weight: 500; cursor: pointer;
+           border: 2px solid transparent; transition: all .15s; user-select: none; }
+  .chip.active   { color: #fff; }
+  .chip.inactive { background: #f5f5f5 !important; color: #999; border-color: #ddd; }
+  .chip .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+
+  /* ── Tree ── */
+  .tree { padding: 24px; display: flex; flex-wrap: wrap; gap: 20px;
+           align-items: flex-start; }
+
+  /* ── Root card ── */
+  .root-card { background: #fff; border-radius: 12px; width: 340px;
+                box-shadow: 0 2px 12px rgba(0,0,0,.08);
+                border: 2px solid transparent; transition: all .2s; overflow: hidden; }
+  .root-card.new-cluster { border-color: #40C057; }
+  .new-badge { display: inline-block; font-size: 10px; font-weight: 700; color: #fff;
+                background: #40C057; border-radius: 4px; padding: 1px 5px;
+                letter-spacing: .3px; margin-left: 6px; vertical-align: middle; }
+  .root-card.empty { opacity: .45; border-color: #e0e0e0; }
+  .root-card.newly-empty { animation: flash-red .4s ease; }
+  .root-card.newly-filled { animation: flash-green .4s ease; }
+
+  .root-header { padding: 14px 16px 10px; cursor: pointer; }
+  .root-header:hover { background: #fafafa; }
+  .root-label { font-size: 13px; font-weight: 600; text-transform: uppercase;
+                  letter-spacing: .5px; color: #888; margin-bottom: 4px; }
+  .root-leader { font-size: 15px; font-weight: 600; line-height: 1.35;
+                  margin-bottom: 8px; color: #1a1a2e; }
+  .root-meta { display: flex; align-items: center; gap: 10px; font-size: 12px; color: #888; }
+  .count-badge { background: #f0f0f0; border-radius: 10px; padding: 2px 8px;
+                  font-weight: 600; color: #444; transition: all .2s; }
+  .count-badge.changed { background: #ffe8b0; color: #b07800; }
+
+  /* participant bar */
+  .pbar { height: 6px; border-radius: 3px; overflow: hidden;
+           display: flex; margin-top: 8px; background: #f0f0f0; }
+  .pbar-seg { height: 100%; transition: width .25s; }
+
+  /* ── Direct items (items assigned to root, not a child) ── */
+  .direct-section { padding: 0 16px 4px; }
+  .direct-section .section-label { font-size: 11px; font-weight: 600; color: #aaa;
+                                     text-transform: uppercase; letter-spacing: .4px;
+                                     padding: 6px 0 4px; }
+
+  /* ── Children ── */
+  .children { padding: 8px 12px 12px; display: flex; flex-direction: column; gap: 8px; }
+  .child-card { border-radius: 8px; border: 1.5px solid #eee;
+                 overflow: hidden; transition: all .2s; }
+  .child-card.empty { opacity: .4; }
+  .child-header { padding: 10px 12px 6px; cursor: pointer; }
+  .child-header:hover { background: #fafafa; }
+  .child-leader { font-size: 13px; font-weight: 600; line-height: 1.3; margin-bottom: 4px; }
+  .child-meta { font-size: 12px; color: #888; display: flex; align-items: center; gap: 8px; }
+
+  /* ── Task items list ── */
+  .items-list { border-top: 1px solid #f0f0f0; max-height: 0; overflow: hidden;
+                 transition: max-height .25s ease; }
+  .items-list.open { max-height: 600px; overflow-y: auto; }
+  .task-item { padding: 8px 14px; border-bottom: 1px solid #f8f8f8;
+                font-size: 12px; line-height: 1.45; display: flex; gap: 8px;
+                align-items: flex-start; transition: opacity .2s; }
+  .task-item.hidden { display: none; }
+  .task-item .src-dot { width: 8px; height: 8px; border-radius: 50%;
+                          flex-shrink: 0; margin-top: 4px; }
+  .task-body { display: flex; flex-direction: column; gap: 2px; }
+  .task-text { color: #333; }
+  .task-src  { font-size: 11px; color: #aaa; }
+
+  /* ── Empty state ── */
+  .empty-msg { font-size: 12px; color: #bbb; padding: 8px 14px; font-style: italic; }
+
+  @keyframes flash-red   { 0%,100%{border-color:transparent} 50%{border-color:#fa5252} }
+  @keyframes flash-green { 0%,100%{border-color:transparent} 50%{border-color:#40c057} }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Task Cluster Visualizer</h1>
+  <div class="stats" id="stats"></div>
+  <div class="chips" id="chips"></div>
+</div>
+<div class="tree" id="tree"></div>
+
+<script>
+const COLORS = ["#4C6EF5", "#FA5252", "#40C057", "#FAB005", "#BE4BDB", "#15AABF", "#FD7E14", "#20C997", "#E64980", "#74C0FC"];
+const DATA   = {
+  "participants": [
+    "Computer User Support Specialists",
+    "Computer and Information Research Scientists",
+    "Customer Service Representatives",
+    "Data Scientists",
+    "Data Warehousing Specialists",
+    "Educational, Guidance, and Career Counselors and Advisors",
+    "Elementary School Teachers, Except Special Education",
+    "Environmental Economists",
+    "Fabric and Apparel Patternmakers",
+    "Graphic Designers",
+    "Human Resources Specialists",
+    "Life, Physical, and Social Science Technicians, All Other",
+    "Logisticians",
+    "Marketing Managers",
+    "Medical and Health Services Managers",
+    "Psychologists, All Other",
+    "Sales Representatives of Services, Except Advertising, Insurance, Financial Services, and Travel",
+    "Sales Representatives, Wholesale and Manufacturing, Except Technical and Scientific Products",
+    "Secretaries and Administrative Assistants, Except Legal, Medical, and Executive",
+    "Social and Community Service Managers",
+    "Software Developers",
+    "Solar Sales Representatives and Assessors",
+    "Training and Development Specialists",
+    "Wholesale and Retail Buyers, Except Farm Products",
+    "Writers and Authors"
+  ],
+  "items": [
+    {
+      "id": "6155ede6-7eb8-4bf8-ad8c-c36d99c91773",
+      "text": "Look up Excel formulas to process data in Excel when the required formula is unknown.",
+      "source": "Computer User Support Specialists",
+      "cluster_id": ""
+    },
+    {
+      "id": "e18fbdb8-d794-4a52-8881-fc1c9d100036",
+      "text": "Provide business process context to AI tools to obtain support tailored to the subsidiary's business process.",
+      "source": "Computer User Support Specialists",
+      "cluster_id": ""
+    },
+    {
+      "id": "c3ec0d08-fa39-4bd5-b983-bb824e474211",
+      "text": "Verify AI-generated answers by cross-checking, researching, and questioning the AI's reasoning, including providing screenshots when needed, to confirm the accuracy and logical validity of the output.",
+      "source": "Computer User Support Specialists",
+      "cluster_id": "86ecbc9d-7eec-4a3b-851d-c0bb4af43757"
+    },
+    {
+      "id": "340b435d-3c4b-41a5-ba43-a74bd004b051",
+      "text": "Discuss work results and work processes with the team or management to obtain collaborative review and alignment.",
+      "source": "Computer User Support Specialists",
+      "cluster_id": "b054a07b-9762-4f4f-a316-35f336f253f9"
+    },
+    {
+      "id": "de038a7d-af4c-4b1a-bc75-b6bcd98623bf",
+      "text": "Review research literature to identify relevant prior work and techniques.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": "86ecbc9d-7eec-4a3b-851d-c0bb4af43757"
+    },
+    {
+      "id": "8aafaa7e-ccd6-4972-9c56-865efe630fa1",
+      "text": "Compare and select AI methods for identified research problems to choose approaches for experimentation.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": "e495bba9-eba1-4e24-b7f0-0524389a1ff4"
+    },
+    {
+      "id": "8e8cc224-fccc-49ac-9d09-925222d04aed",
+      "text": "Consult domain experts to identify research problems that can be addressed with AI methods.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": ""
+    },
+    {
+      "id": "3ac63eb8-3fa2-4447-b73e-a972123e3520",
+      "text": "Design experiments and prototype model architectures to test research hypotheses and evaluate AI methods.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": "69e27968-e4a9-488f-80ec-fdfefe4f9732"
+    },
+    {
+      "id": "d6a602b5-2e92-414f-b9dc-e75bd4d47b55",
+      "text": "Write code for model training, inference, and research prototypes to produce runnable experimental systems.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": "d0dbfd33-1306-44b9-ab2a-67aace0cf8b5"
+    },
+    {
+      "id": "f81f2fe1-6ce3-4daa-8e30-e762e96704b5",
+      "text": "Debug research code and distributed systems to resolve failures in experimental and production workflows.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": "d0dbfd33-1306-44b9-ab2a-67aace0cf8b5"
+    },
+    {
+      "id": "552e8ee4-1f4a-47a2-868e-be8b8fcab01a",
+      "text": "Analyze model outputs and platform data to identify patterns, biases, and decision-relevant findings.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": "fc840198-ddc7-4fc8-81d2-408439d63602"
+    },
+    {
+      "id": "5768390f-847a-455e-bba0-bc0ccaf8a186",
+      "text": "Annotate datasets to create ground-truth labels for model evaluation.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": ""
+    },
+    {
+      "id": "fabd4e8b-1106-420c-87ae-7023047c2abd",
+      "text": "Organize experimental results, model checkpoints, and configuration files to track ablation studies.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": ""
+    },
+    {
+      "id": "bdaf0beb-18fb-4197-b26a-e97e5d1e87de",
+      "text": "Write research findings and experimental results in papers or documentation to record and communicate outcomes.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": "2a50db9c-a2ae-4431-b811-9f8c013e6dc3"
+    },
+    {
+      "id": "25bb2b49-6343-4b3b-ba24-d2c1bd05b03d",
+      "text": "Write code for large-scale distributed systems to deliver scalable and reliable system functionality.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": "ad3aedee-3e10-441a-9c49-d5dda0ec7b7d"
+    },
+    {
+      "id": "9103cff4-5bc1-4bff-ba91-ec289ed9beca",
+      "text": "Break down ambiguous technical problems into structured components to define implementation and design steps.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": "69e27968-e4a9-488f-80ec-fdfefe4f9732"
+    },
+    {
+      "id": "78d32060-24d2-4527-b8a5-c11768319206",
+      "text": "Prototype natural-language interfaces for experiment data to enable users to query results in plain language.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": "d0dbfd33-1306-44b9-ab2a-67aace0cf8b5"
+    },
+    {
+      "id": "733f9ebf-c2bd-46dd-8d21-3b953b2f0d38",
+      "text": "Develop large language models and training or inference methods to produce new AI capabilities.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": "69e27968-e4a9-488f-80ec-fdfefe4f9732"
+    },
+    {
+      "id": "3722dd89-c326-4ade-bfc1-340e59b1a6a0",
+      "text": "Design agentic workflows for AI systems to make them reusable across applications.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": "69e27968-e4a9-488f-80ec-fdfefe4f9732"
+    },
+    {
+      "id": "3b97d073-62c6-4b1a-84eb-969f0e63a3a1",
+      "text": "Build conversational agents to deliver agent-based interactions.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": "69e27968-e4a9-488f-80ec-fdfefe4f9732"
+    },
+    {
+      "id": "c2b03491-6628-4999-896c-4e748d75cb17",
+      "text": "Review pull requests to identify where AI assistance can be added to the development workflow.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": ""
+    },
+    {
+      "id": "12545e3c-6564-4a71-a2a4-e7786108dc7f",
+      "text": "Coordinate peer review platform workflows to keep review operations running smoothly.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": "b054a07b-9762-4f4f-a316-35f336f253f9"
+    },
+    {
+      "id": "608f49fc-34ee-43a6-b075-c62887d0e50c",
+      "text": "Resolve user issues on the peer review platform to restore platform functionality.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": ""
+    },
+    {
+      "id": "e28c253d-ddfe-47c1-bfd7-c64b47ca13f6",
+      "text": "Enter and retrieve client and case records in the database system to maintain up-to-date information.",
+      "source": "Customer Service Representatives",
+      "cluster_id": "74a34e54-04fe-4f1a-b35d-946f767431c8"
+    },
+    {
+      "id": "c26cca93-88d4-402b-a431-99f077ac826d",
+      "text": "Respond to client emails and phone calls to address client needs and inquiries.",
+      "source": "Customer Service Representatives",
+      "cluster_id": "b32f76ba-954d-4001-9c10-a8a34f05fd12"
+    },
+    {
+      "id": "fb1c984d-7a1b-43c4-a0c6-a61acc14ccbf",
+      "text": "Resolve client issues to address their concerns.",
+      "source": "Customer Service Representatives",
+      "cluster_id": "2989e71e-0407-4415-9882-f7021f5b0685"
+    },
+    {
+      "id": "e98fb88c-7b5d-4c25-a82e-dd61a6574ed1",
+      "text": "Summarize transcripts to streamline information processing.",
+      "source": "Customer Service Representatives",
+      "cluster_id": "5bd369c8-98f3-4c20-bea9-42943d03ba9a"
+    },
+    {
+      "id": "bada0c59-6cfb-4be6-b15d-c0281fcbf2c3",
+      "text": "Query existing data tables and columns to retrieve data for revenue opportunity estimates and operational analyses.",
+      "source": "Data Scientists",
+      "cluster_id": "b4276167-2ea0-450c-bc6f-1742516406ec"
+    },
+    {
+      "id": "aeea05a4-dfc9-445f-83e2-bc2f243acb55",
+      "text": "Analyze data from multiple sources and model decision scenarios to inform strategic product and operational decisions.",
+      "source": "Data Scientists",
+      "cluster_id": "5bd369c8-98f3-4c20-bea9-42943d03ba9a"
+    },
+    {
+      "id": "6ba6aded-a1a5-4df4-b324-f4a5d7057571",
+      "text": "Build dashboards and adapt visualization methods to data sets to present timely information for decision-making.",
+      "source": "Data Scientists",
+      "cluster_id": "b4276167-2ea0-450c-bc6f-1742516406ec"
+    },
+    {
+      "id": "0bba9274-ee83-4092-82bc-cd97a0b0958d",
+      "text": "Optimize launch metrics for AI products to evaluate launch decisions and planning options.",
+      "source": "Data Scientists",
+      "cluster_id": ""
+    },
+    {
+      "id": "65754a8d-4eda-4ee8-9023-11ae7730f6c9",
+      "text": "Review teammate documentation to understand workflows and processes.",
+      "source": "Data Scientists",
+      "cluster_id": "af4d8dac-ef71-4cc8-9a8f-33d0b26ed521"
+    },
+    {
+      "id": "f2764c9e-ca77-4b7b-a1d9-a8b6b5a9619d",
+      "text": "Develop data pipelines to implement requirements defined by business users and project managers.",
+      "source": "Data Warehousing Specialists",
+      "cluster_id": ""
+    },
+    {
+      "id": "752e3c9d-3fa3-4805-bd2c-a944593d69d9",
+      "text": "Meet business users and project managers to define timelines, requirements, and development strategies for data pipelines.",
+      "source": "Data Warehousing Specialists",
+      "cluster_id": "af4d8dac-ef71-4cc8-9a8f-33d0b26ed521"
+    },
+    {
+      "id": "ee29800b-2a5d-4735-b7d4-a58952f07c4f",
+      "text": "Troubleshoot data pipeline errors to resolve development issues and generate solution ideas.",
+      "source": "Data Warehousing Specialists",
+      "cluster_id": "69e27968-e4a9-488f-80ec-fdfefe4f9732"
+    },
+    {
+      "id": "6c6b17d9-fcd3-460c-915c-a0f870bc0874",
+      "text": "Learn new data engineering tools and technologies to stay current with field practices.",
+      "source": "Data Warehousing Specialists",
+      "cluster_id": ""
+    },
+    {
+      "id": "3cb1a84d-2b2e-4496-b4e7-aaa04a819314",
+      "text": "Enter client registration information and case notes in the portal to maintain accurate program records for funding and tracking.",
+      "source": "Educational, Guidance, and Career Counselors and Advisors",
+      "cluster_id": "4e670a7f-7a54-43b9-8423-81fa8b7d6599"
+    },
+    {
+      "id": "a5f1800f-ce3e-44f4-93f6-e4b983399dc5",
+      "text": "Schedule client appointments and meetings, including sending Zoom links or arranging in-person sessions, to confirm coaching and support sessions.",
+      "source": "Educational, Guidance, and Career Counselors and Advisors",
+      "cluster_id": ""
+    },
+    {
+      "id": "3b34ca12-bac0-4fb9-b8b7-843d9536db7e",
+      "text": "Respond to client emails and meeting requests to address urgent client needs in a timely manner.",
+      "source": "Educational, Guidance, and Career Counselors and Advisors",
+      "cluster_id": "8dce6b09-4c25-41c7-bcfc-f7f18bbee91f"
+    },
+    {
+      "id": "2286fb3e-7178-4334-b53e-d7a4bcc0cdd2",
+      "text": "Meet with clients to provide career advice and review resumes and cover letters to identify suitable employment options.",
+      "source": "Educational, Guidance, and Career Counselors and Advisors",
+      "cluster_id": "eba1e334-dd71-484d-b9af-9bccae9a17b5"
+    },
+    {
+      "id": "346dcbf1-ae5d-41c2-b2ed-2f0127a71b7c",
+      "text": "Deliver process documentation, templates, and on-the-job shadowing to train new staff for client support and administrative tasks.",
+      "source": "Educational, Guidance, and Career Counselors and Advisors",
+      "cluster_id": ""
+    },
+    {
+      "id": "72af7e93-5a77-4e32-a097-88841d38686a",
+      "text": "Plan and prepare lessons for reading, writing, science, and social studies to deliver daily classroom instruction.",
+      "source": "Elementary School Teachers, Except Special Education",
+      "cluster_id": "4fa7fc55-cbb9-4c56-aa27-1296a88cc036"
+    },
+    {
+      "id": "f10e4cd0-5510-44d7-a631-370687c2e0fc",
+      "text": "Lead morning meetings with students to build classroom relationships and establish respect.",
+      "source": "Elementary School Teachers, Except Special Education",
+      "cluster_id": "2e631cc7-5789-4dcd-9b20-4a749cbb186b"
+    },
+    {
+      "id": "a36a6cec-4c84-4f2d-9f0d-7c6bc55dfb35",
+      "text": "Attend IEP meetings with school staff and families to coordinate accommodations for students with special needs.",
+      "source": "Elementary School Teachers, Except Special Education",
+      "cluster_id": ""
+    },
+    {
+      "id": "9b02bb35-925c-48a6-aada-4f5c5a74f703",
+      "text": "Analyze country energy market landscapes to assess current electricity mixes, renewable procurement options, and future electricity plans.",
+      "source": "Environmental Economists",
+      "cluster_id": "5bd369c8-98f3-4c20-bea9-42943d03ba9a"
+    },
+    {
+      "id": "4e2c22f5-82f6-4483-80e8-14cabe6dbfaf",
+      "text": "Forecast long-term electricity prices to produce price outlooks.",
+      "source": "Environmental Economists",
+      "cluster_id": "b4276167-2ea0-450c-bc6f-1742516406ec"
+    },
+    {
+      "id": "e8aaaa7e-36dd-4908-9a54-654c0cc917d5",
+      "text": "Write report insights to document analytical findings.",
+      "source": "Environmental Economists",
+      "cluster_id": "5bd369c8-98f3-4c20-bea9-42943d03ba9a"
+    },
+    {
+      "id": "e8bd52ec-d441-41ed-8bcf-5d39b71817b5",
+      "text": "Format Excel sheets to prepare deliverables.",
+      "source": "Environmental Economists",
+      "cluster_id": ""
+    },
+    {
+      "id": "7a7c4d24-5f17-4a19-be3c-f357f6c292c5",
+      "text": "Discuss work progress in group meetings to update colleagues on task status.",
+      "source": "Environmental Economists",
+      "cluster_id": "af4d8dac-ef71-4cc8-9a8f-33d0b26ed521"
+    },
+    {
+      "id": "efdefeae-59b0-4770-8db4-d7d350593b6c",
+      "text": "Create and modify digital patterns for hospitality uniforms to produce base and adjusted patterns that meet fit, company, and client standards.",
+      "source": "Fabric and Apparel Patternmakers",
+      "cluster_id": "657ca456-1aa0-4de3-93f2-5a7cdec1fe88"
+    },
+    {
+      "id": "d16dcf69-25f6-44fb-b03b-72ba72c2cdb7",
+      "text": "Develop digital samples of hospitality uniforms to visualize patterns for new clothing lines.",
+      "source": "Fabric and Apparel Patternmakers",
+      "cluster_id": "657ca456-1aa0-4de3-93f2-5a7cdec1fe88"
+    },
+    {
+      "id": "a5935a1d-85f1-45eb-912a-82937ab3eee7",
+      "text": "Update sample library records in Excel to maintain sample documentation.",
+      "source": "Fabric and Apparel Patternmakers",
+      "cluster_id": "4e670a7f-7a54-43b9-8423-81fa8b7d6599"
+    },
+    {
+      "id": "a9d77fe7-dc9d-43cd-996c-e36abca4cdfe",
+      "text": "Generate concept images to prepare visual concepts for final realization.",
+      "source": "Graphic Designers",
+      "cluster_id": "b64f38c9-67ae-4a8b-a725-2eea3b76c746"
+    },
+    {
+      "id": "605af9b0-05dd-4f9b-bfc4-f2bcefbdfdc6",
+      "text": "Revise project concept writing to improve the quality and clarity of creative concepts.",
+      "source": "Graphic Designers",
+      "cluster_id": "3a0b71b7-e68b-48b8-ad19-1c6dd9a78d7f"
+    },
+    {
+      "id": "27985c00-6e24-42a4-859c-e19b4042ee48",
+      "text": "Share AI prompt examples with team members to build shared AI prompting skills.",
+      "source": "Graphic Designers",
+      "cluster_id": "af4d8dac-ef71-4cc8-9a8f-33d0b26ed521"
+    },
+    {
+      "id": "62e64458-ae9e-4753-8df1-1261a2530226",
+      "text": "Answer employee questions about vacation balances to resolve leave balance inquiries.",
+      "source": "Human Resources Specialists",
+      "cluster_id": ""
+    },
+    {
+      "id": "c7a185bb-d56a-4680-b907-04d69f240b60",
+      "text": "Update employee records in HRIS to keep payroll data current.",
+      "source": "Human Resources Specialists",
+      "cluster_id": "1ce525f9-0ed0-42c7-8824-3fe61f5d44f7"
+    },
+    {
+      "id": "b62b5aa3-1df9-4a3c-b03d-76e89a498c8e",
+      "text": "Recruit candidates to fill open positions.",
+      "source": "Human Resources Specialists",
+      "cluster_id": ""
+    },
+    {
+      "id": "07c47756-10f0-4d49-acc1-bb5e458adb20",
+      "text": "Create budgeting calculations to support HR planning and analysis.",
+      "source": "Human Resources Specialists",
+      "cluster_id": "b4276167-2ea0-450c-bc6f-1742516406ec"
+    },
+    {
+      "id": "d8bb19c4-9bb0-4955-8532-079ac9d8a00e",
+      "text": "Arrange social events to schedule gatherings for employees.",
+      "source": "Human Resources Specialists",
+      "cluster_id": "af4d8dac-ef71-4cc8-9a8f-33d0b26ed521"
+    },
+    {
+      "id": "23277c14-3938-4714-8878-fae617b73661",
+      "text": "Summarize academic research papers to extract and interpret their content.",
+      "source": "Life, Physical, and Social Science Technicians, All Other",
+      "cluster_id": "5bd369c8-98f3-4c20-bea9-42943d03ba9a"
+    },
+    {
+      "id": "aa036b3e-9373-4705-9fec-073e1614681b",
+      "text": "Generate draft code and command-line scripts to create initial research models and set up research environments.",
+      "source": "Life, Physical, and Social Science Technicians, All Other",
+      "cluster_id": "69e27968-e4a9-488f-80ec-fdfefe4f9732"
+    },
+    {
+      "id": "8ba21b3a-6554-48ef-8455-ee8abe14e2e6",
+      "text": "Debug code to identify and resolve errors in code.",
+      "source": "Life, Physical, and Social Science Technicians, All Other",
+      "cluster_id": "1956fc15-8bc6-4c09-bba1-e118e8c201cc"
+    },
+    {
+      "id": "d59cf857-ce3a-452e-9c0e-11756b7715ba",
+      "text": "Prompt AI tools with research and coding questions to obtain clearer and more relevant responses.",
+      "source": "Life, Physical, and Social Science Technicians, All Other",
+      "cluster_id": "118ed2f6-80f5-4476-a79d-3a6ebba0959f"
+    },
+    {
+      "id": "7eb3e4e3-f7ff-47d4-8ce8-c8d989a8c7bb",
+      "text": "Check inventory levels and outstanding orders across sales channels to flag shortages, overstock risks, and data discrepancies.",
+      "source": "Logisticians",
+      "cluster_id": "b4276167-2ea0-450c-bc6f-1742516406ec"
+    },
+    {
+      "id": "05aa8c08-fce3-43b4-84b3-0dbd5d611f33",
+      "text": "Record operational issues and follow-up actions to track resolution and prevent recurrence.",
+      "source": "Logisticians",
+      "cluster_id": "b054a07b-9762-4f4f-a316-35f336f253f9"
+    },
+    {
+      "id": "b86b2627-be46-4448-8628-e24a9f2545bb",
+      "text": "Review shipment and transaction documentation to verify completeness and accuracy for shipment release and archive records.",
+      "source": "Logisticians",
+      "cluster_id": ""
+    },
+    {
+      "id": "d4ccc721-e0aa-48b4-b468-d4e7b57d3de8",
+      "text": "Develop documentation requirements for transaction types to provide clearer processing guidelines and reduce documentation errors.",
+      "source": "Logisticians",
+      "cluster_id": "b054a07b-9762-4f4f-a316-35f336f253f9"
+    },
+    {
+      "id": "7cdad901-692b-45c9-b23d-598e47180237",
+      "text": "Communicate item availability, procurement timelines, production schedules, and fulfilment status with suppliers and warehouse staff to clarify requirements and address operational issues.",
+      "source": "Logisticians",
+      "cluster_id": "af4d8dac-ef71-4cc8-9a8f-33d0b26ed521"
+    },
+    {
+      "id": "271b3ddc-ba75-476d-aa47-1c8c212104db",
+      "text": "Resolve operational exceptions such as delayed shipments, inventory discrepancies, and order changes to propose corrective actions.",
+      "source": "Logisticians",
+      "cluster_id": "b4276167-2ea0-450c-bc6f-1742516406ec"
+    },
+    {
+      "id": "06a49959-7a6f-43ae-b8d2-6ff12f3b0429",
+      "text": "Create localized online launch strategies for APAC products to tailor channel plans to local market requirements.",
+      "source": "Marketing Managers",
+      "cluster_id": "3a0b71b7-e68b-48b8-ad19-1c6dd9a78d7f"
+    },
+    {
+      "id": "41f4f702-7e94-467e-98de-e7e59b1ffa65",
+      "text": "Compile business performance data from multiple platforms to report APAC online business status to vice presidents and the global team.",
+      "source": "Marketing Managers",
+      "cluster_id": "b4276167-2ea0-450c-bc6f-1742516406ec"
+    },
+    {
+      "id": "558dce08-5fff-43fc-bb97-07f8ce9eecb0",
+      "text": "Analyze APAC market data, traffic performance reports, and budget information to identify risks and opportunities for sales target planning.",
+      "source": "Marketing Managers",
+      "cluster_id": "b4276167-2ea0-450c-bc6f-1742516406ec"
+    },
+    {
+      "id": "9a0add42-7f42-47f1-82bb-0e2e7b070ace",
+      "text": "Create photoshoot briefs for gifting platforms to guide locally relevant and brand-aligned creative production.",
+      "source": "Marketing Managers",
+      "cluster_id": "06d71fff-817f-496f-ae72-edf48728225a"
+    },
+    {
+      "id": "3682bc9c-35c3-4023-a3c7-41956cd765da",
+      "text": "Analyze clinical and financial revenue data to identify missed items, explain charge-to-income trends, and flag abnormalities.",
+      "source": "Medical and Health Services Managers",
+      "cluster_id": "b4276167-2ea0-450c-bc6f-1742516406ec"
+    },
+    {
+      "id": "1d9db083-f137-44cc-bb86-5960edd3153e",
+      "text": "Reword email messages and summarize work communications to produce professional and concise team correspondence.",
+      "source": "Medical and Health Services Managers",
+      "cluster_id": "642dfc1c-c964-4afc-940a-9f5296bf6ad2"
+    },
+    {
+      "id": "59a43737-2578-49e5-a411-a812c897d48a",
+      "text": "Develop submission forms in Formstack to implement and refine contracting workflows.",
+      "source": "Medical and Health Services Managers",
+      "cluster_id": "ad3aedee-3e10-441a-9c49-d5dda0ec7b7d"
+    },
+    {
+      "id": "60a2cd6c-5c5a-43fd-9d08-2dbf117f3e61",
+      "text": "Conduct client evaluations to assess psychological status and inform case understanding.",
+      "source": "Psychologists, All Other",
+      "cluster_id": ""
+    },
+    {
+      "id": "536f8bfc-300d-4d0c-a75b-1de8c73f51da",
+      "text": "Write research papers to contribute findings to the field.",
+      "source": "Psychologists, All Other",
+      "cluster_id": "e6332e96-6cbe-40b5-a6a5-550cc9dfb369"
+    },
+    {
+      "id": "7dfc4ac2-81af-473a-b6c7-56a5f27861b4",
+      "text": "Analyze research data to generate research results.",
+      "source": "Psychologists, All Other",
+      "cluster_id": "b4276167-2ea0-450c-bc6f-1742516406ec"
+    },
+    {
+      "id": "25c481ff-7425-4df8-b706-03bd2312c022",
+      "text": "Create lesson plans and course slides to prepare for teaching forensic psychology classes.",
+      "source": "Psychologists, All Other",
+      "cluster_id": "ba90d088-e686-4f08-9071-8d6741933d0e"
+    },
+    {
+      "id": "7cf9d1c1-f48c-4688-ac41-5b1fdb2039a7",
+      "text": "Grade student assignments to assess learning and provide feedback.",
+      "source": "Psychologists, All Other",
+      "cluster_id": "2e631cc7-5789-4dcd-9b20-4a749cbb186b"
+    },
+    {
+      "id": "ab930919-9e57-424e-b57e-35b8c5a76f49",
+      "text": "Follow up on B2G and B2B leads to identify potential clients needing training.",
+      "source": "Sales Representatives of Services, Except Advertising, Insurance, Financial Services, and Travel",
+      "cluster_id": "642dfc1c-c964-4afc-940a-9f5296bf6ad2"
+    },
+    {
+      "id": "a1a00c96-ab46-4683-8d30-e76693fce0b2",
+      "text": "Attend networking events to generate new leads.",
+      "source": "Sales Representatives of Services, Except Advertising, Insurance, Financial Services, and Travel",
+      "cluster_id": ""
+    },
+    {
+      "id": "b4c255d3-139b-4e35-af47-598928b2dbd8",
+      "text": "Prepare client proposals and offering letters to speed proposal creation and complete submissions on time.",
+      "source": "Sales Representatives of Services, Except Advertising, Insurance, Financial Services, and Travel",
+      "cluster_id": ""
+    },
+    {
+      "id": "e205fa90-1857-46ca-8708-5aecfbb73492",
+      "text": "Compile daily store sales data to provide an overview of sales performance.",
+      "source": "Sales Representatives, Wholesale and Manufacturing, Except Technical and Scientific Products",
+      "cluster_id": "b4276167-2ea0-450c-bc6f-1742516406ec"
+    },
+    {
+      "id": "c6c7a21d-dbf3-462b-84a6-5e6198d49ea8",
+      "text": "Translate documents between Chinese, English, and Indonesian to produce multilingual business documentation.",
+      "source": "Sales Representatives, Wholesale and Manufacturing, Except Technical and Scientific Products",
+      "cluster_id": "f668a2f7-c2aa-4475-857b-0ef3f1825be7"
+    },
+    {
+      "id": "67da509f-cd8e-4a47-9366-79ca8b61cd91",
+      "text": "Interpret spoken communication between Chinese, English, and Indonesian during meetings and presentations to provide accurate understanding among stakeholders.",
+      "source": "Sales Representatives, Wholesale and Manufacturing, Except Technical and Scientific Products",
+      "cluster_id": "af4d8dac-ef71-4cc8-9a8f-33d0b26ed521"
+    },
+    {
+      "id": "0ce04ef7-1ac3-42ea-ad1b-9083dadb096d",
+      "text": "Negotiate business-to-business agreements, including MOUs, work contracts, and NDAs to finalize operational terms with counterparties.",
+      "source": "Sales Representatives, Wholesale and Manufacturing, Except Technical and Scientific Products",
+      "cluster_id": "f0bb4c79-9afc-46ac-9acb-5fdeb364932d"
+    },
+    {
+      "id": "a1691942-1d63-460b-8df3-fcd0eac590fe",
+      "text": "Track number of customers entering stores to provide footfall data.",
+      "source": "Sales Representatives, Wholesale and Manufacturing, Except Technical and Scientific Products",
+      "cluster_id": "2e959829-ba88-47ba-b87c-8b8e9a2ca92c"
+    },
+    {
+      "id": "fa56c575-537c-44e4-833e-d7a8f5b8a374",
+      "text": "Prioritize urgent paperwork to organize tasks based on urgency.",
+      "source": "Secretaries and Administrative Assistants, Except Legal, Medical, and Executive",
+      "cluster_id": "1ce525f9-0ed0-42c7-8824-3fe61f5d44f7"
+    },
+    {
+      "id": "2b37d63d-0a5a-4bba-9c55-cc96d532a6b5",
+      "text": "Create spreadsheets to compile information for repeated administrative tasks.",
+      "source": "Secretaries and Administrative Assistants, Except Legal, Medical, and Executive",
+      "cluster_id": "4e670a7f-7a54-43b9-8423-81fa8b7d6599"
+    },
+    {
+      "id": "0ca0aae7-f83d-4dac-89a2-0ff77ca93a73",
+      "text": "Watch training materials and take notes to prepare standard operating procedures.",
+      "source": "Secretaries and Administrative Assistants, Except Legal, Medical, and Executive",
+      "cluster_id": "f668a2f7-c2aa-4475-857b-0ef3f1825be7"
+    },
+    {
+      "id": "af9519fb-95dd-4196-8e75-8914f4d57179",
+      "text": "Research documentation requirements by contacting government offices and compile the findings into a PDF for future reference.",
+      "source": "Secretaries and Administrative Assistants, Except Legal, Medical, and Executive",
+      "cluster_id": ""
+    },
+    {
+      "id": "8c58b34f-4625-43cc-97b7-b9b79376f2da",
+      "text": "Research information using ChatGPT and review the generated content for accuracy before use.",
+      "source": "Secretaries and Administrative Assistants, Except Legal, Medical, and Executive",
+      "cluster_id": "2a50db9c-a2ae-4431-b811-9f8c013e6dc3"
+    },
+    {
+      "id": "43226d4e-0a29-4ce2-984b-3ca79cd488e9",
+      "text": "Onboard new clients to integrate them into the organization's services and processes.",
+      "source": "Social and Community Service Managers",
+      "cluster_id": "b054a07b-9762-4f4f-a316-35f336f253f9"
+    },
+    {
+      "id": "081296dc-ec3a-4e7d-a2fa-d521ae84183d",
+      "text": "Create and send organizational newsletters to communicate updates and information to stakeholders.",
+      "source": "Social and Community Service Managers",
+      "cluster_id": "7c3cfde0-b39f-479c-8c2c-4f745606ca50"
+    },
+    {
+      "id": "ba4f4365-b8b2-4a3b-97de-bba404ccaf43",
+      "text": "Input staff work hours for payroll to produce accurate and timely pay records.",
+      "source": "Social and Community Service Managers",
+      "cluster_id": "4e670a7f-7a54-43b9-8423-81fa8b7d6599"
+    },
+    {
+      "id": "9aa39db4-486c-4133-b2cc-fbce0f8d13f8",
+      "text": "Book venues and coordinate events to schedule organizational activities.",
+      "source": "Social and Community Service Managers",
+      "cluster_id": "b054a07b-9762-4f4f-a316-35f336f253f9"
+    },
+    {
+      "id": "c8010bc1-8335-4aa0-af54-b9f80b8f7bf1",
+      "text": "Create organizational policies to document compliance requirements and operating procedures.",
+      "source": "Social and Community Service Managers",
+      "cluster_id": "f668a2f7-c2aa-4475-857b-0ef3f1825be7"
+    },
+    {
+      "id": "46446db8-3812-4d3f-83ef-7fd637aa4117",
+      "text": "Write and debug software features to complete technical development tasks.",
+      "source": "Software Developers",
+      "cluster_id": ""
+    },
+    {
+      "id": "1779b17b-9e13-4880-b8fd-af4007b764ac",
+      "text": "Review architecture diagrams and technical documents with project teams to clarify technical details and identify missing elements.",
+      "source": "Software Developers",
+      "cluster_id": "af4d8dac-ef71-4cc8-9a8f-33d0b26ed521"
+    },
+    {
+      "id": "7cb9ac5a-aade-4988-9f6f-73f28d722a5c",
+      "text": "Execute ETL processes and data transfer jobs to load data for database and AI application development.",
+      "source": "Software Developers",
+      "cluster_id": "1a18f80d-e594-4ab7-b241-7b6ca237f922"
+    },
+    {
+      "id": "ad89c657-a4d2-4fc0-8584-da4bb0e0f0f4",
+      "text": "Gather and document client requirements and project changes in client meetings to define project boundaries and record shifting expectations.",
+      "source": "Software Developers",
+      "cluster_id": "af4d8dac-ef71-4cc8-9a8f-33d0b26ed521"
+    },
+    {
+      "id": "ee4dabc9-6cf2-4621-a00f-d73e395da9d6",
+      "text": "Migrate organizational test suites to align with team workflows and preserve codebase integrity.",
+      "source": "Software Developers",
+      "cluster_id": "ad3aedee-3e10-441a-9c49-d5dda0ec7b7d"
+    },
+    {
+      "id": "ede5cf4a-a2d8-458d-9461-b534be4c86ff",
+      "text": "Test code to verify correctness and production readiness.",
+      "source": "Software Developers",
+      "cluster_id": "ad3aedee-3e10-441a-9c49-d5dda0ec7b7d"
+    },
+    {
+      "id": "76572f93-2ac8-47af-a5b6-db4a0fea71e5",
+      "text": "Re-implement bulk DML plans in Unistore to enable pipelined constraint checks and bulk merges.",
+      "source": "Software Developers",
+      "cluster_id": "ad3aedee-3e10-441a-9c49-d5dda0ec7b7d"
+    },
+    {
+      "id": "1025e248-92ba-47e2-ad1d-70e6316788e1",
+      "text": "Redesign the bulk DML implementation and format bulk-operation data to reduce memory use and avoid unnecessary sorting overhead while meeting global sorting requirements.",
+      "source": "Software Developers",
+      "cluster_id": "ad3aedee-3e10-441a-9c49-d5dda0ec7b7d"
+    },
+    {
+      "id": "a4a01e2c-6f32-4cc8-a16b-ffe0f53f6b75",
+      "text": "Report project status to update the team on progress.",
+      "source": "Software Developers",
+      "cluster_id": "af4d8dac-ef71-4cc8-9a8f-33d0b26ed521"
+    },
+    {
+      "id": "9232e7c3-59f6-4416-a80c-52bb903535bf",
+      "text": "Research solar market conditions and competitor information to update sales strategies and customer approach methods.",
+      "source": "Solar Sales Representatives and Assessors",
+      "cluster_id": "b4276167-2ea0-450c-bc6f-1742516406ec"
+    },
+    {
+      "id": "f7c412c0-102b-40d3-856e-57eefb2401df",
+      "text": "Draft text replies to prospects to generate response suggestions for customer outreach.",
+      "source": "Solar Sales Representatives and Assessors",
+      "cluster_id": "2a50db9c-a2ae-4431-b811-9f8c013e6dc3"
+    },
+    {
+      "id": "1b257074-93bc-483d-bf8c-6c4b83a5154d",
+      "text": "Translate messages to Chinese colleagues to produce clearer multilingual communication.",
+      "source": "Solar Sales Representatives and Assessors",
+      "cluster_id": "e6332e96-6cbe-40b5-a6a5-550cc9dfb369"
+    },
+    {
+      "id": "77ef540d-02cb-48d7-9bd1-cb609367cb72",
+      "text": "Prepare personalized souvenirs for customers to add a personal touch to customer interactions.",
+      "source": "Solar Sales Representatives and Assessors",
+      "cluster_id": ""
+    },
+    {
+      "id": "c8c278ce-3eee-4d15-ad61-a4a1f2ebe61f",
+      "text": "Analyze employee skill development needs to identify appropriate training modules.",
+      "source": "Training and Development Specialists",
+      "cluster_id": "036b78b9-d4bf-454a-9dfb-ed4f4dd9783f"
+    },
+    {
+      "id": "2015f509-4fe9-4522-870a-42231db7a865",
+      "text": "Create training content such as e-learning modules, videos, software simulations, and scripts to produce instructional materials for employees and clients.",
+      "source": "Training and Development Specialists",
+      "cluster_id": "1fc44dbd-b052-40a1-ae14-6b8f351d8aa5"
+    },
+    {
+      "id": "b4865c0e-6e74-480e-bb08-8c227bd5ee70",
+      "text": "Review drafted training scripts with team members to verify content accuracy before publishing training materials.",
+      "source": "Training and Development Specialists",
+      "cluster_id": "f668a2f7-c2aa-4475-857b-0ef3f1825be7"
+    },
+    {
+      "id": "1de6d170-97e4-4023-bd8f-ea985f865f2d",
+      "text": "Record training videos from finalized scripts to produce educational content for clients and employees.",
+      "source": "Training and Development Specialists",
+      "cluster_id": "f668a2f7-c2aa-4475-857b-0ef3f1825be7"
+    },
+    {
+      "id": "edefa3d8-ce42-4d2b-b740-9bb325ad0316",
+      "text": "Plan webinar sessions to generate titles, topics, and key points for employee learning events.",
+      "source": "Training and Development Specialists",
+      "cluster_id": ""
+    },
+    {
+      "id": "34326ae0-6c5c-4dc4-a8e2-30639d96010f",
+      "text": "Gather information from software demo sessions to draft training scripts and materials.",
+      "source": "Training and Development Specialists",
+      "cluster_id": "f668a2f7-c2aa-4475-857b-0ef3f1825be7"
+    },
+    {
+      "id": "6f95192f-3b79-4aee-903f-db2a47504030",
+      "text": "Schedule needs analysis, content creation, and collaboration activities to organize training development work.",
+      "source": "Training and Development Specialists",
+      "cluster_id": "b054a07b-9762-4f4f-a316-35f336f253f9"
+    },
+    {
+      "id": "d3f3fd06-0979-432b-aaef-b40d3fb0a339",
+      "text": "Track inventory stock and SKUs in Google Sheets to maintain accurate inventory records.",
+      "source": "Wholesale and Retail Buyers, Except Farm Products",
+      "cluster_id": "4e670a7f-7a54-43b9-8423-81fa8b7d6599"
+    },
+    {
+      "id": "8be4298c-9e31-4bf9-ac5a-810bf0a68250",
+      "text": "Set merchandise prices based on real-time team updates to guide buying and selling decisions.",
+      "source": "Wholesale and Retail Buyers, Except Farm Products",
+      "cluster_id": "b4276167-2ea0-450c-bc6f-1742516406ec"
+    },
+    {
+      "id": "73c7fdbd-a30a-4116-8564-e856c02d79fb",
+      "text": "Coordinate foreign currency transactions with established agents to fulfill customer requests for balances such as USD or Alipay.",
+      "source": "Wholesale and Retail Buyers, Except Farm Products",
+      "cluster_id": "b054a07b-9762-4f4f-a316-35f336f253f9"
+    },
+    {
+      "id": "c434f9fd-8ee5-4086-a042-108f29b4e1aa",
+      "text": "Buy and sell digital game currency based on current market conditions to complete timely and profitable transactions.",
+      "source": "Wholesale and Retail Buyers, Except Farm Products",
+      "cluster_id": "036b78b9-d4bf-454a-9dfb-ed4f4dd9783f"
+    },
+    {
+      "id": "be667882-1e05-49ea-a025-ec40608b1cab",
+      "text": "Assign business function roles to team members to cover additional operations.",
+      "source": "Wholesale and Retail Buyers, Except Farm Products",
+      "cluster_id": "b054a07b-9762-4f4f-a316-35f336f253f9"
+    },
+    {
+      "id": "8015cb6f-94c1-4a47-a1b3-8307587ba548",
+      "text": "Capture gameplay footage from video games to provide source material for videos and guides.",
+      "source": "Writers and Authors",
+      "cluster_id": "1fc44dbd-b052-40a1-ae14-6b8f351d8aa5"
+    },
+    {
+      "id": "85ce736c-a88d-4ba3-8348-9116ed211336",
+      "text": "Edit gameplay clips into videos and guide content to produce engaging material for viewers.",
+      "source": "Writers and Authors",
+      "cluster_id": "1fc44dbd-b052-40a1-ae14-6b8f351d8aa5"
+    },
+    {
+      "id": "0e08016c-9e32-4895-87aa-495a0de899de",
+      "text": "Write game update guides and informational content to inform and assist viewers.",
+      "source": "Writers and Authors",
+      "cluster_id": "f668a2f7-c2aa-4475-857b-0ef3f1825be7"
+    },
+    {
+      "id": "8cf5774b-cae4-4708-8f26-39df055c2e3b",
+      "text": "Monitor community trends and memes to generate content ideas for relevant and engaging posts and videos.",
+      "source": "Writers and Authors",
+      "cluster_id": "b64f38c9-67ae-4a8b-a725-2eea3b76c746"
+    }
+  ],
+  "clusters": [
+    {
+      "id": "036b78b9-d4bf-454a-9dfb-ed4f4dd9783f",
+      "leader": "Analyze data and develop decision-support insights",
+      "level": 0,
+      "parent_id": null,
+      "children": [
+        "e495bba9-eba1-4e24-b7f0-0524389a1ff4",
+        "86ecbc9d-7eec-4a3b-851d-c0bb4af43757",
+        "fc840198-ddc7-4fc8-81d2-408439d63602",
+        "b4276167-2ea0-450c-bc6f-1742516406ec",
+        "5bd369c8-98f3-4c20-bea9-42943d03ba9a"
+      ],
+      "anchored": false,
+      "weight": 12.0
+    },
+    {
+      "id": "83cc6120-0052-4f11-ad2d-5cbf7063ec02",
+      "leader": "Design, implement, and evaluate technical experiments",
+      "level": 0,
+      "parent_id": null,
+      "children": [
+        "69e27968-e4a9-488f-80ec-fdfefe4f9732",
+        "d0dbfd33-1306-44b9-ab2a-67aace0cf8b5"
+      ],
+      "anchored": false,
+      "weight": 5.0
+    },
+    {
+      "id": "69e27968-e4a9-488f-80ec-fdfefe4f9732",
+      "leader": "Design and prototype technical solutions and experiments",
+      "level": 1,
+      "parent_id": "83cc6120-0052-4f11-ad2d-5cbf7063ec02",
+      "children": [],
+      "anchored": false,
+      "weight": 8.0
+    },
+    {
+      "id": "d0dbfd33-1306-44b9-ab2a-67aace0cf8b5",
+      "leader": "Experimental infrastructure and tracking",
+      "level": 1,
+      "parent_id": "83cc6120-0052-4f11-ad2d-5cbf7063ec02",
+      "children": [],
+      "anchored": false,
+      "weight": 3.0
+    },
+    {
+      "id": "e495bba9-eba1-4e24-b7f0-0524389a1ff4",
+      "leader": "Validate AI outputs",
+      "level": 1,
+      "parent_id": "036b78b9-d4bf-454a-9dfb-ed4f4dd9783f",
+      "children": [],
+      "anchored": false,
+      "weight": 2.0
+    },
+    {
+      "id": "86ecbc9d-7eec-4a3b-851d-c0bb4af43757",
+      "leader": "Assess research methods",
+      "level": 1,
+      "parent_id": "036b78b9-d4bf-454a-9dfb-ed4f4dd9783f",
+      "children": [],
+      "anchored": false,
+      "weight": 2.0
+    },
+    {
+      "id": "fc840198-ddc7-4fc8-81d2-408439d63602",
+      "leader": "Identify AI workflow opportunities",
+      "level": 1,
+      "parent_id": "036b78b9-d4bf-454a-9dfb-ed4f4dd9783f",
+      "children": [],
+      "anchored": false,
+      "weight": 1.0
+    },
+    {
+      "id": "f0bb4c79-9afc-46ac-9acb-5fdeb364932d",
+      "leader": "Coordinate with stakeholders on processes and requirements",
+      "level": 0,
+      "parent_id": null,
+      "children": [
+        "af4d8dac-ef71-4cc8-9a8f-33d0b26ed521",
+        "b054a07b-9762-4f4f-a316-35f336f253f9"
+      ],
+      "anchored": false,
+      "weight": 6.0
+    },
+    {
+      "id": "642dfc1c-c964-4afc-940a-9f5296bf6ad2",
+      "leader": "Respond to client and employee inquiries",
+      "level": 0,
+      "parent_id": null,
+      "children": [
+        "2989e71e-0407-4415-9882-f7021f5b0685",
+        "b32f76ba-954d-4001-9c10-a8a34f05fd12",
+        "8dce6b09-4c25-41c7-bcfc-f7f18bbee91f",
+        "eba1e334-dd71-484d-b9af-9bccae9a17b5"
+      ],
+      "anchored": false,
+      "weight": 7.0
+    },
+    {
+      "id": "b4276167-2ea0-450c-bc6f-1742516406ec",
+      "leader": "Analyze data and generate business insights",
+      "level": 1,
+      "parent_id": "036b78b9-d4bf-454a-9dfb-ed4f4dd9783f",
+      "children": [],
+      "anchored": false,
+      "weight": 14.0
+    },
+    {
+      "id": "5bd369c8-98f3-4c20-bea9-42943d03ba9a",
+      "leader": "Analyze and synthesize information into reports",
+      "level": 1,
+      "parent_id": "036b78b9-d4bf-454a-9dfb-ed4f4dd9783f",
+      "children": [],
+      "anchored": false,
+      "weight": 5.0
+    },
+    {
+      "id": "2e959829-ba88-47ba-b87c-8b8e9a2ca92c",
+      "leader": "Maintain and update organizational records",
+      "level": 0,
+      "parent_id": null,
+      "children": [
+        "74a34e54-04fe-4f1a-b35d-946f767431c8",
+        "4e670a7f-7a54-43b9-8423-81fa8b7d6599",
+        "1ce525f9-0ed0-42c7-8824-3fe61f5d44f7"
+      ],
+      "anchored": false,
+      "weight": 6.0
+    },
+    {
+      "id": "28f161dc-02ea-41b3-9248-15ba95d8cf4a",
+      "leader": "Plan and deliver instructional lessons and sessions",
+      "level": 0,
+      "parent_id": null,
+      "children": [
+        "2e631cc7-5789-4dcd-9b20-4a749cbb186b",
+        "4fa7fc55-cbb9-4c56-aa27-1296a88cc036",
+        "ba90d088-e686-4f08-9071-8d6741933d0e"
+      ],
+      "anchored": false,
+      "weight": 5.0
+    },
+    {
+      "id": "af4d8dac-ef71-4cc8-9a8f-33d0b26ed521",
+      "leader": "Coordinate with stakeholders to clarify requirements and progress",
+      "level": 1,
+      "parent_id": "f0bb4c79-9afc-46ac-9acb-5fdeb364932d",
+      "children": [],
+      "anchored": false,
+      "weight": 11.0
+    },
+    {
+      "id": "b054a07b-9762-4f4f-a316-35f336f253f9",
+      "leader": "Coordinate workflows and document operational processes",
+      "level": 1,
+      "parent_id": "f0bb4c79-9afc-46ac-9acb-5fdeb364932d",
+      "children": [],
+      "anchored": false,
+      "weight": 9.0
+    },
+    {
+      "id": "657ca456-1aa0-4de3-93f2-5a7cdec1fe88",
+      "leader": "Create and modify digital garment patterns",
+      "level": 0,
+      "parent_id": null,
+      "children": [],
+      "anchored": false,
+      "weight": 2.0
+    },
+    {
+      "id": "1fc44dbd-b052-40a1-ae14-6b8f351d8aa5",
+      "leader": "Develop creative concepts and supporting materials",
+      "level": 0,
+      "parent_id": null,
+      "children": [
+        "b64f38c9-67ae-4a8b-a725-2eea3b76c746",
+        "3a0b71b7-e68b-48b8-ad19-1c6dd9a78d7f",
+        "06d71fff-817f-496f-ae72-edf48728225a"
+      ],
+      "anchored": false,
+      "weight": 8.0
+    },
+    {
+      "id": "2989e71e-0407-4415-9882-f7021f5b0685",
+      "leader": "Client inquiry response",
+      "level": 1,
+      "parent_id": "642dfc1c-c964-4afc-940a-9f5296bf6ad2",
+      "children": [],
+      "anchored": false,
+      "weight": 2.0
+    },
+    {
+      "id": "b32f76ba-954d-4001-9c10-a8a34f05fd12",
+      "leader": "Client issue resolution",
+      "level": 1,
+      "parent_id": "642dfc1c-c964-4afc-940a-9f5296bf6ad2",
+      "children": [],
+      "anchored": false,
+      "weight": 1.0
+    },
+    {
+      "id": "8dce6b09-4c25-41c7-bcfc-f7f18bbee91f",
+      "leader": "Client career advising",
+      "level": 1,
+      "parent_id": "642dfc1c-c964-4afc-940a-9f5296bf6ad2",
+      "children": [],
+      "anchored": false,
+      "weight": 1.0
+    },
+    {
+      "id": "eba1e334-dd71-484d-b9af-9bccae9a17b5",
+      "leader": "Employee leave inquiries",
+      "level": 1,
+      "parent_id": "642dfc1c-c964-4afc-940a-9f5296bf6ad2",
+      "children": [],
+      "anchored": false,
+      "weight": 1.0
+    },
+    {
+      "id": "1a18f80d-e594-4ab7-b241-7b6ca237f922",
+      "leader": "Develop and debug software systems",
+      "level": 0,
+      "parent_id": null,
+      "children": [
+        "ad3aedee-3e10-441a-9c49-d5dda0ec7b7d",
+        "1956fc15-8bc6-4c09-bba1-e118e8c201cc",
+        "118ed2f6-80f5-4476-a79d-3a6ebba0959f"
+      ],
+      "anchored": false,
+      "weight": 6.0
+    },
+    {
+      "id": "74a34e54-04fe-4f1a-b35d-946f767431c8",
+      "leader": "Client and case record entry",
+      "level": 1,
+      "parent_id": "2e959829-ba88-47ba-b87c-8b8e9a2ca92c",
+      "children": [],
+      "anchored": false,
+      "weight": 2.0
+    },
+    {
+      "id": "4e670a7f-7a54-43b9-8423-81fa8b7d6599",
+      "leader": "Enter and update administrative records",
+      "level": 1,
+      "parent_id": "2e959829-ba88-47ba-b87c-8b8e9a2ca92c",
+      "children": [],
+      "anchored": false,
+      "weight": 5.0
+    },
+    {
+      "id": "1ce525f9-0ed0-42c7-8824-3fe61f5d44f7",
+      "leader": "Documentation review and archiving",
+      "level": 1,
+      "parent_id": "2e959829-ba88-47ba-b87c-8b8e9a2ca92c",
+      "children": [],
+      "anchored": false,
+      "weight": 2.0
+    },
+    {
+      "id": "7c3cfde0-b39f-479c-8c2c-4f745606ca50",
+      "leader": "Write, translate, and compile documentation",
+      "level": 0,
+      "parent_id": null,
+      "children": [
+        "2a50db9c-a2ae-4431-b811-9f8c013e6dc3",
+        "e6332e96-6cbe-40b5-a6a5-550cc9dfb369",
+        "f668a2f7-c2aa-4475-857b-0ef3f1825be7"
+      ],
+      "anchored": false,
+      "weight": 6.0
+    },
+    {
+      "id": "2a50db9c-a2ae-4431-b811-9f8c013e6dc3",
+      "leader": "Research writing",
+      "level": 1,
+      "parent_id": "7c3cfde0-b39f-479c-8c2c-4f745606ca50",
+      "children": [],
+      "anchored": false,
+      "weight": 4.0
+    },
+    {
+      "id": "e6332e96-6cbe-40b5-a6a5-550cc9dfb369",
+      "leader": "Document translation",
+      "level": 1,
+      "parent_id": "7c3cfde0-b39f-479c-8c2c-4f745606ca50",
+      "children": [],
+      "anchored": false,
+      "weight": 2.0
+    },
+    {
+      "id": "f668a2f7-c2aa-4475-857b-0ef3f1825be7",
+      "leader": "Develop training materials and operational documentation",
+      "level": 1,
+      "parent_id": "7c3cfde0-b39f-479c-8c2c-4f745606ca50",
+      "children": [],
+      "anchored": false,
+      "weight": 7.0
+    },
+    {
+      "id": "ad3aedee-3e10-441a-9c49-d5dda0ec7b7d",
+      "leader": "Develop and test software systems",
+      "level": 1,
+      "parent_id": "1a18f80d-e594-4ab7-b241-7b6ca237f922",
+      "children": [],
+      "anchored": false,
+      "weight": 7.0
+    },
+    {
+      "id": "1956fc15-8bc6-4c09-bba1-e118e8c201cc",
+      "leader": "AI-assisted coding research",
+      "level": 1,
+      "parent_id": "1a18f80d-e594-4ab7-b241-7b6ca237f922",
+      "children": [],
+      "anchored": false,
+      "weight": 1.0
+    },
+    {
+      "id": "118ed2f6-80f5-4476-a79d-3a6ebba0959f",
+      "leader": "Workflow form development",
+      "level": 1,
+      "parent_id": "1a18f80d-e594-4ab7-b241-7b6ca237f922",
+      "children": [],
+      "anchored": false,
+      "weight": 1.0
+    },
+    {
+      "id": "b64f38c9-67ae-4a8b-a725-2eea3b76c746",
+      "leader": "Creative concept development",
+      "level": 1,
+      "parent_id": "1fc44dbd-b052-40a1-ae14-6b8f351d8aa5",
+      "children": [],
+      "anchored": false,
+      "weight": 3.0
+    },
+    {
+      "id": "3a0b71b7-e68b-48b8-ad19-1c6dd9a78d7f",
+      "leader": "Localized campaign planning",
+      "level": 1,
+      "parent_id": "1fc44dbd-b052-40a1-ae14-6b8f351d8aa5",
+      "children": [],
+      "anchored": false,
+      "weight": 2.0
+    },
+    {
+      "id": "06d71fff-817f-496f-ae72-edf48728225a",
+      "leader": "Personalized customer materials",
+      "level": 1,
+      "parent_id": "1fc44dbd-b052-40a1-ae14-6b8f351d8aa5",
+      "children": [],
+      "anchored": false,
+      "weight": 1.0
+    },
+    {
+      "id": "2e631cc7-5789-4dcd-9b20-4a749cbb186b",
+      "leader": "Lesson and session planning",
+      "level": 1,
+      "parent_id": "28f161dc-02ea-41b3-9248-15ba95d8cf4a",
+      "children": [],
+      "anchored": false,
+      "weight": 3.0
+    },
+    {
+      "id": "4fa7fc55-cbb9-4c56-aa27-1296a88cc036",
+      "leader": "Instructional session delivery",
+      "level": 1,
+      "parent_id": "28f161dc-02ea-41b3-9248-15ba95d8cf4a",
+      "children": [],
+      "anchored": false,
+      "weight": 1.0
+    },
+    {
+      "id": "ba90d088-e686-4f08-9071-8d6741933d0e",
+      "leader": "Student assessment and feedback",
+      "level": 1,
+      "parent_id": "28f161dc-02ea-41b3-9248-15ba95d8cf4a",
+      "children": [],
+      "anchored": false,
+      "weight": 1.0
+    }
+  ],
+  "root_ids": [
+    "036b78b9-d4bf-454a-9dfb-ed4f4dd9783f",
+    "1fc44dbd-b052-40a1-ae14-6b8f351d8aa5",
+    "642dfc1c-c964-4afc-940a-9f5296bf6ad2",
+    "f0bb4c79-9afc-46ac-9acb-5fdeb364932d",
+    "2e959829-ba88-47ba-b87c-8b8e9a2ca92c",
+    "1a18f80d-e594-4ab7-b241-7b6ca237f922",
+    "7c3cfde0-b39f-479c-8c2c-4f745606ca50",
+    "83cc6120-0052-4f11-ad2d-5cbf7063ec02",
+    "28f161dc-02ea-41b3-9248-15ba95d8cf4a",
+    "657ca456-1aa0-4de3-93f2-5a7cdec1fe88"
+  ],
+  "orphaned": [
+    {
+      "id": "6155ede6-7eb8-4bf8-ad8c-c36d99c91773",
+      "text": "Look up Excel formulas to process data in Excel when the required formula is unknown.",
+      "source": "Computer User Support Specialists",
+      "cluster_id": ""
+    },
+    {
+      "id": "e18fbdb8-d794-4a52-8881-fc1c9d100036",
+      "text": "Provide business process context to AI tools to obtain support tailored to the subsidiary's business process.",
+      "source": "Computer User Support Specialists",
+      "cluster_id": ""
+    },
+    {
+      "id": "8e8cc224-fccc-49ac-9d09-925222d04aed",
+      "text": "Consult domain experts to identify research problems that can be addressed with AI methods.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": ""
+    },
+    {
+      "id": "5768390f-847a-455e-bba0-bc0ccaf8a186",
+      "text": "Annotate datasets to create ground-truth labels for model evaluation.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": ""
+    },
+    {
+      "id": "fabd4e8b-1106-420c-87ae-7023047c2abd",
+      "text": "Organize experimental results, model checkpoints, and configuration files to track ablation studies.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": ""
+    },
+    {
+      "id": "c2b03491-6628-4999-896c-4e748d75cb17",
+      "text": "Review pull requests to identify where AI assistance can be added to the development workflow.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": ""
+    },
+    {
+      "id": "608f49fc-34ee-43a6-b075-c62887d0e50c",
+      "text": "Resolve user issues on the peer review platform to restore platform functionality.",
+      "source": "Computer and Information Research Scientists",
+      "cluster_id": ""
+    },
+    {
+      "id": "0bba9274-ee83-4092-82bc-cd97a0b0958d",
+      "text": "Optimize launch metrics for AI products to evaluate launch decisions and planning options.",
+      "source": "Data Scientists",
+      "cluster_id": ""
+    },
+    {
+      "id": "f2764c9e-ca77-4b7b-a1d9-a8b6b5a9619d",
+      "text": "Develop data pipelines to implement requirements defined by business users and project managers.",
+      "source": "Data Warehousing Specialists",
+      "cluster_id": ""
+    },
+    {
+      "id": "6c6b17d9-fcd3-460c-915c-a0f870bc0874",
+      "text": "Learn new data engineering tools and technologies to stay current with field practices.",
+      "source": "Data Warehousing Specialists",
+      "cluster_id": ""
+    },
+    {
+      "id": "a5f1800f-ce3e-44f4-93f6-e4b983399dc5",
+      "text": "Schedule client appointments and meetings, including sending Zoom links or arranging in-person sessions, to confirm coaching and support sessions.",
+      "source": "Educational, Guidance, and Career Counselors and Advisors",
+      "cluster_id": ""
+    },
+    {
+      "id": "346dcbf1-ae5d-41c2-b2ed-2f0127a71b7c",
+      "text": "Deliver process documentation, templates, and on-the-job shadowing to train new staff for client support and administrative tasks.",
+      "source": "Educational, Guidance, and Career Counselors and Advisors",
+      "cluster_id": ""
+    },
+    {
+      "id": "a36a6cec-4c84-4f2d-9f0d-7c6bc55dfb35",
+      "text": "Attend IEP meetings with school staff and families to coordinate accommodations for students with special needs.",
+      "source": "Elementary School Teachers, Except Special Education",
+      "cluster_id": ""
+    },
+    {
+      "id": "e8bd52ec-d441-41ed-8bcf-5d39b71817b5",
+      "text": "Format Excel sheets to prepare deliverables.",
+      "source": "Environmental Economists",
+      "cluster_id": ""
+    },
+    {
+      "id": "62e64458-ae9e-4753-8df1-1261a2530226",
+      "text": "Answer employee questions about vacation balances to resolve leave balance inquiries.",
+      "source": "Human Resources Specialists",
+      "cluster_id": ""
+    },
+    {
+      "id": "b62b5aa3-1df9-4a3c-b03d-76e89a498c8e",
+      "text": "Recruit candidates to fill open positions.",
+      "source": "Human Resources Specialists",
+      "cluster_id": ""
+    },
+    {
+      "id": "b86b2627-be46-4448-8628-e24a9f2545bb",
+      "text": "Review shipment and transaction documentation to verify completeness and accuracy for shipment release and archive records.",
+      "source": "Logisticians",
+      "cluster_id": ""
+    },
+    {
+      "id": "60a2cd6c-5c5a-43fd-9d08-2dbf117f3e61",
+      "text": "Conduct client evaluations to assess psychological status and inform case understanding.",
+      "source": "Psychologists, All Other",
+      "cluster_id": ""
+    },
+    {
+      "id": "a1a00c96-ab46-4683-8d30-e76693fce0b2",
+      "text": "Attend networking events to generate new leads.",
+      "source": "Sales Representatives of Services, Except Advertising, Insurance, Financial Services, and Travel",
+      "cluster_id": ""
+    },
+    {
+      "id": "b4c255d3-139b-4e35-af47-598928b2dbd8",
+      "text": "Prepare client proposals and offering letters to speed proposal creation and complete submissions on time.",
+      "source": "Sales Representatives of Services, Except Advertising, Insurance, Financial Services, and Travel",
+      "cluster_id": ""
+    },
+    {
+      "id": "af9519fb-95dd-4196-8e75-8914f4d57179",
+      "text": "Research documentation requirements by contacting government offices and compile the findings into a PDF for future reference.",
+      "source": "Secretaries and Administrative Assistants, Except Legal, Medical, and Executive",
+      "cluster_id": ""
+    },
+    {
+      "id": "46446db8-3812-4d3f-83ef-7fd637aa4117",
+      "text": "Write and debug software features to complete technical development tasks.",
+      "source": "Software Developers",
+      "cluster_id": ""
+    },
+    {
+      "id": "77ef540d-02cb-48d7-9bd1-cb609367cb72",
+      "text": "Prepare personalized souvenirs for customers to add a personal touch to customer interactions.",
+      "source": "Solar Sales Representatives and Assessors",
+      "cluster_id": ""
+    },
+    {
+      "id": "edefa3d8-ce42-4d2b-b740-9bb325ad0316",
+      "text": "Plan webinar sessions to generate titles, topics, and key points for employee learning events.",
+      "source": "Training and Development Specialists",
+      "cluster_id": ""
+    }
+  ]
+};
+
+/* ── Build lookup tables ── */
+const clusterMap = {};
+DATA.clusters.forEach(c => clusterMap[c.id] = c);
+
+const itemsByCluster = {};
+DATA.items.forEach(item => {
+  if (!itemsByCluster[item.cluster_id]) itemsByCluster[item.cluster_id] = [];
+  itemsByCluster[item.cluster_id].push(item);
+});
+
+const orphaned = DATA.orphaned || [];
+
+const participantColor = {};
+DATA.participants.forEach((p, i) => participantColor[p] = COLORS[i % COLORS.length]);
+
+/* ── State ── */
+const active = new Set(DATA.participants);
+
+/* ── Render chips ── */
+function renderChips() {
+  const el = document.getElementById('chips');
+  el.innerHTML = '';
+  DATA.participants.forEach(p => {
+    const chip = document.createElement('label');
+    chip.className = 'chip ' + (active.has(p) ? 'active' : 'inactive');
+    chip.style.background = active.has(p) ? participantColor[p] : '';
+    chip.innerHTML = `<span class="dot" style="background:${active.has(p)?'#fff':participantColor[p]}"></span>${p}`;
+    chip.onclick = () => toggleParticipant(p);
+    el.appendChild(chip);
+  });
+}
+
+/* ── Toggle participant ── */
+function toggleParticipant(p) {
+  const wasBefore = snapshotCounts();
+  if (active.has(p)) active.delete(p); else active.add(p);
+  renderChips();
+  updateTree(wasBefore);
+  updateStats();
+}
+
+function snapshotCounts() {
+  const snap = {};
+  DATA.clusters.forEach(c => {
+    snap[c.id] = countActive(c.id);
+  });
+  return snap;
+}
+
+function countActive(clusterId) {
+  return (itemsByCluster[clusterId] || []).filter(i => active.has(i.source)).length;
+}
+
+/* ── Build tree DOM ── */
+function buildTree() {
+  const tree = document.getElementById('tree');
+  tree.innerHTML = '';
+  const hasTaxonomy = DATA.clusters.some(c => c.anchored);
+  DATA.root_ids.forEach(rid => {
+    tree.appendChild(buildRoot(rid, hasTaxonomy));
+  });
+  if (orphaned.length > 0) {
+    tree.appendChild(buildOrphanedCard());
+  }
+}
+
+function buildOrphanedCard() {
+  const card = document.createElement('div');
+  card.className = 'root-card';
+  card.id = 'card-orphaned';
+  card.style.borderColor = '#e0e0e0';
+
+  const header = document.createElement('div');
+  header.className = 'root-header';
+  header.innerHTML = `
+    <div class="root-label" style="color:#c0392b">Pruned / Uncategorized</div>
+    <div class="root-leader" style="color:#888;font-style:italic">Tasks whose clusters were removed by fading</div>
+    <div class="root-meta">
+      <span class="count-badge" id="badge-orphaned">${orphaned.length} tasks</span>
+    </div>
+  `;
+  const list = document.createElement('div');
+  list.className = 'items-list';
+  orphaned.forEach(item => list.appendChild(buildTaskItem(item)));
+  header.onclick = () => list.classList.toggle('open');
+  card.appendChild(header);
+  card.appendChild(list);
+  return card;
+}
+
+function buildRoot(rootId, hasTaxonomy) {
+  const c = clusterMap[rootId];
+  const children = (c.children || []).filter(cid => clusterMap[cid]);
+  const isNew = hasTaxonomy && !c.anchored;
+
+  const card = document.createElement('div');
+  card.className = 'root-card' + (isNew ? ' new-cluster' : '');
+  card.id = `card-${rootId}`;
+
+  /* header */
+  const header = document.createElement('div');
+  header.className = 'root-header';
+  const newBadge = isNew ? '<span class="new-badge">NEW</span>' : '';
+  header.innerHTML = `
+    <div class="root-label">Category${newBadge}</div>
+    <div class="root-leader">${c.leader}</div>
+    <div class="root-meta">
+      <span class="count-badge" id="badge-${rootId}">0 tasks</span>
+      <span id="pmeta-${rootId}"></span>
+    </div>
+    <div class="pbar" id="pbar-${rootId}"></div>
+  `;
+  header.onclick = () => {
+    const dl = card.querySelector('.direct-items-list');
+    if (dl) dl.classList.toggle('open');
+  };
+  card.appendChild(header);
+
+  /* direct items (assigned to root, not a child) */
+  const directItems = (itemsByCluster[rootId] || []);
+  if (directItems.length > 0) {
+    const section = document.createElement('div');
+    section.className = 'direct-section';
+    section.innerHTML = `<div class="section-label">General (unassigned to sub-type)</div>`;
+    const list = document.createElement('div');
+    list.className = 'items-list direct-items-list';
+    directItems.forEach(item => {
+      list.appendChild(buildTaskItem(item));
+    });
+    section.appendChild(list);
+    card.appendChild(section);
+  }
+
+  /* children */
+  if (children.length > 0) {
+    const childContainer = document.createElement('div');
+    childContainer.className = 'children';
+    children.forEach(cid => childContainer.appendChild(buildChild(cid)));
+    card.appendChild(childContainer);
+  }
+
+  return card;
+}
+
+function buildChild(childId) {
+  const c = clusterMap[childId];
+  const card = document.createElement('div');
+  card.className = 'child-card';
+  card.id = `card-${childId}`;
+
+  const header = document.createElement('div');
+  header.className = 'child-header';
+  header.innerHTML = `
+    <div class="child-leader">${c.leader}</div>
+    <div class="child-meta">
+      <span class="count-badge" id="badge-${childId}">0 tasks</span>
+      <div class="pbar" id="pbar-${childId}" style="width:100%;height:5px;border-radius:3px;overflow:hidden;display:flex;background:#f0f0f0;"></div>
+    </div>
+  `;
+  const list = document.createElement('div');
+  list.className = 'items-list';
+  (itemsByCluster[childId] || []).forEach(item => list.appendChild(buildTaskItem(item)));
+  if (!itemsByCluster[childId]?.length) {
+    list.innerHTML = '<div class="empty-msg">No tasks assigned</div>';
+  }
+
+  header.onclick = () => list.classList.toggle('open');
+  card.appendChild(header);
+  card.appendChild(list);
+  return card;
+}
+
+function buildTaskItem(item) {
+  const el = document.createElement('div');
+  el.className = 'task-item';
+  el.id = `item-${item.id}`;
+  el.innerHTML = `
+    <span class="src-dot" style="background:${participantColor[item.source] || '#ccc'}"></span>
+    <span class="task-body">
+      <span class="task-text">${item.text}</span>
+      <span class="task-src">${item.source}</span>
+    </span>
+  `;
+  return el;
+}
+
+/* ── Update tree after toggle ── */
+function updateTree(prevCounts) {
+  DATA.items.forEach(item => {
+    const el = document.getElementById(`item-${item.id}`);
+    if (!el) return;
+    el.classList.toggle('hidden', !active.has(item.source));
+  });
+
+  DATA.clusters.forEach(c => {
+    const count = countActive(c.id);
+    const prev  = prevCounts ? (prevCounts[c.id] || 0) : -1;
+
+    /* badge */
+    const badge = document.getElementById(`badge-${c.id}`);
+    if (badge) {
+      badge.textContent = count === 1 ? '1 task' : `${count} tasks`;
+      badge.classList.toggle('changed', prev !== -1 && count !== prev);
+    }
+
+    /* participant bar */
+    updatePbar(c.id);
+
+    /* card fade */
+    const card = document.getElementById(`card-${c.id}`);
+    if (!card) return;
+    const wasEmpty = prev === 0;
+    const nowEmpty = count === 0;
+    card.classList.toggle('empty', nowEmpty);
+    if (!wasEmpty && nowEmpty && prev !== -1) card.classList.add('newly-empty');
+    if (wasEmpty  && !nowEmpty && prev !== -1) card.classList.add('newly-filled');
+    setTimeout(() => card.classList.remove('newly-empty','newly-filled'), 500);
+  });
+}
+
+function updatePbar(clusterId) {
+  const pbar = document.getElementById(`pbar-${clusterId}`);
+  if (!pbar) return;
+  const items = itemsByCluster[clusterId] || [];
+  const total = items.filter(i => active.has(i.source)).length;
+  if (total === 0) { pbar.innerHTML = ''; return; }
+
+  const counts = {};
+  items.forEach(i => { if (active.has(i.source)) counts[i.source] = (counts[i.source]||0)+1; });
+  pbar.innerHTML = Object.entries(counts).map(([src, n]) =>
+    `<div class="pbar-seg" style="width:${(n/total*100).toFixed(1)}%;background:${participantColor[src]||'#ccc'}"></div>`
+  ).join('');
+}
+
+function updateStats() {
+  const totalActive = DATA.items.filter(i => active.has(i.source)).length;
+  const activePeople = active.size;
+  document.getElementById('stats').textContent =
+    `${activePeople} of ${DATA.participants.length} participants · ${totalActive} of ${DATA.items.length} tasks shown`;
+}
+
+/* ── Init ── */
+renderChips();
+buildTree();
+updateTree(null);
+updateStats();
+</script>
+</body>
+</html>

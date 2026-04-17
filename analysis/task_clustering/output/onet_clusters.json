@@ -1,0 +1,2834 @@
+{
+  "clusters": {
+    "e477a016-0554-4cb4-983d-b91ee867be51": {
+      "id": "e477a016-0554-4cb4-983d-b91ee867be51",
+      "leader": "Develop and review instructional training materials",
+      "members": [],
+      "weight": 1.3397168281703664,
+      "last_updated": "2026-04-16T10:46:31.706503",
+      "created_at": "2026-04-16T10:46:31.706503",
+      "parent_id": null,
+      "children": [
+        "c329ea3e-937c-4cbf-bade-f637007b9c29",
+        "49f382d8-cd2d-4f1a-9afd-8ec55ba5e7d6"
+      ],
+      "level": 0,
+      "anchored": false
+    },
+    "c329ea3e-937c-4cbf-bade-f637007b9c29": {
+      "id": "c329ea3e-937c-4cbf-bade-f637007b9c29",
+      "leader": "Create training materials",
+      "members": [
+        "2c4f7b62-cc9a-4a09-a922-9443756ffb4d",
+        "3f5b7d14-a0dc-476e-88bf-8188717a3baf",
+        "0cf42966-4902-437a-8fa3-9ccee046d1e8"
+      ],
+      "weight": 0.8038300969022198,
+      "last_updated": "2026-04-16T10:50:15.405267",
+      "created_at": "2026-04-16T10:50:15.405267",
+      "parent_id": "e477a016-0554-4cb4-983d-b91ee867be51",
+      "children": [],
+      "level": 1,
+      "anchored": false
+    },
+    "49f382d8-cd2d-4f1a-9afd-8ec55ba5e7d6": {
+      "id": "49f382d8-cd2d-4f1a-9afd-8ec55ba5e7d6",
+      "leader": "Review and produce content",
+      "members": [
+        "2c4f7b62-cc9a-4a09-a922-9443756ffb4d",
+        "fe43a653-1791-446b-acf1-670ffb73b958"
+      ],
+      "weight": 0.5358867312681466,
+      "last_updated": "2026-04-16T10:50:15.405267",
+      "created_at": "2026-04-16T10:50:15.405267",
+      "parent_id": "e477a016-0554-4cb4-983d-b91ee867be51",
+      "children": [],
+      "level": 1,
+      "anchored": false
+    },
+    "d9e33946-7f47-4028-81c1-b393abc3fde2": {
+      "id": "d9e33946-7f47-4028-81c1-b393abc3fde2",
+      "leader": "Set prices and execute market trades",
+      "members": [
+        "46f1f3a6-4020-41de-b9f4-baf0b2d2c775",
+        "343c482f-84d9-4cdc-bdf3-72242cccd2b9"
+      ],
+      "weight": 1.0717734625362931,
+      "last_updated": "2026-04-16T10:46:31.706503",
+      "created_at": "2026-04-16T10:46:31.706503",
+      "parent_id": null,
+      "children": [],
+      "level": 0,
+      "anchored": false
+    },
+    "e25596c0-5556-4d9f-9574-1177fc56d9b0": {
+      "id": "e25596c0-5556-4d9f-9574-1177fc56d9b0",
+      "leader": "Capture and edit video content",
+      "members": [
+        "f48dd7e2-7c06-4c62-927d-434cecab8766",
+        "97c68884-1f58-4e71-ba76-65eb22dce40d"
+      ],
+      "weight": 1.0717734625362931,
+      "last_updated": "2026-04-16T10:46:31.706503",
+      "created_at": "2026-04-16T10:46:31.706503",
+      "parent_id": null,
+      "children": [],
+      "level": 0,
+      "anchored": false
+    }
+  },
+  "items": {
+    "72852970-6825-4462-b8fe-bca6a9fe2ff3": {
+      "id": "72852970-6825-4462-b8fe-bca6a9fe2ff3",
+      "text": "Look up Excel formulas to process data in Excel when the required formula is unknown.",
+      "source": "Computer User Support Specialists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "Excel formula lookup",
+        "source_count": 1,
+        "source_statements": [
+          "Ask AI tools for Excel formulas to efficiently process data in Excel when the required formula is unknown."
+        ],
+        "merge_type": "single",
+        "notes": "This is a distinct task focused on obtaining Excel formulas with AI assistance for data processing.",
+        "statement_parts": {
+          "action": "Look up",
+          "object": "Excel formulas",
+          "outcome": "to identify formulas needed to process data in Excel"
+        }
+      }
+    },
+    "8cc86f3e-4c4d-4e85-a293-4bd9c06b6f07": {
+      "id": "8cc86f3e-4c4d-4e85-a293-4bd9c06b6f07",
+      "text": "Provide business process context to AI tools to obtain support tailored to the subsidiary's business process.",
+      "source": "Computer User Support Specialists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "AI context setup",
+        "source_count": 1,
+        "source_statements": [
+          "Clarify the business context to AI tools before using them, to ensure the AI provides relevant support for the specific subsidiary's business process."
+        ],
+        "merge_type": "single",
+        "notes": "This statement describes a separate prompting task that prepares AI interactions by supplying business context.",
+        "statement_parts": {
+          "action": "Provide",
+          "object": "business process context",
+          "outcome": "to obtain support tailored to the subsidiary's business process"
+        }
+      }
+    },
+    "8075a995-69b0-4b82-920a-770852da8321": {
+      "id": "8075a995-69b0-4b82-920a-770852da8321",
+      "text": "Verify AI-generated answers by cross-checking, researching, and questioning the AI's reasoning, including providing screenshots when needed, to confirm the accuracy and logical validity of the output.",
+      "source": "Computer User Support Specialists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "AI answer verification",
+        "source_count": 1,
+        "source_statements": [
+          "Critically review AI-generated answers, especially for logic or coding tasks, by questioning the AI's reasoning and providing screenshots when answers appear incorrect.",
+          "Verify AI-generated answers by cross-checking and researching as needed, recognizing that the time spent is similar to traditional research methods."
+        ],
+        "merge_type": "partial_overlap",
+        "notes": "Both statements describe validating AI outputs. They were merged because they share the same core activity of checking AI-generated answers, while one adds methods such as questioning reasoning and supplying screenshots and the other adds cross-checking and research.",
+        "statement_parts": {
+          "action": "Verify",
+          "object": "AI-generated answers",
+          "outcome": "to confirm the accuracy and logical validity of the output"
+        }
+      }
+    },
+    "ea9abfda-f669-44ee-a1c4-08d89ea59377": {
+      "id": "ea9abfda-f669-44ee-a1c4-08d89ea59377",
+      "text": "Discuss work results and work processes with the team or management to obtain collaborative review and alignment.",
+      "source": "Computer User Support Specialists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "team work review",
+        "source_count": 1,
+        "source_statements": [
+          "Discuss the results and processes of work collaboratively with the team or management, regardless of whether AI tools were used."
+        ],
+        "merge_type": "single",
+        "notes": "This is a distinct communication task involving review of work outputs and processes with colleagues or management.",
+        "statement_parts": {
+          "action": "Discuss",
+          "object": "work results and work processes",
+          "outcome": "to obtain collaborative review and alignment"
+        }
+      }
+    },
+    "e3857a5c-1837-42f1-8787-acdcbb9fcf1a": {
+      "id": "e3857a5c-1837-42f1-8787-acdcbb9fcf1a",
+      "text": "Review research literature to identify relevant prior work and techniques.",
+      "source": "Computer and Information Research Scientists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "literature review",
+        "source_count": 2,
+        "source_statements": [
+          "Read current state-of-the-art research papers in AI and climate science to identify new techniques and ideas for improving climate prediction.",
+          "Sift through large volumes of new literature in the vision-language model (VLM) space to identify relevant papers for research.",
+          "Conduct independent research, including implementation, literature review, and brainstorming new ideas, using AI tools to increase productivity.",
+          "Use AI tools to conduct deep research before meetings with advisors to discuss prior works and assess feasibility of proposed research topics."
+        ],
+        "merge_type": "partial_overlap",
+        "notes": "Merged literature-scanning and prior-work review tasks across AI/climate and VLM contexts. AI tools were explicitly mentioned by one participant and can generalize to the broader review activity.",
+        "statement_parts": {
+          "action": "Review",
+          "object": "research literature",
+          "outcome": "to identify relevant prior work and techniques"
+        }
+      }
+    },
+    "de58f9fa-ce06-431e-be79-330c32a67f3e": {
+      "id": "de58f9fa-ce06-431e-be79-330c32a67f3e",
+      "text": "Compare and select AI methods for identified research problems to choose approaches for experimentation.",
+      "source": "Computer and Information Research Scientists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "method selection",
+        "source_count": 1,
+        "source_statements": [
+          "Survey, compare, and select AI techniques for adaptation and application to identified climate science problems."
+        ],
+        "merge_type": "single",
+        "notes": "Distinct from literature review because it focuses on evaluating candidate methods for a specific problem and deciding what to test.",
+        "statement_parts": {
+          "action": "Compare and select",
+          "object": "AI methods for identified research problems",
+          "outcome": "to choose approaches for experimentation"
+        }
+      }
+    },
+    "7db5bb67-6e25-4b35-8fe1-ef575989a054": {
+      "id": "7db5bb67-6e25-4b35-8fe1-ef575989a054",
+      "text": "Consult domain experts to identify research problems that can be addressed with AI methods.",
+      "source": "Computer and Information Research Scientists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "expert consultation",
+        "source_count": 1,
+        "source_statements": [
+          "Collaborate and communicate with climate science experts to identify key problems and challenges in the field that can be addressed using AI techniques."
+        ],
+        "merge_type": "single",
+        "notes": "Kept separate because it centers on eliciting problem definitions from experts rather than reviewing literature or selecting methods.",
+        "statement_parts": {
+          "action": "Consult",
+          "object": "domain experts",
+          "outcome": "to identify research problems that can be addressed with AI methods"
+        }
+      }
+    },
+    "fe8d0bf7-25e7-43d4-af8a-0a9b0badadb8": {
+      "id": "fe8d0bf7-25e7-43d4-af8a-0a9b0badadb8",
+      "text": "Design experiments and prototype model architectures to test research hypotheses and evaluate AI methods.",
+      "source": "Computer and Information Research Scientists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "experiment design",
+        "source_count": 3,
+        "source_statements": [
+          "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+          "Design experiments and explore new NLP architectures to ensure technical rigor in model evaluation frameworks.",
+          "Brainstorm and prototype new architectures for multimodal alignment or novel evaluation metrics to validate research hypotheses."
+        ],
+        "merge_type": "partial_overlap",
+        "notes": "Merged experiment design, execution, and architecture prototyping because all describe setting up and running research tests. Preserved both hypothesis-testing and evaluation aspects.",
+        "statement_parts": {
+          "action": "Design",
+          "object": "experiments and prototype model architectures",
+          "outcome": "to test research hypotheses and evaluate AI methods"
+        }
+      }
+    },
+    "07fe2bd6-ec01-47c3-9590-bad064cd50f6": {
+      "id": "07fe2bd6-ec01-47c3-9590-bad064cd50f6",
+      "text": "Write code for model training, inference, and research prototypes to produce runnable experimental systems.",
+      "source": "Computer and Information Research Scientists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "research coding",
+        "source_count": 4,
+        "source_statements": [
+          "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+          "Develop and run code for experiments, model inference, and training scripts to translate theoretical NLP concepts into tangible results.",
+          "Offload repetitive boilerplate coding, data preparation, and verification tasks to AI tools to reduce tedium and focus on research.",
+          "Perform coding tasks to solve problems in the context of AI research and product development."
+        ],
+        "merge_type": "partial_overlap",
+        "notes": "Merged coding tasks tied to AI research and experimentation. Included AI-assisted boilerplate coding as a variant of the same core activity.",
+        "statement_parts": {
+          "action": "Write",
+          "object": "code for model training, inference, and research prototypes",
+          "outcome": "to produce runnable experimental systems"
+        }
+      }
+    },
+    "d2153a9c-3057-4f11-9566-52400e6913fa": {
+      "id": "d2153a9c-3057-4f11-9566-52400e6913fa",
+      "text": "Debug research code and distributed systems to resolve failures in experimental and production workflows.",
+      "source": "Computer and Information Research Scientists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "code debugging",
+        "source_count": 2,
+        "source_statements": [
+          "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+          "Debug issues in large-scale distributed systems to ensure reliability and efficiency."
+        ],
+        "merge_type": "partial_overlap",
+        "notes": "Merged debugging activities because both involve diagnosing and fixing technical issues, while preserving that one occurs in research code and the other in distributed systems.",
+        "statement_parts": {
+          "action": "Debug",
+          "object": "research code and distributed systems",
+          "outcome": "to resolve failures in experimental and production workflows"
+        }
+      }
+    },
+    "75804cff-e2fc-4c76-a5e0-44750031a99f": {
+      "id": "75804cff-e2fc-4c76-a5e0-44750031a99f",
+      "text": "Analyze model outputs and platform data to identify patterns, biases, and decision-relevant findings.",
+      "source": "Computer and Information Research Scientists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "data analysis",
+        "source_count": 2,
+        "source_statements": [
+          "Analyze model outputs to identify patterns or biases that inform evaluation frameworks.",
+          "Perform data analysis on the peer review platform to support decision-making and improve platform outcomes.",
+          "Use AI tools to explore data, prototype solutions, and understand complex system behavior to work more efficiently and focus on higher-level problem solving."
+        ],
+        "merge_type": "partial_overlap",
+        "notes": "Merged analysis of model outputs, operational platform data, and AI-assisted data exploration because all involve examining data to extract actionable findings.",
+        "statement_parts": {
+          "action": "Analyze",
+          "object": "model outputs and platform data",
+          "outcome": "to identify patterns, biases, and decision-relevant findings"
+        }
+      }
+    },
+    "ff5fb2e1-002c-4b09-9651-b12d9ec976c1": {
+      "id": "ff5fb2e1-002c-4b09-9651-b12d9ec976c1",
+      "text": "Annotate datasets to create ground-truth labels for model evaluation.",
+      "source": "Computer and Information Research Scientists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "data annotation",
+        "source_count": 1,
+        "source_statements": [
+          "Handle data annotation workflows to ensure high-quality ground truth data for robust evaluations."
+        ],
+        "merge_type": "single",
+        "notes": "Distinct manual data-preparation task requiring labeling rather than analysis or coding.",
+        "statement_parts": {
+          "action": "Annotate",
+          "object": "datasets",
+          "outcome": "to create ground-truth labels for model evaluation"
+        }
+      }
+    },
+    "03a37713-1c82-4be9-ae4a-515677962a85": {
+      "id": "03a37713-1c82-4be9-ae4a-515677962a85",
+      "text": "Organize experimental results, model checkpoints, and configuration files to track ablation studies.",
+      "source": "Computer and Information Research Scientists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "experiment tracking",
+        "source_count": 1,
+        "source_statements": [
+          "Organize and manage experimental results, model checkpoints, and configuration files during ablation studies to facilitate actionable insights."
+        ],
+        "merge_type": "single",
+        "notes": "Kept separate because it is specifically about experiment artifact tracking with a named tool.",
+        "statement_parts": {
+          "action": "Organize",
+          "object": "experimental results, model checkpoints, and configuration files",
+          "outcome": "to track ablation studies"
+        }
+      }
+    },
+    "99b0a6f1-e0e3-48e5-9ec5-b8c82140776b": {
+      "id": "99b0a6f1-e0e3-48e5-9ec5-b8c82140776b",
+      "text": "Write research findings and experimental results in papers or documentation to record and communicate outcomes.",
+      "source": "Computer and Information Research Scientists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "research writing",
+        "source_count": 1,
+        "source_statements": [
+          "Write up research findings and results from experiments for documentation or publication."
+        ],
+        "merge_type": "single",
+        "notes": "Distinct dissemination task focused on producing written research outputs.",
+        "statement_parts": {
+          "action": "Write",
+          "object": "research findings and experimental results in papers or documentation",
+          "outcome": "to record and communicate outcomes"
+        }
+      }
+    },
+    "b32cb7a6-a6f7-432a-8a9b-fbcf8ded32cb": {
+      "id": "b32cb7a6-a6f7-432a-8a9b-fbcf8ded32cb",
+      "text": "Write code for large-scale distributed systems to deliver scalable and reliable system functionality.",
+      "source": "Computer and Information Research Scientists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "distributed systems coding",
+        "source_count": 1,
+        "source_statements": [
+          "Write and review code for distributed systems to improve scalability and reliability."
+        ],
+        "merge_type": "single",
+        "notes": "Kept separate from research coding because it targets distributed systems engineering rather than model experimentation.",
+        "statement_parts": {
+          "action": "Write",
+          "object": "code for large-scale distributed systems",
+          "outcome": "to deliver scalable and reliable system functionality"
+        }
+      }
+    },
+    "70b3fae0-db9f-444d-afdc-abfdded99fef": {
+      "id": "70b3fae0-db9f-444d-afdc-abfdded99fef",
+      "text": "Break down ambiguous technical problems into structured components to define implementation and design steps.",
+      "source": "Computer and Information Research Scientists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "problem decomposition",
+        "source_count": 1,
+        "source_statements": [
+          "Break down ambiguous or messy technical problems into structured components to enable problem-solving and system design."
+        ],
+        "merge_type": "single",
+        "notes": "Distinct analytical planning task that precedes coding or experimentation.",
+        "statement_parts": {
+          "action": "Break down",
+          "object": "ambiguous technical problems into structured components",
+          "outcome": "to define implementation and design steps"
+        }
+      }
+    },
+    "f63e5a7d-6cb6-4892-83a6-c642bae0ba85": {
+      "id": "f63e5a7d-6cb6-4892-83a6-c642bae0ba85",
+      "text": "Prototype natural-language interfaces for experiment data to enable users to query results in plain language.",
+      "source": "Computer and Information Research Scientists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "NL data interface",
+        "source_count": 1,
+        "source_statements": [
+          "Prototype AI-assisted interfaces for querying experiment data in natural language to reduce user friction and speed up data access."
+        ],
+        "merge_type": "single",
+        "notes": "Separate interface prototyping task with a specific user-facing artifact.",
+        "statement_parts": {
+          "action": "Prototype",
+          "object": "natural-language interfaces for experiment data",
+          "outcome": "to enable users to query results in plain language"
+        }
+      }
+    },
+    "0f8aa833-f158-463e-9d44-7aa43b87f2ad": {
+      "id": "0f8aa833-f158-463e-9d44-7aa43b87f2ad",
+      "text": "Develop large language models and training or inference methods to produce new AI capabilities.",
+      "source": "Computer and Information Research Scientists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "LLM development",
+        "source_count": 2,
+        "source_statements": [
+          "Develop new methods in large language model (LLM) training and inference, with a special focus on agentic workflow, to drive AI innovation.",
+          "Serve as a research associate to help build a large language model (LLM) for a university in the UAE."
+        ],
+        "merge_type": "partial_overlap",
+        "notes": "Merged building an LLM with developing new LLM training/inference methods because both center on creating LLM systems, though one emphasizes methodological innovation.",
+        "statement_parts": {
+          "action": "Develop",
+          "object": "large language models and training or inference methods",
+          "outcome": "to produce new AI capabilities"
+        }
+      }
+    },
+    "c9e08b43-98e1-4f81-89ce-c066392ddbf9": {
+      "id": "c9e08b43-98e1-4f81-89ce-c066392ddbf9",
+      "text": "Design agentic workflows for AI systems to make them reusable across applications.",
+      "source": "Computer and Information Research Scientists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "agent workflow design",
+        "source_count": 1,
+        "source_statements": [
+          "Design agentic workflows to ensure they can be scaled up easily across different applications."
+        ],
+        "merge_type": "single",
+        "notes": "Kept separate from LLM development and agent implementation because it focuses on workflow architecture.",
+        "statement_parts": {
+          "action": "Design",
+          "object": "agentic workflows for AI systems",
+          "outcome": "to make them reusable across applications"
+        }
+      }
+    },
+    "590eb12e-1854-4ff5-86b3-525b86485f43": {
+      "id": "590eb12e-1854-4ff5-86b3-525b86485f43",
+      "text": "Build conversational agents to deliver agent-based interactions.",
+      "source": "Computer and Information Research Scientists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "conversation agents",
+        "source_count": 1,
+        "source_statements": [
+          "Use agentic workflow to build conversation agents using a proprietary framework."
+        ],
+        "merge_type": "single",
+        "notes": "Distinct implementation task for a specific class of AI application.",
+        "statement_parts": {
+          "action": "Build",
+          "object": "conversational agents",
+          "outcome": "to deliver agent-based interactions"
+        }
+      }
+    },
+    "8b51ddd8-c0b3-422c-8a6e-c84b17a357dc": {
+      "id": "8b51ddd8-c0b3-422c-8a6e-c84b17a357dc",
+      "text": "Review pull requests to identify where AI assistance can be added to the development workflow.",
+      "source": "Computer and Information Research Scientists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "PR review",
+        "source_count": 1,
+        "source_statements": [
+          "Review pull requests (PR reviews), a repetitive and less enjoyable task, and identify opportunities where AI assistance could improve manageability."
+        ],
+        "merge_type": "single",
+        "notes": "Separate code-review task focused on process improvement opportunities.",
+        "statement_parts": {
+          "action": "Review",
+          "object": "pull requests",
+          "outcome": "to identify where AI assistance can be added to the development workflow"
+        }
+      }
+    },
+    "e56de609-9add-4c3c-94dd-40bea00b3e7b": {
+      "id": "e56de609-9add-4c3c-94dd-40bea00b3e7b",
+      "text": "Coordinate peer review platform workflows to keep review operations running smoothly.",
+      "source": "Computer and Information Research Scientists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "workflow coordination",
+        "source_count": 1,
+        "source_statements": [
+          "Manage workflows for a peer review platform to ensure smooth operation and support for an NLP organization."
+        ],
+        "merge_type": "single",
+        "notes": "Distinct operational coordination task tied to a platform rather than research or coding.",
+        "statement_parts": {
+          "action": "Coordinate",
+          "object": "peer review platform workflows",
+          "outcome": "to keep review operations running smoothly"
+        }
+      }
+    },
+    "f1ae5b20-060e-4ec5-aeb3-239f9f8de6b3": {
+      "id": "f1ae5b20-060e-4ec5-aeb3-239f9f8de6b3",
+      "text": "Resolve user issues on the peer review platform to restore platform functionality.",
+      "source": "Computer and Information Research Scientists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "user issue resolution",
+        "source_count": 1,
+        "source_statements": [
+          "Provide technical support for the peer review platform to resolve user issues and maintain platform functionality."
+        ],
+        "merge_type": "single",
+        "notes": "Kept separate because troubleshooting user-reported platform issues is different from workflow coordination or data analysis.",
+        "statement_parts": {
+          "action": "Resolve",
+          "object": "user issues on the peer review platform",
+          "outcome": "to restore platform functionality"
+        }
+      }
+    },
+    "28463289-a9d7-49c2-9550-fbe191224d6a": {
+      "id": "28463289-a9d7-49c2-9550-fbe191224d6a",
+      "text": "Enter and retrieve client and case records in the database system to maintain up-to-date information.",
+      "source": "Customer Service Representatives",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "record data management",
+        "source_count": 1,
+        "source_statements": [
+          "Input client and case data into the system to maintain up-to-date records.",
+          "Retrieve records from the database to provide information needed for client service activities."
+        ],
+        "merge_type": "partial_overlap",
+        "notes": "Merged two closely related record-management activities involving the same client and case information in the system/database. One focused on entering data and the other on retrieving it; both were preserved in a broader canonical task.",
+        "statement_parts": {
+          "action": "Enter and retrieve",
+          "object": "client and case records",
+          "outcome": "to maintain up-to-date information"
+        }
+      }
+    },
+    "fe1673ef-a5d3-417c-8cd4-e5db13317e94": {
+      "id": "fe1673ef-a5d3-417c-8cd4-e5db13317e94",
+      "text": "Respond to client emails and phone calls to address client needs and inquiries.",
+      "source": "Customer Service Representatives",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "client communications",
+        "source_count": 1,
+        "source_statements": [
+          "Answer 100-200 client emails and calls per day to address client needs and inquiries."
+        ],
+        "merge_type": "single",
+        "notes": "This communication task was distinct in method and volume and did not fully overlap with the other statements.",
+        "statement_parts": {
+          "action": "Respond",
+          "object": "client emails and phone calls",
+          "outcome": "to address client needs and inquiries"
+        }
+      }
+    },
+    "fb3c86ce-09e9-4abe-a330-f5608d07321b": {
+      "id": "fb3c86ce-09e9-4abe-a330-f5608d07321b",
+      "text": "Resolve client issues to address their concerns.",
+      "source": "Customer Service Representatives",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "issue resolution",
+        "source_count": 1,
+        "source_statements": [
+          "Make decisions on how to handle client issues in order to resolve their concerns."
+        ],
+        "merge_type": "single",
+        "notes": "Kept separate from responding to emails and calls because issue resolution is a broader service activity that may extend beyond initial communications.",
+        "statement_parts": {
+          "action": "Resolve",
+          "object": "client issues",
+          "outcome": "to address their concerns"
+        }
+      }
+    },
+    "82f4530c-a8c2-48cc-840f-64669c5155c1": {
+      "id": "82f4530c-a8c2-48cc-840f-64669c5155c1",
+      "text": "Summarize transcripts to streamline information processing.",
+      "source": "Customer Service Representatives",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "transcript summarization",
+        "source_count": 1,
+        "source_statements": [
+          "Use AI technology to summarize transcripts in order to streamline information processing."
+        ],
+        "merge_type": "single",
+        "notes": "This task involved a distinct document type and tool-assisted method, so it remained separate.",
+        "statement_parts": {
+          "action": "Summarize",
+          "object": "transcripts",
+          "outcome": "to streamline information processing"
+        }
+      }
+    },
+    "4a0fc4ff-9de8-4236-bdb7-2e360a7660e6": {
+      "id": "4a0fc4ff-9de8-4236-bdb7-2e360a7660e6",
+      "text": "Query existing data tables and columns to retrieve data for revenue opportunity estimates and operational analyses.",
+      "source": "Data Scientists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "SQL data retrieval",
+        "source_count": 2,
+        "source_statements": [
+          "Search for and identify the appropriate existing data tables and columns to estimate revenue opportunity for a new product.",
+          "Write SQL queries to retrieve and analyze data for operational tasks."
+        ],
+        "merge_type": "partial_overlap",
+        "notes": "Both statements describe locating and extracting relevant data from existing structured sources. The social media statement emphasizes identifying the right tables and columns for revenue estimation, while the technology statement specifies SQL and operational analysis. Merged into a broader data retrieval task that preserves both elements.",
+        "statement_parts": {
+          "action": "Query",
+          "object": "existing data tables and columns",
+          "outcome": "to retrieve data for revenue opportunity estimates and operational analyses"
+        }
+      }
+    },
+    "d1c92c8e-57cb-44a1-8e57-da5454bc4f64": {
+      "id": "d1c92c8e-57cb-44a1-8e57-da5454bc4f64",
+      "text": "Analyze data from multiple sources and model decision scenarios to inform strategic product and operational decisions.",
+      "source": "Data Scientists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "scenario data analysis",
+        "source_count": 2,
+        "source_statements": [
+          "Conduct flexible analyses and create multiple scenarios to adapt to possible changes in the product roadmap during organizational reorganizations.",
+          "Synthesize data from multiple sources to inform complex strategic decisions."
+        ],
+        "merge_type": "partial_overlap",
+        "notes": "These statements overlap in using analysis to guide decision-making. One focuses on flexible scenario analysis for roadmap changes, and the other on synthesizing multiple data sources for strategic decisions. Combined into a canonical task covering both scenario modeling and multi-source synthesis.",
+        "statement_parts": {
+          "action": "Analyze; Model",
+          "object": "data from multiple sources; decision scenarios",
+          "outcome": "to inform strategic product and operational decisions"
+        }
+      }
+    },
+    "85c11517-2ad3-48c0-a23c-88f57a78da80": {
+      "id": "85c11517-2ad3-48c0-a23c-88f57a78da80",
+      "text": "Build dashboards and adapt visualization methods to data sets to present timely information for decision-making.",
+      "source": "Data Scientists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "data visualization",
+        "source_count": 1,
+        "source_statements": [
+          "Build dashboards to visualize data and support operational work.",
+          "Adapt novel visualization methodologies to interesting data sets to support relevant and timely decisions."
+        ],
+        "merge_type": "partial_overlap",
+        "notes": "Both statements concern creating visual representations of data for decisions. One emphasizes dashboards for operational work, while the other adds adapting novel visualization methodologies. Merged into a broader visualization task.",
+        "statement_parts": {
+          "action": "Build; Adapt",
+          "object": "dashboards; visualization methods to data sets",
+          "outcome": "to present timely information for decision-making"
+        }
+      }
+    },
+    "b3d21a85-d4fa-4148-86cb-54ec867df4a9": {
+      "id": "b3d21a85-d4fa-4148-86cb-54ec867df4a9",
+      "text": "Optimize launch metrics for AI products to evaluate launch decisions and planning options.",
+      "source": "Data Scientists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "AI launch metrics",
+        "source_count": 1,
+        "source_statements": [
+          "Plan product launches involving AI by optimizing for specific metrics during decision-making."
+        ],
+        "merge_type": "single",
+        "notes": "This statement describes a distinct task focused on metric optimization in the context of AI product launch planning.",
+        "statement_parts": {
+          "action": "Optimize",
+          "object": "launch metrics for AI products",
+          "outcome": "to evaluate launch decisions and planning options"
+        }
+      }
+    },
+    "3e12b7c5-93c4-44f2-ae73-86a5d2f61591": {
+      "id": "3e12b7c5-93c4-44f2-ae73-86a5d2f61591",
+      "text": "Review teammate documentation to understand workflows and processes.",
+      "source": "Data Scientists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "documentation review",
+        "source_count": 1,
+        "source_statements": [
+          "Review documentation created by teammates and observe their organization to understand workflows and processes."
+        ],
+        "merge_type": "single",
+        "notes": "This is a standalone task centered on reading internal documentation to learn existing workflows.",
+        "statement_parts": {
+          "action": "Review",
+          "object": "teammate documentation",
+          "outcome": "to understand workflows and processes"
+        }
+      }
+    },
+    "e31705ff-3747-4fcc-aecb-a57eea6d8f62": {
+      "id": "e31705ff-3747-4fcc-aecb-a57eea6d8f62",
+      "text": "Develop data pipelines to implement requirements defined by business users and project managers.",
+      "source": "Data Warehousing Specialists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "pipeline development",
+        "source_count": 1,
+        "source_statements": [
+          "Independently develop data pipelines to meet project requirements set by business users and project managers."
+        ],
+        "merge_type": "single",
+        "notes": "This statement describes the core technical task of building data pipelines. It is distinct from planning meetings, troubleshooting, and professional learning.",
+        "statement_parts": {
+          "action": "Develop",
+          "object": "data pipelines",
+          "outcome": "to implement requirements defined by business users and project managers"
+        }
+      }
+    },
+    "d5470068-2bc4-4cc5-a4a0-5139794b653b": {
+      "id": "d5470068-2bc4-4cc5-a4a0-5139794b653b",
+      "text": "Meet business users and project managers to define timelines, requirements, and development strategies for data pipelines.",
+      "source": "Data Warehousing Specialists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "requirements meetings",
+        "source_count": 1,
+        "source_statements": [
+          "Participate in meetings with business users and project managers to discuss timelines, requirements, and strategies for data pipeline development."
+        ],
+        "merge_type": "single",
+        "notes": "This is a separate coordination and planning task focused on gathering requirements and aligning on delivery approach.",
+        "statement_parts": {
+          "action": "Meet",
+          "object": "business users and project managers",
+          "outcome": "to define timelines, requirements, and development strategies for data pipelines"
+        }
+      }
+    },
+    "1f688593-006c-44ab-a9f7-b1464715b174": {
+      "id": "1f688593-006c-44ab-a9f7-b1464715b174",
+      "text": "Troubleshoot data pipeline errors to resolve development issues and generate solution ideas.",
+      "source": "Data Warehousing Specialists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "pipeline troubleshooting",
+        "source_count": 1,
+        "source_statements": [
+          "Troubleshoot errors and issues in data pipelines using AI tools to assist in problem solving and ideation.",
+          "Use AI chatbots, including in-house developed tools, to automate and assist in problem solving during development tasks."
+        ],
+        "merge_type": "partial_overlap",
+        "notes": "Both statements describe using AI-based tools for problem solving during development. The troubleshooting statement is more specific to pipeline errors, while the chatbot statement adds the detail of AI chatbots and in-house tools. They were merged to preserve both the troubleshooting context and the named tool type.",
+        "statement_parts": {
+          "action": "Troubleshoot",
+          "object": "data pipeline errors",
+          "outcome": "to resolve development issues and generate solution ideas"
+        }
+      }
+    },
+    "2f41c0ca-fac3-4373-a342-a18834c1c2f9": {
+      "id": "2f41c0ca-fac3-4373-a342-a18834c1c2f9",
+      "text": "Learn new data engineering tools and technologies to stay current with field practices.",
+      "source": "Data Warehousing Specialists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "tool learning",
+        "source_count": 1,
+        "source_statements": [
+          "Allocate time to learning new tools and technologies to stay updated in the data engineering field."
+        ],
+        "merge_type": "single",
+        "notes": "This is a distinct professional development activity and does not overlap enough with the operational development tasks to merge.",
+        "statement_parts": {
+          "action": "Learn",
+          "object": "new data engineering tools and technologies",
+          "outcome": "to stay current with field practices"
+        }
+      }
+    },
+    "1c770b48-d4fa-46ce-a4ac-482a26c03bd0": {
+      "id": "1c770b48-d4fa-46ce-a4ac-482a26c03bd0",
+      "text": "Enter client registration information and case notes in the portal to maintain accurate program records for funding and tracking.",
+      "source": "Educational, Guidance, and Career Counselors and Advisors",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "client record entry",
+        "source_count": 1,
+        "source_statements": [
+          "Input client registration information and update case notes in the portal to maintain accurate records required for program funding and tracking."
+        ],
+        "merge_type": "single",
+        "notes": "This is a distinct administrative recordkeeping task involving data entry in a portal.",
+        "statement_parts": {
+          "action": "Enter",
+          "object": "client registration information and case notes",
+          "outcome": "to update program records in the portal"
+        }
+      }
+    },
+    "55cb61a8-a787-46c3-a0ae-55361ecb399d": {
+      "id": "55cb61a8-a787-46c3-a0ae-55361ecb399d",
+      "text": "Schedule client appointments and meetings, including sending Zoom links or arranging in-person sessions, to confirm coaching and support sessions.",
+      "source": "Educational, Guidance, and Career Counselors and Advisors",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "appointment scheduling",
+        "source_count": 1,
+        "source_statements": [
+          "Schedule appointments and coordinate meetings, including sending Zoom links or arranging in-person sessions, to facilitate client coaching and support."
+        ],
+        "merge_type": "single",
+        "notes": "This is a distinct scheduling and meeting-coordination task with specific logistics for virtual and in-person sessions.",
+        "statement_parts": {
+          "action": "Schedule",
+          "object": "client appointments and meetings",
+          "outcome": "to confirm coaching and support sessions"
+        }
+      }
+    },
+    "551d9617-d3c3-4113-9ae7-82f1227557cf": {
+      "id": "551d9617-d3c3-4113-9ae7-82f1227557cf",
+      "text": "Respond to client emails and meeting requests to address urgent client needs in a timely manner.",
+      "source": "Educational, Guidance, and Career Counselors and Advisors",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "client communications",
+        "source_count": 1,
+        "source_statements": [
+          "Prioritize and respond to client emails and meeting requests to address urgent client needs in a timely manner."
+        ],
+        "merge_type": "single",
+        "notes": "Although related to scheduling, this statement emphasizes triaging and responding to client communications rather than arranging sessions, so it remains separate.",
+        "statement_parts": {
+          "action": "Respond",
+          "object": "client emails and meeting requests",
+          "outcome": "to address urgent client needs"
+        }
+      }
+    },
+    "0928bdba-e3f0-4af9-8693-d570eda05dbd": {
+      "id": "0928bdba-e3f0-4af9-8693-d570eda05dbd",
+      "text": "Meet with clients to provide career advice and review resumes and cover letters to identify suitable employment options.",
+      "source": "Educational, Guidance, and Career Counselors and Advisors",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "career coaching",
+        "source_count": 1,
+        "source_statements": [
+          "Meet with clients to provide career advice, review resumes and cover letters, and support interview preparation to help them find suitable employment."
+        ],
+        "merge_type": "single",
+        "notes": "This is the core counseling task and is distinct from administrative, communication, and training activities.",
+        "statement_parts": {
+          "action": "Review",
+          "object": "resumes and cover letters",
+          "outcome": "to identify suitable employment options"
+        }
+      }
+    },
+    "eb6c7852-2fd5-4ba3-801d-3597c676d807": {
+      "id": "eb6c7852-2fd5-4ba3-801d-3597c676d807",
+      "text": "Deliver process documentation, templates, and on-the-job shadowing to train new staff for client support and administrative tasks.",
+      "source": "Educational, Guidance, and Career Counselors and Advisors",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "staff training",
+        "source_count": 1,
+        "source_statements": [
+          "Train new staff by providing process documentation, templates, and on-the-job shadowing to prepare them for handling client support and administrative tasks."
+        ],
+        "merge_type": "single",
+        "notes": "This is a distinct internal training task focused on onboarding staff rather than serving clients directly.",
+        "statement_parts": {
+          "action": "Deliver",
+          "object": "process documentation, templates, and on-the-job shadowing",
+          "outcome": "to train new staff for client support and administrative tasks"
+        }
+      }
+    },
+    "1b3d8b20-110d-4477-b7cf-a36b50def15a": {
+      "id": "1b3d8b20-110d-4477-b7cf-a36b50def15a",
+      "text": "Plan and prepare lessons for reading, writing, science, and social studies to deliver daily classroom instruction.",
+      "source": "Elementary School Teachers, Except Special Education",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "lesson planning",
+        "source_count": 2,
+        "source_statements": [
+          "Plan and prepare lessons for reading, writing, science, and social studies to ensure effective classroom instruction.",
+          "Teach reading, writing, science, and social studies to a class of 26 fourth grade students to facilitate their learning during the school day.",
+          "Adapt and teach the cover-up strategy for reading tests to help students improve their performance on state assessments."
+        ],
+        "merge_type": "partial_overlap",
+        "notes": "[merged 2 tasks: Task 1 is a more specific instance of Task 0, covering the same core instructional planning and delivery work for the same subject areas, with added grade level and device context.]",
+        "statement_parts": {
+          "action": "Plan and prepare",
+          "object": "lessons for reading, writing, science, and social studies",
+          "outcome": "to deliver daily classroom instruction"
+        }
+      }
+    },
+    "2f0c3c0d-546a-45bf-8233-87cd8bc655aa": {
+      "id": "2f0c3c0d-546a-45bf-8233-87cd8bc655aa",
+      "text": "Lead morning meetings with students to build classroom relationships and establish respect.",
+      "source": "Elementary School Teachers, Except Special Education",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "morning meetings",
+        "source_count": 1,
+        "source_statements": [
+          "[Elementary School Teacher] Build relationships with students through morning meetings to foster respect and improve learning outcomes."
+        ],
+        "merge_type": "single",
+        "notes": "This is a distinct classroom community-building activity separate from academic instruction and planning.",
+        "statement_parts": {
+          "action": "Lead",
+          "object": "morning meetings with students",
+          "outcome": "to build classroom relationships and establish respect"
+        }
+      }
+    },
+    "710ef389-27da-4467-8acc-37015e499ffb": {
+      "id": "710ef389-27da-4467-8acc-37015e499ffb",
+      "text": "Attend IEP meetings with school staff and families to coordinate accommodations for students with special needs.",
+      "source": "Elementary School Teachers, Except Special Education",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "IEP meetings",
+        "source_count": 1,
+        "source_statements": [
+          "Attend IEP and 504 meetings to discuss and coordinate support for students with special needs."
+        ],
+        "merge_type": "single",
+        "notes": "This is a distinct special education coordination task involving formal meetings and student support planning.",
+        "statement_parts": {
+          "action": "Attend",
+          "object": "IEP meetings with school staff and families",
+          "outcome": "to coordinate accommodations for students with special needs"
+        }
+      }
+    },
+    "92b779d4-8966-4cd3-ba05-5b57a3b8d72f": {
+      "id": "92b779d4-8966-4cd3-ba05-5b57a3b8d72f",
+      "text": "Analyze country energy market landscapes to assess current electricity mixes, renewable procurement options, and future electricity plans.",
+      "source": "Environmental Economists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "energy market analysis",
+        "source_count": 1,
+        "source_statements": [
+          "Analyze the energy market landscape in specific countries to assess the current electricity mix, renewable procurement options, and future plans."
+        ],
+        "merge_type": "single",
+        "notes": "This is a distinct market assessment task focused on country-level electricity systems and procurement options.",
+        "statement_parts": {
+          "action": "Analyze",
+          "object": "country energy market landscapes",
+          "outcome": "to assess current electricity mixes, renewable procurement options, and future electricity plans"
+        }
+      }
+    },
+    "5eb366f3-b1ee-4125-9acc-00a948d1f4db": {
+      "id": "5eb366f3-b1ee-4125-9acc-00a948d1f4db",
+      "text": "Forecast long-term electricity prices to produce price outlooks.",
+      "source": "Environmental Economists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "price forecasting",
+        "source_count": 1,
+        "source_statements": [
+          "Conduct long-term electricity price forecasting using in-house methodologies and scenario planning."
+        ],
+        "merge_type": "single",
+        "notes": "This is a distinct quantitative forecasting task requiring specialized modeling methods.",
+        "statement_parts": {
+          "action": "Forecast",
+          "object": "long-term electricity prices",
+          "outcome": "to produce price outlooks"
+        }
+      }
+    },
+    "92fc8969-33c5-438f-b60a-d5d24261153e": {
+      "id": "92fc8969-33c5-438f-b60a-d5d24261153e",
+      "text": "Write report insights to document analytical findings.",
+      "source": "Environmental Economists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "report insight writing",
+        "source_count": 1,
+        "source_statements": [
+          "Write insights for reports based on data analysis and calculations."
+        ],
+        "merge_type": "single",
+        "notes": "This is a separate reporting task focused on translating analysis into written findings.",
+        "statement_parts": {
+          "action": "Write",
+          "object": "report insights",
+          "outcome": "to document analytical findings"
+        }
+      }
+    },
+    "0874c82a-137a-4768-921f-de65a1980e7a": {
+      "id": "0874c82a-137a-4768-921f-de65a1980e7a",
+      "text": "Format Excel sheets to prepare deliverables.",
+      "source": "Environmental Economists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "Excel formatting",
+        "source_count": 1,
+        "source_statements": [
+          "Format Excel sheets according to specific client requirements to prepare deliverables."
+        ],
+        "merge_type": "single",
+        "notes": "This is a distinct deliverable-preparation task centered on spreadsheet formatting rather than analysis.",
+        "statement_parts": {
+          "action": "Format",
+          "object": "Excel sheets",
+          "outcome": "to prepare deliverables"
+        }
+      }
+    },
+    "f2cea8ef-0cef-4f08-8099-b447a60171fd": {
+      "id": "f2cea8ef-0cef-4f08-8099-b447a60171fd",
+      "text": "Discuss work progress in group meetings to update colleagues on task status.",
+      "source": "Environmental Economists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "progress updates",
+        "source_count": 1,
+        "source_statements": [
+          "Participate in group meetings to discuss and update colleagues on work progress."
+        ],
+        "merge_type": "single",
+        "notes": "This is a separate communication task involving team coordination and status updates.",
+        "statement_parts": {
+          "action": "Discuss",
+          "object": "work progress",
+          "outcome": "to update colleagues on task status"
+        }
+      }
+    },
+    "9952efb8-8d1d-407c-be6d-2173170986bd": {
+      "id": "9952efb8-8d1d-407c-be6d-2173170986bd",
+      "text": "Create and modify digital patterns for hospitality uniforms to produce base and adjusted patterns that meet fit, company, and client standards.",
+      "source": "Fabric and Apparel Patternmakers",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "digital patternmaking",
+        "source_count": 1,
+        "source_statements": [
+          "Create and modify digital patterns for hospitality uniforms using pattern making software to ensure fit consistency and compliance with company and client standards.",
+          "Independently modify digital patterns to ensure fit consistency for hospitality uniforms.",
+          "Consult with manager to determine which style to use as a base pattern for new hospitality uniform designs."
+        ],
+        "merge_type": "subsumes",
+        "notes": "Merged the broad pattern creation/modification task with the narrower task of independently modifying patterns for fit consistency. Also absorbed consulting with a manager on selecting a base style because it is a planning sub-step within creating new digital patterns rather than a separate task.",
+        "statement_parts": {
+          "action": "Create and modify",
+          "object": "digital patterns for hospitality uniforms",
+          "outcome": "to produce base and adjusted patterns that meet fit, company, and client standards"
+        }
+      }
+    },
+    "2ff9c407-7be2-4556-825c-5a03131ad477": {
+      "id": "2ff9c407-7be2-4556-825c-5a03131ad477",
+      "text": "Develop digital samples of hospitality uniforms to visualize patterns for new clothing lines.",
+      "source": "Fabric and Apparel Patternmakers",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "3D sample rendering",
+        "source_count": 1,
+        "source_statements": [
+          "Develop digital samples of hospitality uniforms using 3D rendering software to visualize patterns created for new clothing lines."
+        ],
+        "merge_type": "single",
+        "notes": "Kept separate because creating 3D rendered samples requires a different tool and produces a different output than digital patternmaking.",
+        "statement_parts": {
+          "action": "Develop",
+          "object": "digital samples of hospitality uniforms",
+          "outcome": "to visualize patterns for new clothing lines"
+        }
+      }
+    },
+    "8d7a1a17-f219-45e9-ac1b-627eceb31b69": {
+      "id": "8d7a1a17-f219-45e9-ac1b-627eceb31b69",
+      "text": "Update sample library records in Excel to maintain sample documentation.",
+      "source": "Fabric and Apparel Patternmakers",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "sample library updates",
+        "source_count": 1,
+        "source_statements": [
+          "Compile and update a sample library, monthly reports, and daily work progress reports in Excel by manually entering and copying data from paper sources."
+        ],
+        "merge_type": "single",
+        "notes": "Distinct administrative recordkeeping task involving Excel and paper-source data entry, separate from patternmaking and digital sample development.",
+        "statement_parts": {
+          "action": "Update",
+          "object": "sample library records in Excel",
+          "outcome": "to maintain sample documentation"
+        }
+      }
+    },
+    "103cdae3-2d8c-4e49-a7dc-5ca7acb8a96b": {
+      "id": "103cdae3-2d8c-4e49-a7dc-5ca7acb8a96b",
+      "text": "Generate concept images to prepare visual concepts for final realization.",
+      "source": "Graphic Designers",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "concept image generation",
+        "source_count": 1,
+        "source_statements": [
+          "Generate image elements for photography concepts using AI tools and refine them with Adobe Photoshop and Adobe Illustrator to prepare for final concept realization.",
+          "Use Adobe Firefly to generate concept images and, if results are unsatisfactory after several attempts, switch to manual image creation by sourcing and combining stock images."
+        ],
+        "merge_type": "partial_overlap",
+        "notes": "Merged two overlapping statements about creating visual concept imagery. One emphasized generating and refining AI-produced image elements in Photoshop and Illustrator; the other specified Adobe Firefly and the fallback method of manually combining stock images when AI results fail. Combined into a single broader task preserving both the tool details and the manual alternative workflow.",
+        "statement_parts": {
+          "action": "Generate",
+          "object": "concept images",
+          "outcome": "to prepare visual concepts for final realization"
+        }
+      }
+    },
+    "875d0042-ffa5-4e18-980c-608a43583c92": {
+      "id": "875d0042-ffa5-4e18-980c-608a43583c92",
+      "text": "Revise project concept writing to improve the quality and clarity of creative concepts.",
+      "source": "Graphic Designers",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "concept writing revision",
+        "source_count": 1,
+        "source_statements": [
+          "Use AI tools to finesse concept writing for projects in order to improve the quality and clarity of creative concepts."
+        ],
+        "merge_type": "single",
+        "notes": "This statement describes a distinct writing-focused task separate from visual concept generation or team knowledge sharing.",
+        "statement_parts": {
+          "action": "Revise",
+          "object": "project concept writing",
+          "outcome": "to improve the quality and clarity of creative concepts"
+        }
+      }
+    },
+    "be05cfca-bf09-4568-8217-b604cb92316f": {
+      "id": "be05cfca-bf09-4568-8217-b604cb92316f",
+      "text": "Share AI prompt examples with team members to build shared AI prompting skills.",
+      "source": "Graphic Designers",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "prompt example sharing",
+        "source_count": 1,
+        "source_statements": [
+          "Discuss AI prompt words and share examples with team members to foster collaboration and skill development around AI usage."
+        ],
+        "merge_type": "single",
+        "notes": "This is a distinct collaboration and knowledge-sharing task that does not overlap enough with content creation tasks to merge.",
+        "statement_parts": {
+          "action": "Share",
+          "object": "AI prompt examples",
+          "outcome": "to build shared AI prompting skills"
+        }
+      }
+    },
+    "b809740b-79a3-4721-98db-6616fae0bf3e": {
+      "id": "b809740b-79a3-4721-98db-6616fae0bf3e",
+      "text": "Answer employee questions about vacation balances to resolve leave balance inquiries.",
+      "source": "Human Resources Specialists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "vacation inquiries",
+        "source_count": 1,
+        "source_statements": [
+          "[HR Coordinator (Education)] Respond to adhoc employee questions about vacation balance to address their concerns."
+        ],
+        "merge_type": "single",
+        "notes": "This statement describes a distinct employee support activity related to leave balances and does not overlap meaningfully with the other tasks.",
+        "statement_parts": {
+          "action": "Answer",
+          "object": "employee questions about vacation balances",
+          "outcome": "to resolve leave balance inquiries"
+        }
+      }
+    },
+    "f6262c30-8c07-4fce-9a1c-f0acae53569d": {
+      "id": "f6262c30-8c07-4fce-9a1c-f0acae53569d",
+      "text": "Update employee records in HRIS to keep payroll data current.",
+      "source": "Human Resources Specialists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "HRIS record updates",
+        "source_count": 1,
+        "source_statements": [
+          "Manage the employee database through HRIS to ensure it is up to date, particularly for payroll purposes."
+        ],
+        "merge_type": "single",
+        "notes": "This is a distinct HR data maintenance task involving a named tool, HRIS, and a specific immediate outcome tied to payroll accuracy.",
+        "statement_parts": {
+          "action": "Update",
+          "object": "employee records in HRIS",
+          "outcome": "to keep payroll data current"
+        }
+      }
+    },
+    "802ad516-66a0-49b0-a72b-e2fea6b563a6": {
+      "id": "802ad516-66a0-49b0-a72b-e2fea6b563a6",
+      "text": "Recruit candidates to fill open positions.",
+      "source": "Human Resources Specialists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "candidate recruitment",
+        "source_count": 1,
+        "source_statements": [
+          "Handle recruitment from end-to-end to fill open positions."
+        ],
+        "merge_type": "single",
+        "notes": "This is a standalone recruiting task. No other statements describe hiring workflow steps that would merge into it.",
+        "statement_parts": {
+          "action": "Recruit",
+          "object": "candidates",
+          "outcome": "to fill open positions"
+        }
+      }
+    },
+    "9453567d-04b3-4292-abd1-968f609d3bed": {
+      "id": "9453567d-04b3-4292-abd1-968f609d3bed",
+      "text": "Create budgeting calculations to support HR planning and analysis.",
+      "source": "Human Resources Specialists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "HR budgeting",
+        "source_count": 1,
+        "source_statements": [
+          "Create budgeting calculations to support HR planning and analysis."
+        ],
+        "merge_type": "single",
+        "notes": "This is a distinct analytical and financial planning activity requiring different skills from the other HR coordination tasks.",
+        "statement_parts": {
+          "action": "Create",
+          "object": "budgeting calculations",
+          "outcome": "to support HR planning and analysis"
+        }
+      }
+    },
+    "6aa9b26c-6a9f-42cf-91e1-621e44219473": {
+      "id": "6aa9b26c-6a9f-42cf-91e1-621e44219473",
+      "text": "Arrange social events to schedule gatherings for employees.",
+      "source": "Human Resources Specialists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "social event planning",
+        "source_count": 1,
+        "source_statements": [
+          "Arrange social events such as the Christmas lunch party to foster employee engagement."
+        ],
+        "merge_type": "single",
+        "notes": "This statement stands alone as an employee engagement and event coordination task with no meaningful overlap with the other reported activities.",
+        "statement_parts": {
+          "action": "Arrange",
+          "object": "social events",
+          "outcome": "to schedule gatherings for employees"
+        }
+      }
+    },
+    "0c057115-e855-46a4-b3ba-57a0a547bee9": {
+      "id": "0c057115-e855-46a4-b3ba-57a0a547bee9",
+      "text": "Summarize academic research papers to extract and interpret their content.",
+      "source": "Life, Physical, and Social Science Technicians, All Other",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "paper summarization",
+        "source_count": 1,
+        "source_statements": [
+          "Use AI tools to summarize and interpret academic research papers to better understand their content."
+        ],
+        "merge_type": "single",
+        "notes": "This statement describes a distinct literature review task focused on understanding research papers with AI assistance.",
+        "statement_parts": {
+          "action": "Summarize",
+          "object": "academic research papers",
+          "outcome": "to extract and interpret their content"
+        }
+      }
+    },
+    "a10933b0-51c5-4b98-92d1-e4edb42a92a1": {
+      "id": "a10933b0-51c5-4b98-92d1-e4edb42a92a1",
+      "text": "Generate draft code and command-line scripts to create initial research models and set up research environments.",
+      "source": "Life, Physical, and Social Science Technicians, All Other",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "code and scripts generation",
+        "source_count": 1,
+        "source_statements": [
+          "Generate first-draft code for research models using AI tools to obtain an initial codebase as a starting point for building models.",
+          "Generate command line scripts or commands using AI tools to set up research environments without needing to recall exact command details."
+        ],
+        "merge_type": "partial_overlap",
+        "notes": "Both statements involve using AI to generate technical artifacts for research computing workflows. They overlap in method and purpose but add distinct outputs: model code and environment setup commands.",
+        "statement_parts": {
+          "action": "Generate",
+          "object": "draft code and command-line scripts",
+          "outcome": "to create initial research models and set up research environments"
+        }
+      }
+    },
+    "9dba0252-12e1-4f28-b04a-0931aaa334e6": {
+      "id": "9dba0252-12e1-4f28-b04a-0931aaa334e6",
+      "text": "Debug code to identify and resolve errors in code.",
+      "source": "Life, Physical, and Social Science Technicians, All Other",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "code debugging",
+        "source_count": 1,
+        "source_statements": [
+          "Debug code using AI tools to identify and resolve errors in code."
+        ],
+        "merge_type": "single",
+        "notes": "This is a separate programming task focused on error diagnosis and correction rather than code generation.",
+        "statement_parts": {
+          "action": "Debug",
+          "object": "code",
+          "outcome": "to identify and resolve errors in code"
+        }
+      }
+    },
+    "34b022ad-ab00-4f9e-ac38-29f0afa98d1b": {
+      "id": "34b022ad-ab00-4f9e-ac38-29f0afa98d1b",
+      "text": "Prompt AI tools with research and coding questions to obtain clearer and more relevant responses.",
+      "source": "Life, Physical, and Social Science Technicians, All Other",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "AI prompt refinement",
+        "source_count": 1,
+        "source_statements": [
+          "Prompt AI tools to answer research or coding questions to improve the clarity and relevance of AI responses."
+        ],
+        "merge_type": "single",
+        "notes": "This statement describes interacting with AI systems through question formulation, which is distinct from summarizing papers, generating code, or debugging.",
+        "statement_parts": {
+          "action": "Prompt",
+          "object": "AI tools with research and coding questions",
+          "outcome": "to obtain clearer and more relevant responses"
+        }
+      }
+    },
+    "74859c32-32b5-4ea6-9d2c-583afe95ac40": {
+      "id": "74859c32-32b5-4ea6-9d2c-583afe95ac40",
+      "text": "Check inventory levels and outstanding orders across sales channels to flag shortages, overstock risks, and data discrepancies.",
+      "source": "Logisticians",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "inventory reconciliation",
+        "source_count": 1,
+        "source_statements": [
+          "Check inventory levels and outstanding orders across e-commerce, retail, and B2B channels using spreadsheets and internal tracking systems to flag potential shortages or overstock risks.",
+          "Manually cross-check and reconcile data between WMS, ERP, and Google Sheets to verify inventory accuracy and resolve discrepancies."
+        ],
+        "merge_type": "partial_overlap",
+        "notes": "Merged two closely related inventory control tasks. Both involve reviewing inventory and order data across systems; one emphasizes channel-level stock monitoring and the other emphasizes system reconciliation. Combined into a broader inventory checking and reconciliation task while preserving the named tools.",
+        "statement_parts": {
+          "action": "Check",
+          "object": "inventory levels and outstanding orders across sales channels",
+          "outcome": "to flag shortages, overstock risks, and data discrepancies"
+        }
+      }
+    },
+    "c771d471-9156-460f-8fe9-adb81dad4260": {
+      "id": "c771d471-9156-460f-8fe9-adb81dad4260",
+      "text": "Record operational issues and follow-up actions to track resolution and prevent recurrence.",
+      "source": "Logisticians",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "issue documentation",
+        "source_count": 1,
+        "source_statements": [
+          "Document operational issues and follow-ups to prevent recurrence and improve process reliability."
+        ],
+        "merge_type": "single",
+        "notes": "Distinct documentation task focused on recording issues and follow-ups rather than reviewing shipment or transaction documents.",
+        "statement_parts": {
+          "action": "Record",
+          "object": "operational issues and follow-up actions",
+          "outcome": "to track resolution and prevent recurrence"
+        }
+      }
+    },
+    "f56eaa69-57e6-47fb-ba2c-21b77c8ab5b2": {
+      "id": "f56eaa69-57e6-47fb-ba2c-21b77c8ab5b2",
+      "text": "Review shipment and transaction documentation to verify completeness and accuracy for shipment release and archive records.",
+      "source": "Logisticians",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "documentation review",
+        "source_count": 1,
+        "source_statements": [
+          "Monitor international shipments and associated documentation to ensure all requirements are met for shipment release.",
+          "Supervise new administrative staff in completing transaction archives and verify documentation accuracy in the absence of strict SOPs."
+        ],
+        "merge_type": "partial_overlap",
+        "notes": "Merged two documentation verification tasks because both center on checking transaction-related documents for correctness and completeness. One applies to live international shipment release and the other to archived transaction files, so the canonical statement preserves both contexts.",
+        "statement_parts": {
+          "action": "Review",
+          "object": "shipment and transaction documentation",
+          "outcome": "to verify completeness and accuracy for shipment release and archive records"
+        }
+      }
+    },
+    "1293db0a-9f99-41d3-8fce-e3783aed434e": {
+      "id": "1293db0a-9f99-41d3-8fce-e3783aed434e",
+      "text": "Develop documentation requirements for transaction types to provide clearer processing guidelines and reduce documentation errors.",
+      "source": "Logisticians",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "documentation standards",
+        "source_count": 1,
+        "source_statements": [
+          "Develop and refine documentation requirements for every transaction type to establish clearer guidelines and reduce errors."
+        ],
+        "merge_type": "single",
+        "notes": "Distinct task focused on creating standards, not reviewing existing documents.",
+        "statement_parts": {
+          "action": "Develop",
+          "object": "documentation requirements for transaction types",
+          "outcome": "to provide clearer processing guidelines and reduce documentation errors"
+        }
+      }
+    },
+    "b46b4cc9-904f-47b6-8452-cdaf7530b07f": {
+      "id": "b46b4cc9-904f-47b6-8452-cdaf7530b07f",
+      "text": "Communicate item availability, procurement timelines, production schedules, and fulfilment status with suppliers and warehouse staff to clarify requirements and address operational issues.",
+      "source": "Logisticians",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "supplier coordination",
+        "source_count": 2,
+        "source_statements": [
+          "Coordinate with suppliers and the warehouse on procurement timelines, production schedules, and fulfilment status to address issues and ensure smooth operations.",
+          "Contact suppliers based on customer inquiries to verify if requested items match supplier offerings."
+        ],
+        "merge_type": "partial_overlap",
+        "notes": "Merged cross-participant coordination tasks involving direct communication with suppliers to confirm supply details and resolve request-related questions. The intern statement adds warehouse coordination and schedule/status topics; the supervisor statement adds item-offering verification.",
+        "statement_parts": {
+          "action": "Communicate",
+          "object": "item availability, procurement timelines, production schedules, and fulfilment status with suppliers and warehouse staff",
+          "outcome": "to clarify requirements and address operational issues"
+        }
+      }
+    },
+    "b0415c12-d4c1-48e5-bf5b-ee19c9798ddb": {
+      "id": "b0415c12-d4c1-48e5-bf5b-ee19c9798ddb",
+      "text": "Resolve operational exceptions such as delayed shipments, inventory discrepancies, and order changes to propose corrective actions.",
+      "source": "Logisticians",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "exception resolution",
+        "source_count": 1,
+        "source_statements": [
+          "Handle operational exceptions such as delayed shipments, inventory discrepancies, or last-minute order changes by gathering data, communicating with teams, and proposing actionable solutions."
+        ],
+        "merge_type": "single",
+        "notes": "Distinct exception-handling task that goes beyond routine monitoring or communication by focusing on diagnosing and responding to disruptions.",
+        "statement_parts": {
+          "action": "Resolve",
+          "object": "operational exceptions such as delayed shipments, inventory discrepancies, and order changes",
+          "outcome": "to propose corrective actions"
+        }
+      }
+    },
+    "3096d10d-c101-4a8c-adb7-db14683da785": {
+      "id": "3096d10d-c101-4a8c-adb7-db14683da785",
+      "text": "Create localized online launch strategies for APAC products to tailor channel plans to local market requirements.",
+      "source": "Marketing Managers",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "APAC launch strategy",
+        "source_count": 1,
+        "source_statements": [
+          "Create localized online strategies for APAC product launches to ensure relevance and effectiveness across different online channels."
+        ],
+        "merge_type": "single",
+        "notes": "This statement describes a distinct strategic planning task for product launches across APAC online channels.",
+        "statement_parts": {
+          "action": "Create",
+          "object": "localized online launch strategies for APAC products",
+          "outcome": "to tailor channel plans to local market requirements"
+        }
+      }
+    },
+    "9b391435-5342-422a-bb41-afb7d1938329": {
+      "id": "9b391435-5342-422a-bb41-afb7d1938329",
+      "text": "Compile business performance data from multiple platforms to report APAC online business status to vice presidents and the global team.",
+      "source": "Marketing Managers",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "performance reporting",
+        "source_count": 1,
+        "source_statements": [
+          "Report business performance to VPs and the global team to keep leadership informed about APAC online business status.",
+          "Check and compile data from multiple platforms for reporting, despite manual and repetitive processes."
+        ],
+        "merge_type": "subsumes",
+        "notes": "The data checking and compilation statement is a narrower sub-step of the broader reporting task. They were merged because compiling multi-platform data is part of preparing business performance reports for leadership.",
+        "statement_parts": {
+          "action": "Compile, Report",
+          "object": "business performance data from multiple platforms, APAC online business status",
+          "outcome": "to keep leadership informed"
+        }
+      }
+    },
+    "0a3c5097-461d-4404-b2a4-1c2ac1205d98": {
+      "id": "0a3c5097-461d-4404-b2a4-1c2ac1205d98",
+      "text": "Analyze APAC market data, traffic performance reports, and budget information to identify risks and opportunities for sales target planning.",
+      "source": "Marketing Managers",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "market risk analysis",
+        "source_count": 1,
+        "source_statements": [
+          "Support APAC markets to achieve their sales targets by identifying risks and opportunities and implementing mitigation strategies when needed."
+        ],
+        "merge_type": "single",
+        "notes": "This is a distinct analytical task focused on interpreting market, traffic, and budget inputs to surface risks and opportunities.",
+        "statement_parts": {
+          "action": "Analyze",
+          "object": "APAC market data, traffic performance reports, and budget information",
+          "outcome": "to identify risks and opportunities for sales target planning"
+        }
+      }
+    },
+    "c64a04f9-ce4e-4baa-a65d-0b368ff4806b": {
+      "id": "c64a04f9-ce4e-4baa-a65d-0b368ff4806b",
+      "text": "Create photoshoot briefs for gifting platforms to guide locally relevant and brand-aligned creative production.",
+      "source": "Marketing Managers",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "photoshoot briefing",
+        "source_count": 1,
+        "source_statements": [
+          "Create creative assets and photoshoot briefs for gifting platforms to ensure local relevance and brand alignment."
+        ],
+        "merge_type": "single",
+        "notes": "This statement describes a separate creative briefing task for gifting platform content.",
+        "statement_parts": {
+          "action": "Create",
+          "object": "photoshoot briefs for gifting platforms",
+          "outcome": "to guide locally relevant and brand-aligned creative production"
+        }
+      }
+    },
+    "0a6710a2-970e-4aa5-a995-5d3c28e59d6e": {
+      "id": "0a6710a2-970e-4aa5-a995-5d3c28e59d6e",
+      "text": "Analyze clinical and financial revenue data to identify missed items, explain charge-to-income trends, and flag abnormalities.",
+      "source": "Medical and Health Services Managers",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "revenue data analysis",
+        "source_count": 1,
+        "source_statements": [
+          "Review clinical and financial data using Microsoft Copilot to identify missed items or abnormalities and improve operational services for physician providers.",
+          "Analyze financial data to support clinical revenue improvement for physician providers.",
+          "Pull and correlate gross charges from Excel spreadsheets to net patient income in order to explain trends in clinical revenue."
+        ],
+        "merge_type": "partial_overlap",
+        "notes": "These statements describe the same core analytical task of reviewing financial and clinical revenue data. One adds Microsoft Copilot, another emphasizes revenue improvement, and a third specifies correlating gross charges to net patient income in Excel. Combined into one broader revenue analysis task preserving the distinct tools and sub-steps.",
+        "statement_parts": {
+          "action": "Analyze",
+          "object": "clinical and financial revenue data",
+          "outcome": "to identify missed items, explain charge-to-income trends, and flag abnormalities for physician providers"
+        }
+      }
+    },
+    "c2a12121-9a7c-4d86-ac3c-86cb8e7de699": {
+      "id": "c2a12121-9a7c-4d86-ac3c-86cb8e7de699",
+      "text": "Reword email messages and summarize work communications to produce professional and concise team correspondence.",
+      "source": "Medical and Health Services Managers",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "communication drafting",
+        "source_count": 1,
+        "source_statements": [
+          "Use AI tools to reword email messages and summarize work communications to be more professional and concise for improved team collaboration."
+        ],
+        "merge_type": "single",
+        "notes": "This is a distinct communication task involving AI-assisted drafting and summarization, with no overlap substantial enough to merge with the data or workflow tasks.",
+        "statement_parts": {
+          "action": "Reword, Summarize",
+          "object": "email messages and work communications",
+          "outcome": "to produce professional and concise team correspondence"
+        }
+      }
+    },
+    "9bd9a8e4-835d-4362-b9d1-3e692ac34dc7": {
+      "id": "9bd9a8e4-835d-4362-b9d1-3e692ac34dc7",
+      "text": "Develop submission forms in Formstack to implement and refine contracting workflows.",
+      "source": "Medical and Health Services Managers",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "form development",
+        "source_count": 1,
+        "source_statements": [
+          "Collaborate with the team to implement and refine contracting processes by developing submission forms and dividing communications among staff to streamline workflows."
+        ],
+        "merge_type": "single",
+        "notes": "This is a separate workflow design task focused on building Formstack submission forms for contracting processes.",
+        "statement_parts": {
+          "action": "Develop",
+          "object": "submission forms",
+          "outcome": "to implement and refine contracting workflows"
+        }
+      }
+    },
+    "a7e360c5-5acc-4144-9349-19c831627e52": {
+      "id": "a7e360c5-5acc-4144-9349-19c831627e52",
+      "text": "Conduct client evaluations to assess psychological status and inform case understanding.",
+      "source": "Psychologists, All Other",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "client evaluations",
+        "source_count": 1,
+        "source_statements": [
+          "Conduct client evaluations to assess psychological status and inform case understanding."
+        ],
+        "merge_type": "single",
+        "notes": "Distinct clinical/forensic assessment task; no overlap substantial enough to merge with teaching or research activities.",
+        "statement_parts": {
+          "action": "Conduct",
+          "object": "client evaluations",
+          "outcome": "to assess psychological status and inform case understanding"
+        }
+      }
+    },
+    "ceae01fa-5c46-4465-a652-1925003d7c70": {
+      "id": "ceae01fa-5c46-4465-a652-1925003d7c70",
+      "text": "Write research papers to contribute findings to the field.",
+      "source": "Psychologists, All Other",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "research writing",
+        "source_count": 1,
+        "source_statements": [
+          "Write research papers to contribute to the field."
+        ],
+        "merge_type": "single",
+        "notes": "Distinct scholarly writing task; separate from data analysis because it requires different outputs and skills.",
+        "statement_parts": {
+          "action": "Write",
+          "object": "research papers",
+          "outcome": "to contribute findings to the field"
+        }
+      }
+    },
+    "b5529399-eef9-46a8-99a2-b8e6acacac52": {
+      "id": "b5529399-eef9-46a8-99a2-b8e6acacac52",
+      "text": "Analyze research data to generate research results.",
+      "source": "Psychologists, All Other",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "data analysis",
+        "source_count": 1,
+        "source_statements": [
+          "Analyze research data using SPSS and R code to generate research results."
+        ],
+        "merge_type": "single",
+        "notes": "Distinct research analysis task with named tools; kept separate from paper writing as analysis is a different activity and deliverable.",
+        "statement_parts": {
+          "action": "Analyze",
+          "object": "research data",
+          "outcome": "to generate research results"
+        }
+      }
+    },
+    "e5740992-7dcb-4e79-9eaf-4e1c045804b1": {
+      "id": "e5740992-7dcb-4e79-9eaf-4e1c045804b1",
+      "text": "Create lesson plans and course slides to prepare for teaching forensic psychology classes.",
+      "source": "Psychologists, All Other",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "course preparation",
+        "source_count": 1,
+        "source_statements": [
+          "Create lesson plans and course slides to prepare for teaching forensic psychology classes."
+        ],
+        "merge_type": "single",
+        "notes": "Distinct instructional preparation task; not merged with grading because preparation and assessment are separate teaching functions.",
+        "statement_parts": {
+          "action": "Create",
+          "object": "lesson plans and course slides",
+          "outcome": "to prepare for teaching forensic psychology classes"
+        }
+      }
+    },
+    "1fc6dff6-a474-40ad-9c6b-4e2a4db764b9": {
+      "id": "1fc6dff6-a474-40ad-9c6b-4e2a4db764b9",
+      "text": "Grade student assignments to assess learning and provide feedback.",
+      "source": "Psychologists, All Other",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "assignment grading",
+        "source_count": 1,
+        "source_statements": [
+          "Grade student assignments to assess learning and provide feedback."
+        ],
+        "merge_type": "single",
+        "notes": "Distinct instructional assessment task; separate from lesson planning due to different timing, outputs, and skills.",
+        "statement_parts": {
+          "action": "Grade",
+          "object": "student assignments",
+          "outcome": "to provide feedback"
+        }
+      }
+    },
+    "e241da3a-9645-419c-a5c6-6e4828bdc41c": {
+      "id": "e241da3a-9645-419c-a5c6-6e4828bdc41c",
+      "text": "Follow up on B2G and B2B leads to identify potential clients needing training.",
+      "source": "Sales Representatives of Services, Except Advertising, Insurance, Financial Services, and Travel",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "lead follow-up",
+        "source_count": 1,
+        "source_statements": [
+          "Follow up on B2G and B2B leads to identify potential clients needing training."
+        ],
+        "merge_type": "single",
+        "notes": "This is a distinct sales prospecting task focused on qualifying existing leads and identifying client training needs.",
+        "statement_parts": {
+          "action": "Follow up",
+          "object": "B2G and B2B leads",
+          "outcome": "to identify potential clients needing training"
+        }
+      }
+    },
+    "8f96e317-4817-4e96-900c-8a13f63950cd": {
+      "id": "8f96e317-4817-4e96-900c-8a13f63950cd",
+      "text": "Attend networking events to generate new leads.",
+      "source": "Sales Representatives of Services, Except Advertising, Insurance, Financial Services, and Travel",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "networking lead generation",
+        "source_count": 1,
+        "source_statements": [
+          "Attend networking events to generate new leads and support other needs from the team lead."
+        ],
+        "merge_type": "single",
+        "notes": "This is a distinct lead generation activity involving event attendance rather than follow-up on existing leads or proposal preparation.",
+        "statement_parts": {
+          "action": "Attend",
+          "object": "networking events",
+          "outcome": "to generate new leads"
+        }
+      }
+    },
+    "4ab2a15f-feed-41ab-a764-a9f90e8c06b2": {
+      "id": "4ab2a15f-feed-41ab-a764-a9f90e8c06b2",
+      "text": "Prepare client proposals and offering letters to speed proposal creation and complete submissions on time.",
+      "source": "Sales Representatives of Services, Except Advertising, Insurance, Financial Services, and Travel",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "proposal preparation",
+        "source_count": 1,
+        "source_statements": [
+          "Assist team lead by preparing proposals and offering letters for client leads.",
+          "Use Claude AI by inputting company databases and requirements to automate and speed up proposal creation.",
+          "Manage multiple proposals and a grant pitch deck independently when other teams are unavailable."
+        ],
+        "merge_type": "partial_overlap",
+        "notes": "Merged three overlapping statements about proposal work. One described preparing proposals and offering letters, one added the specific tools Claude AI and company databases, and one added the context of preparing multiple proposals to meet deadlines. These are the same core task with distinct details preserved.",
+        "statement_parts": {
+          "action": "Prepare",
+          "object": "client proposals and offering letters",
+          "outcome": "to speed proposal creation and complete submissions on time"
+        }
+      }
+    },
+    "2182737c-f006-41d9-afc2-e1a766f5b2d0": {
+      "id": "2182737c-f006-41d9-afc2-e1a766f5b2d0",
+      "text": "Compile daily store sales data to provide an overview of sales performance.",
+      "source": "Sales Representatives, Wholesale and Manufacturing, Except Technical and Scientific Products",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "sales data reporting",
+        "source_count": 1,
+        "source_statements": [
+          "Gather and summarize daily sales data for each store to provide an overview of sales performance."
+        ],
+        "merge_type": "single",
+        "notes": "This statement describes a distinct reporting task focused on store sales performance data.",
+        "statement_parts": {
+          "action": "Compile",
+          "object": "daily store sales data",
+          "outcome": "to provide an overview of sales performance"
+        }
+      }
+    },
+    "1576bde4-9577-444f-ae8e-88808ccfa991": {
+      "id": "1576bde4-9577-444f-ae8e-88808ccfa991",
+      "text": "Translate documents between Chinese, English, and Indonesian to produce multilingual business documentation.",
+      "source": "Sales Representatives, Wholesale and Manufacturing, Except Technical and Scientific Products",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "document translation",
+        "source_count": 1,
+        "source_statements": [
+          "Translate documents between Chinese, English, and Indonesian to facilitate communication and documentation."
+        ],
+        "merge_type": "single",
+        "notes": "This task is distinct because it focuses on written translation and explicitly names AI translation tools.",
+        "statement_parts": {
+          "action": "Translate",
+          "object": "documents between Chinese, English, and Indonesian",
+          "outcome": "to produce multilingual business documentation"
+        }
+      }
+    },
+    "bd2ebaca-aab2-4982-b966-0458db9bf4d2": {
+      "id": "bd2ebaca-aab2-4982-b966-0458db9bf4d2",
+      "text": "Interpret spoken communication between Chinese, English, and Indonesian during meetings and presentations to provide accurate understanding among stakeholders.",
+      "source": "Sales Representatives, Wholesale and Manufacturing, Except Technical and Scientific Products",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "meeting interpretation",
+        "source_count": 1,
+        "source_statements": [
+          "Translate spoken communication in real-time during large meetings or presentations to ensure accurate understanding among stakeholders."
+        ],
+        "merge_type": "single",
+        "notes": "Kept separate from document translation because spoken interpretation requires different methods, context, and skills.",
+        "statement_parts": {
+          "action": "Interpret",
+          "object": "spoken communication between Chinese, English, and Indonesian during meetings and presentations",
+          "outcome": "to provide accurate understanding among stakeholders"
+        }
+      }
+    },
+    "471d0074-0f13-48f8-b5e8-78c0548a70c0": {
+      "id": "471d0074-0f13-48f8-b5e8-78c0548a70c0",
+      "text": "Negotiate business-to-business agreements, including MOUs, work contracts, and NDAs to finalize operational terms with counterparties.",
+      "source": "Sales Representatives, Wholesale and Manufacturing, Except Technical and Scientific Products",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "agreement negotiation",
+        "source_count": 1,
+        "source_statements": [
+          "Handle business-to-business deals and negotiate agreements such as MOUs, work contracts, and NDAs to support company operations."
+        ],
+        "merge_type": "single",
+        "notes": "This is a distinct commercial task centered on negotiating formal business agreements.",
+        "statement_parts": {
+          "action": "Negotiate",
+          "object": "business-to-business agreements, including MOUs, work contracts, and NDAs",
+          "outcome": "to finalize operational terms with counterparties"
+        }
+      }
+    },
+    "70973d97-32ca-4ac1-be6e-0889b130509e": {
+      "id": "70973d97-32ca-4ac1-be6e-0889b130509e",
+      "text": "Track number of customers entering stores to provide footfall data.",
+      "source": "Sales Representatives, Wholesale and Manufacturing, Except Technical and Scientific Products",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "customer footfall tracking",
+        "source_count": 1,
+        "source_statements": [
+          "Manually track and record the number of customers entering stores to provide footfall data for leadership."
+        ],
+        "merge_type": "single",
+        "notes": "This statement stands alone as a store traffic monitoring task and does not overlap enough with sales data reporting to merge.",
+        "statement_parts": {
+          "action": "Track",
+          "object": "number of customers entering stores",
+          "outcome": "to provide footfall data"
+        }
+      }
+    },
+    "3b1a0355-2761-40e5-b660-3e747bf04056": {
+      "id": "3b1a0355-2761-40e5-b660-3e747bf04056",
+      "text": "Prioritize urgent paperwork to organize tasks based on urgency.",
+      "source": "Secretaries and Administrative Assistants, Except Legal, Medical, and Executive",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "paperwork prioritization",
+        "source_count": 1,
+        "source_statements": [
+          "Prioritize and complete urgent paperwork first to meet deadlines or client demands."
+        ],
+        "merge_type": "single",
+        "notes": "This is a distinct task focused on sequencing and completing urgent paperwork based on deadline or client priority.",
+        "statement_parts": {
+          "action": "Prioritize",
+          "object": "urgent paperwork",
+          "outcome": "to organize tasks based on urgency"
+        }
+      }
+    },
+    "715474c8-3935-4e16-bfe9-b7aeb03ef0cb": {
+      "id": "715474c8-3935-4e16-bfe9-b7aeb03ef0cb",
+      "text": "Create spreadsheets to compile information for repeated administrative tasks.",
+      "source": "Secretaries and Administrative Assistants, Except Legal, Medical, and Executive",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "spreadsheet creation",
+        "source_count": 1,
+        "source_statements": [
+          "Create spreadsheets as a repetitive task, potentially using AI tools to expedite the process."
+        ],
+        "merge_type": "single",
+        "notes": "This statement describes a standalone production task involving spreadsheets, with optional AI assistance noted as a tool.",
+        "statement_parts": {
+          "action": "Create",
+          "object": "spreadsheets",
+          "outcome": "to compile information for repeated administrative tasks"
+        }
+      }
+    },
+    "a8d3a90f-8270-4694-a36b-c3f712759ea2": {
+      "id": "a8d3a90f-8270-4694-a36b-c3f712759ea2",
+      "text": "Watch training materials and take notes to prepare standard operating procedures.",
+      "source": "Secretaries and Administrative Assistants, Except Legal, Medical, and Executive",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "SOP preparation",
+        "source_count": 1,
+        "source_statements": [
+          "Use waiting periods to watch trainings and take notes in preparation for working on standard operating procedures (SOPs)."
+        ],
+        "merge_type": "single",
+        "notes": "This is a distinct preparatory learning task tied to SOP development work.",
+        "statement_parts": {
+          "action": "Watch, take",
+          "object": "training materials, notes",
+          "outcome": "to prepare standard operating procedures"
+        }
+      }
+    },
+    "9506367b-6e0a-4368-8c8a-d594fea9080e": {
+      "id": "9506367b-6e0a-4368-8c8a-d594fea9080e",
+      "text": "Research documentation requirements by contacting government offices and compile the findings into a PDF for future reference.",
+      "source": "Secretaries and Administrative Assistants, Except Legal, Medical, and Executive",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "documentation research",
+        "source_count": 1,
+        "source_statements": [
+          "Research and verify required documentation by contacting government offices, then compile findings into a clear, user-friendly PDF for future use."
+        ],
+        "merge_type": "single",
+        "notes": "This task is distinct because it involves external verification with government offices and producing a reference PDF.",
+        "statement_parts": {
+          "action": "Research, compile",
+          "object": "documentation requirements, findings",
+          "outcome": "to create a PDF for future reference"
+        }
+      }
+    },
+    "926841e6-4608-4d51-b88a-64b2708f7cde": {
+      "id": "926841e6-4608-4d51-b88a-64b2708f7cde",
+      "text": "Research information using ChatGPT and review the generated content for accuracy before use.",
+      "source": "Secretaries and Administrative Assistants, Except Legal, Medical, and Executive",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "AI information research",
+        "source_count": 1,
+        "source_statements": [
+          "Use ChatGPT to support research tasks and obtain information more quickly, reviewing AI-generated content for accuracy before use."
+        ],
+        "merge_type": "single",
+        "notes": "Although this overlaps generally with research work, it is distinct in method because it specifically uses ChatGPT and includes verification of AI-generated output.",
+        "statement_parts": {
+          "action": "Review",
+          "object": "generated content",
+          "outcome": "to verify accuracy"
+        }
+      }
+    },
+    "cc1d2c68-5fc6-4a7f-b506-2a5009ef5271": {
+      "id": "cc1d2c68-5fc6-4a7f-b506-2a5009ef5271",
+      "text": "Onboard new clients to integrate them into the organization's services and processes.",
+      "source": "Social and Community Service Managers",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "client onboarding",
+        "source_count": 1,
+        "source_statements": [
+          "Onboard new clients to integrate them into the organization's services and processes."
+        ],
+        "merge_type": "single",
+        "notes": "Distinct client intake and orientation task; no overlap substantial enough to merge with other statements.",
+        "statement_parts": {
+          "action": "Onboard",
+          "object": "new clients",
+          "outcome": "to integrate them into the organization's services and processes"
+        }
+      }
+    },
+    "81907193-c6c1-4357-8df9-afebd60aec9e": {
+      "id": "81907193-c6c1-4357-8df9-afebd60aec9e",
+      "text": "Create and send organizational newsletters to communicate updates and information to stakeholders.",
+      "source": "Social and Community Service Managers",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "newsletter distribution",
+        "source_count": 1,
+        "source_statements": [
+          "Create and send newsletters for the organization to communicate updates and information to stakeholders."
+        ],
+        "merge_type": "single",
+        "notes": "Distinct communications task involving a named tool and stakeholder-facing written output.",
+        "statement_parts": {
+          "action": "Create and send",
+          "object": "organizational newsletters",
+          "outcome": "to communicate updates and information to stakeholders"
+        }
+      }
+    },
+    "7b184961-1533-47b4-8b16-6a03c866ed05": {
+      "id": "7b184961-1533-47b4-8b16-6a03c866ed05",
+      "text": "Input staff work hours for payroll to produce accurate and timely pay records.",
+      "source": "Social and Community Service Managers",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "payroll time entry",
+        "source_count": 1,
+        "source_statements": [
+          "Input staff work hours for payroll to ensure accurate and timely payment."
+        ],
+        "merge_type": "single",
+        "notes": "Distinct payroll administration task; different systems, skills, and outputs from the other statements.",
+        "statement_parts": {
+          "action": "Input",
+          "object": "staff work hours for payroll",
+          "outcome": "to produce accurate and timely pay records"
+        }
+      }
+    },
+    "4ceed772-5e9f-4f6e-9e24-019932e3448a": {
+      "id": "4ceed772-5e9f-4f6e-9e24-019932e3448a",
+      "text": "Book venues and coordinate events to schedule organizational activities.",
+      "source": "Social and Community Service Managers",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "event coordination",
+        "source_count": 1,
+        "source_statements": [
+          "Book venues and coordinate events to facilitate organizational activities."
+        ],
+        "merge_type": "single",
+        "notes": "Distinct event logistics task; venue booking is part of the same event coordination activity and is retained in the canonical wording.",
+        "statement_parts": {
+          "action": "Book and coordinate",
+          "object": "venues and events",
+          "outcome": "to schedule organizational activities"
+        }
+      }
+    },
+    "8b58510d-2d8c-430d-9962-dad39dd7e6ad": {
+      "id": "8b58510d-2d8c-430d-9962-dad39dd7e6ad",
+      "text": "Create organizational policies to document compliance requirements and operating procedures.",
+      "source": "Social and Community Service Managers",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "policy creation",
+        "source_count": 1,
+        "source_statements": [
+          "Perform legal and HR work such as reading materials, comparing documents, and creating policy to ensure compliance and organizational effectiveness."
+        ],
+        "merge_type": "single",
+        "notes": "Distinct governance and compliance task focused on drafting policy documents.",
+        "statement_parts": {
+          "action": "Create",
+          "object": "organizational policies",
+          "outcome": "to document compliance requirements and operating procedures"
+        }
+      }
+    },
+    "08bbdbc8-f153-4fab-adbe-151e96115212": {
+      "id": "08bbdbc8-f153-4fab-adbe-151e96115212",
+      "text": "Write and debug software features to complete technical development tasks.",
+      "source": "Software Developers",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "AI-assisted coding",
+        "source_count": 2,
+        "source_statements": [
+          "Use AI tools to assist with coding, code review, and identifying technical solutions as part of daily work.",
+          "Use AI assistants like Claude to assist with coding, debugging, and learning new coding patterns faster.",
+          "Write features, fix bugs, and conduct code reviews as part of technical development work."
+        ],
+        "merge_type": "partial_overlap",
+        "notes": "Merged AI-assisted coding/debugging across two participants and absorbed feature writing as the core development activity. Code review/debugging are closely related development actions, and Claude was retained as the named tool example.",
+        "statement_parts": {
+          "action": "Write and debug",
+          "object": "software features",
+          "outcome": "to complete technical development tasks"
+        }
+      }
+    },
+    "556f75d3-1204-4703-b783-473320a08a17": {
+      "id": "556f75d3-1204-4703-b783-473320a08a17",
+      "text": "Review architecture diagrams and technical documents with project teams to clarify technical details and identify missing elements.",
+      "source": "Software Developers",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "technical document review",
+        "source_count": 1,
+        "source_statements": [
+          "Review and clarify architecture diagrams and documentation with global project teams to ensure coherent and consistent project understanding.",
+          "Use AI tools to review and summarize technical documents, identifying strengths, weaknesses, and missing elements to enhance work effectiveness.",
+          "Coordinate and lead early-morning meetings with offshore teams to collaboratively enhance project diagrams and clarify technical details."
+        ],
+        "merge_type": "partial_overlap",
+        "notes": "Combined document and diagram review with team discussions because all statements center on examining technical artifacts and clarifying their content. Meeting leadership was treated as part of the review/clarification workflow rather than a separate task.",
+        "statement_parts": {
+          "action": "Review",
+          "object": "architecture diagrams and technical documents",
+          "outcome": "to clarify technical details and identify missing elements"
+        }
+      }
+    },
+    "af5fa917-dbad-4ba9-a2b9-70a55a132cff": {
+      "id": "af5fa917-dbad-4ba9-a2b9-70a55a132cff",
+      "text": "Execute ETL processes and data transfer jobs to load data for database and AI application development.",
+      "source": "Software Developers",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "ETL execution",
+        "source_count": 1,
+        "source_statements": [
+          "Manage ETL processes and data transfer tasks to support database and AI application development."
+        ],
+        "merge_type": "single",
+        "notes": "Distinct data engineering task with no meaningful overlap with the software development or requirements activities.",
+        "statement_parts": {
+          "action": "Execute",
+          "object": "ETL processes and data transfer jobs",
+          "outcome": "to load data for database and AI application development"
+        }
+      }
+    },
+    "4015515d-65aa-4a84-acb8-66c5e972e48b": {
+      "id": "4015515d-65aa-4a84-acb8-66c5e972e48b",
+      "text": "Gather and document client requirements and project changes in client meetings to define project boundaries and record shifting expectations.",
+      "source": "Software Developers",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "requirements gathering",
+        "source_count": 1,
+        "source_statements": [
+          "Document all client requirements and changes immediately to manage shifting expectations during projects.",
+          "Meet with clients to gather requirements and set clear boundaries to prevent scope creep and unrealistic expectations."
+        ],
+        "merge_type": "partial_overlap",
+        "notes": "Merged client meetings and requirements documentation because they are consecutive parts of the same consulting task focused on defining scope and recording changes.",
+        "statement_parts": {
+          "action": "Gather and document",
+          "object": "client requirements and project changes",
+          "outcome": "to define project boundaries and record shifting expectations"
+        }
+      }
+    },
+    "7b1ce638-1325-4e35-aaa2-83c87c5e22e3": {
+      "id": "7b1ce638-1325-4e35-aaa2-83c87c5e22e3",
+      "text": "Migrate organizational test suites to align with team workflows and preserve codebase integrity.",
+      "source": "Software Developers",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "test suite migration",
+        "source_count": 1,
+        "source_statements": [
+          "Migrate organizational test suites to support the team workflow and maintain codebase integrity."
+        ],
+        "merge_type": "single",
+        "notes": "Distinct maintenance task focused on test infrastructure migration.",
+        "statement_parts": {
+          "action": "Migrate",
+          "object": "organizational test suites",
+          "outcome": "to align with team workflows and preserve codebase integrity"
+        }
+      }
+    },
+    "4ffe7cb2-0375-41a6-9213-3ac1dcc9d5c5": {
+      "id": "4ffe7cb2-0375-41a6-9213-3ac1dcc9d5c5",
+      "text": "Test code to verify correctness and production readiness.",
+      "source": "Software Developers",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "code testing",
+        "source_count": 1,
+        "source_statements": [
+          "Perform testing on code to ensure correctness and production readiness."
+        ],
+        "merge_type": "single",
+        "notes": "Kept separate from test suite migration because executing tests on code is a different activity from migrating testing infrastructure.",
+        "statement_parts": {
+          "action": "Test",
+          "object": "code",
+          "outcome": "to verify correctness and production readiness"
+        }
+      }
+    },
+    "89b67691-2bb2-4478-afe9-be0a38ad2240": {
+      "id": "89b67691-2bb2-4478-afe9-be0a38ad2240",
+      "text": "Re-implement bulk DML plans in Unistore to enable pipelined constraint checks and bulk merges.",
+      "source": "Software Developers",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "bulk DML reimplementation",
+        "source_count": 1,
+        "source_statements": [
+          "Re-implement bulk DML plans in Unistore to enable features like pipelined constraint checks and bulk merges."
+        ],
+        "merge_type": "single",
+        "notes": "Specialized database engine development task with unique technical content.",
+        "statement_parts": {
+          "action": "Re-implement",
+          "object": "bulk DML plans in Unistore",
+          "outcome": "to enable pipelined constraint checks and bulk merges"
+        }
+      }
+    },
+    "226fa62c-a066-4e81-995c-a35eb2c5dc03": {
+      "id": "226fa62c-a066-4e81-995c-a35eb2c5dc03",
+      "text": "Redesign the bulk DML implementation and format bulk-operation data to reduce memory use and avoid unnecessary sorting overhead while meeting global sorting requirements.",
+      "source": "Software Developers",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "bulk DML optimization",
+        "source_count": 1,
+        "source_statements": [
+          "Redesign the bulk DML implementation to improve speed and reduce memory usage after identifying inefficiencies in the initial design.",
+          "Overcome the design constraint of global sorting in bulk operations by formatting data to avoid unnecessary sorting overhead."
+        ],
+        "merge_type": "subsumes",
+        "notes": "The data-formatting statement is a concrete optimization step within the broader redesign of the bulk DML implementation, so it was absorbed into the broader performance-focused task.",
+        "statement_parts": {
+          "action": "Redesign, format",
+          "object": "bulk DML implementation, bulk-operation data",
+          "outcome": "to reduce memory use and avoid unnecessary sorting overhead while meeting global sorting requirements"
+        }
+      }
+    },
+    "99aa9b4d-f216-4531-8d8b-a64ee6f20bdd": {
+      "id": "99aa9b4d-f216-4531-8d8b-a64ee6f20bdd",
+      "text": "Report project status to update the team on progress.",
+      "source": "Software Developers",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "stand-up updates",
+        "source_count": 1,
+        "source_statements": [
+          "Attend team meetings and provide progress updates in daily stand-ups to communicate project status."
+        ],
+        "merge_type": "single",
+        "notes": "Distinct communication task not reducible to technical review or requirements gathering.",
+        "statement_parts": {
+          "action": "Report",
+          "object": "project status",
+          "outcome": "to update the team on progress"
+        }
+      }
+    },
+    "fdbabe22-5d05-4577-a5f6-35ac7b3cdf28": {
+      "id": "fdbabe22-5d05-4577-a5f6-35ac7b3cdf28",
+      "text": "Research solar market conditions and competitor information to update sales strategies and customer approach methods.",
+      "source": "Solar Sales Representatives and Assessors",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "AI market research",
+        "source_count": 1,
+        "source_statements": [
+          "Conduct weekly market research using AI tools to stay updated on market dynamics and industry trends, such as monitoring product price increases.",
+          "Develop B2B sales strategies using AI to determine customer approach methods and gather competitor information."
+        ],
+        "merge_type": "partial_overlap",
+        "notes": "Both statements describe using AI to gather external market and competitor intelligence for sales planning. They overlap in research and strategy development, with one emphasizing market dynamics and pricing trends and the other emphasizing B2B customer approach methods.",
+        "statement_parts": {
+          "action": "Research",
+          "object": "solar market conditions and competitor information",
+          "outcome": "to update sales strategies and customer approach methods"
+        }
+      }
+    },
+    "a6fdb4e8-e7e2-4653-8744-89d563c69be8": {
+      "id": "a6fdb4e8-e7e2-4653-8744-89d563c69be8",
+      "text": "Draft text replies to prospects to generate response suggestions for customer outreach.",
+      "source": "Solar Sales Representatives and Assessors",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "AI prospect texting",
+        "source_count": 1,
+        "source_statements": [
+          "Consult AI for reply suggestions when texting prospects, then combine AI-generated responses with personal judgment to engage potential customers."
+        ],
+        "merge_type": "single",
+        "notes": "This is a distinct customer communication task focused on prospect texting and AI-assisted message drafting.",
+        "statement_parts": {
+          "action": "Draft",
+          "object": "text replies to prospects",
+          "outcome": "to generate response suggestions for customer outreach"
+        }
+      }
+    },
+    "46c381a2-51aa-43e0-b9df-f4ae15037583": {
+      "id": "46c381a2-51aa-43e0-b9df-f4ae15037583",
+      "text": "Translate messages to Chinese colleagues to produce clearer multilingual communication.",
+      "source": "Solar Sales Representatives and Assessors",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "AI message translation",
+        "source_count": 1,
+        "source_statements": [
+          "Use AI translation tools to improve sentences when communicating with Chinese colleagues, facilitating clearer multilingual discussions."
+        ],
+        "merge_type": "single",
+        "notes": "This task is distinct from customer messaging because it involves internal multilingual communication and translation rather than sales outreach.",
+        "statement_parts": {
+          "action": "Translate",
+          "object": "messages to Chinese colleagues",
+          "outcome": "to produce clearer multilingual communication"
+        }
+      }
+    },
+    "bfeeec33-4034-43c1-a2c9-6a968e5063bc": {
+      "id": "bfeeec33-4034-43c1-a2c9-6a968e5063bc",
+      "text": "Prepare personalized souvenirs for customers to add a personal touch to customer interactions.",
+      "source": "Solar Sales Representatives and Assessors",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "customer souvenirs",
+        "source_count": 1,
+        "source_statements": [
+          "Prepare personalized souvenirs for customers manually without using AI to ensure a personal touch."
+        ],
+        "merge_type": "single",
+        "notes": "This is a separate relationship-building task involving physical customer gifts rather than research or communication.",
+        "statement_parts": {
+          "action": "Prepare",
+          "object": "personalized souvenirs for customers",
+          "outcome": "to add a personal touch to customer interactions"
+        }
+      }
+    },
+    "4222e12d-5a98-4515-a92b-74dbf85df4a9": {
+      "id": "4222e12d-5a98-4515-a92b-74dbf85df4a9",
+      "text": "Analyze employee skill development needs to identify appropriate training modules.",
+      "source": "Training and Development Specialists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "training needs analysis",
+        "source_count": 1,
+        "source_statements": [
+          "Analyze employee development needs for soft and hard skills using AI tools to determine the best training modules."
+        ],
+        "merge_type": "single",
+        "notes": "This task is distinct because it focuses on assessing development needs and selecting training modules, not creating or delivering training content.",
+        "statement_parts": {
+          "action": "Analyze",
+          "object": "employee skill development needs",
+          "outcome": "to identify appropriate training modules"
+        }
+      }
+    },
+    "2c4f7b62-cc9a-4a09-a922-9443756ffb4d": {
+      "id": "2c4f7b62-cc9a-4a09-a922-9443756ffb4d",
+      "text": "Create training content such as e-learning modules, videos, software simulations, and scripts to produce instructional materials for employees and clients.",
+      "source": "Training and Development Specialists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "training content creation",
+        "source_count": 2,
+        "source_statements": [
+          "Create training materials such as videos, e-learning courses, and software simulations to instruct clients and internal employees on how to utilize company software.",
+          "Use CoPilot to generate a script skeleton from demo meeting recordings, then refine the script to prepare training content.",
+          "Create training content, including e-learning modules and videos, using AI tools like Story Journey."
+        ],
+        "merge_type": "partial_overlap",
+        "notes": "Merged cross-participant statements describing the core task of developing training materials. Preserved distinct details about content types and named tools. The script-generation statement was absorbed because it is a content-development method and intermediate step within broader training content creation.",
+        "statement_parts": {
+          "action": "Create",
+          "object": "training content such as e-learning modules, videos, software simulations, and scripts",
+          "outcome": "to produce instructional materials for employees and clients"
+        }
+      }
+    },
+    "fe43a653-1791-446b-acf1-670ffb73b958": {
+      "id": "fe43a653-1791-446b-acf1-670ffb73b958",
+      "text": "Review drafted training scripts with team members to verify content accuracy before publishing training materials.",
+      "source": "Training and Development Specialists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "script accuracy review",
+        "source_count": 1,
+        "source_statements": [
+          "Request team review of drafted training scripts to ensure accuracy and prevent the dissemination of false information."
+        ],
+        "merge_type": "single",
+        "notes": "Kept separate because peer review for accuracy is a distinct quality-control activity requiring coordination and validation rather than content creation.",
+        "statement_parts": {
+          "action": "Review",
+          "object": "drafted training scripts",
+          "outcome": "to verify content accuracy before publishing training materials"
+        }
+      }
+    },
+    "3f5b7d14-a0dc-476e-88bf-8188717a3baf": {
+      "id": "3f5b7d14-a0dc-476e-88bf-8188717a3baf",
+      "text": "Record training videos from finalized scripts to produce educational content for clients and employees.",
+      "source": "Training and Development Specialists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "training video recording",
+        "source_count": 1,
+        "source_statements": [
+          "Record training videos based on finalized scripts to create educational content for clients and employees."
+        ],
+        "merge_type": "single",
+        "notes": "Kept separate because recording videos is a production task with different methods and outputs from script writing or general content design.",
+        "statement_parts": {
+          "action": "Record",
+          "object": "training videos from finalized scripts",
+          "outcome": "to produce educational content for clients and employees"
+        }
+      }
+    },
+    "0cf42966-4902-437a-8fa3-9ccee046d1e8": {
+      "id": "0cf42966-4902-437a-8fa3-9ccee046d1e8",
+      "text": "Plan webinar sessions to generate titles, topics, and key points for employee learning events.",
+      "source": "Training and Development Specialists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "webinar topic planning",
+        "source_count": 1,
+        "source_statements": [
+          "Conduct quarterly webinar sharing sessions using AI to generate topics and key points for the sessions.",
+          "Generate and select suitable webinar titles using AI, iteratively prompting and combining AI outputs to create engaging titles."
+        ],
+        "merge_type": "partial_overlap",
+        "notes": "Merged statements focused on AI-assisted webinar planning. The title-generation task overlaps with generating topics and key points and was combined as part of preparing webinar content. The delivery aspect of 'conduct quarterly webinar sharing sessions' was not retained because the statement's concrete task detail centered on AI-generated planning inputs.",
+        "statement_parts": {
+          "action": "Plan",
+          "object": "webinar sessions",
+          "outcome": "to generate titles, topics, and key points for employee learning events"
+        }
+      }
+    },
+    "6404e418-1272-4409-abdd-f8859f692179": {
+      "id": "6404e418-1272-4409-abdd-f8859f692179",
+      "text": "Gather information from software demo sessions to draft training scripts and materials.",
+      "source": "Training and Development Specialists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "demo information gathering",
+        "source_count": 1,
+        "source_statements": [
+          "Attend software demo sessions to gather information needed for creating training scripts and materials."
+        ],
+        "merge_type": "single",
+        "notes": "Kept separate because collecting source information from demo sessions is a distinct input-gathering activity that can precede content development.",
+        "statement_parts": {
+          "action": "Gather",
+          "object": "information from software demo sessions",
+          "outcome": "to draft training scripts and materials"
+        }
+      }
+    },
+    "b5d29677-e2e8-4d3c-b28a-57ba548bb043": {
+      "id": "b5d29677-e2e8-4d3c-b28a-57ba548bb043",
+      "text": "Schedule needs analysis, content creation, and collaboration activities to organize training development work.",
+      "source": "Training and Development Specialists",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "workload scheduling",
+        "source_count": 1,
+        "source_statements": [
+          "Prioritize and schedule tasks such as needs analysis, content creation, and collaboration based on priorities and due dates."
+        ],
+        "merge_type": "single",
+        "notes": "This task is distinct because it concerns planning and sequencing work activities rather than analyzing needs, creating content, or delivering training.",
+        "statement_parts": {
+          "action": "Schedule",
+          "object": "needs analysis, content creation, and collaboration activities",
+          "outcome": "to organize training development work"
+        }
+      }
+    },
+    "f0e891c4-5bd6-49db-9184-b0a64ef4d5a0": {
+      "id": "f0e891c4-5bd6-49db-9184-b0a64ef4d5a0",
+      "text": "Track inventory stock and SKUs in Google Sheets to maintain accurate inventory records.",
+      "source": "Wholesale and Retail Buyers, Except Farm Products",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "inventory tracking",
+        "source_count": 1,
+        "source_statements": [
+          "Manually track and update inventory stock and SKUs for the trading card shop using Google Sheets formulas to maintain accurate records."
+        ],
+        "merge_type": "single",
+        "notes": "Distinct inventory control task involving stock records, SKU maintenance, and a named tool.",
+        "statement_parts": {
+          "action": "Track",
+          "object": "inventory stock and SKUs in Google Sheets",
+          "outcome": "to maintain accurate inventory records"
+        }
+      }
+    },
+    "46f1f3a6-4020-41de-b9f4-baf0b2d2c775": {
+      "id": "46f1f3a6-4020-41de-b9f4-baf0b2d2c775",
+      "text": "Set merchandise prices based on real-time team updates to guide buying and selling decisions.",
+      "source": "Wholesale and Retail Buyers, Except Farm Products",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "merchandise pricing",
+        "source_count": 1,
+        "source_statements": [
+          "Set prices for trading card collections or singles based on real-time updates from team members to facilitate buying and selling decisions."
+        ],
+        "merge_type": "single",
+        "notes": "Distinct pricing task focused on determining merchandise prices from current internal information.",
+        "statement_parts": {
+          "action": "Set",
+          "object": "merchandise prices",
+          "outcome": "to guide buying and selling decisions"
+        }
+      }
+    },
+    "a5725263-6665-48d1-8534-021c3066b4aa": {
+      "id": "a5725263-6665-48d1-8534-021c3066b4aa",
+      "text": "Coordinate foreign currency transactions with established agents to fulfill customer requests for balances such as USD or Alipay.",
+      "source": "Wholesale and Retail Buyers, Except Farm Products",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "currency transactions",
+        "source_count": 1,
+        "source_statements": [
+          "Facilitate foreign currency transactions for customers by coordinating with established agents to fulfill requests such as USD or Alipay balances."
+        ],
+        "merge_type": "single",
+        "notes": "Distinct transaction coordination task involving external agents and customer currency requests.",
+        "statement_parts": {
+          "action": "Coordinate",
+          "object": "foreign currency transactions with established agents",
+          "outcome": "to fulfill customer requests for balances such as USD or Alipay"
+        }
+      }
+    },
+    "343c482f-84d9-4cdc-bdf3-72242cccd2b9": {
+      "id": "343c482f-84d9-4cdc-bdf3-72242cccd2b9",
+      "text": "Buy and sell digital game currency based on current market conditions to complete timely and profitable transactions.",
+      "source": "Wholesale and Retail Buyers, Except Farm Products",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "game currency trading",
+        "source_count": 1,
+        "source_statements": [
+          "Buy and sell digital game currency with close attention to current market conditions to ensure timely and profitable transactions."
+        ],
+        "merge_type": "single",
+        "notes": "Distinct trading task focused on digital game currency rather than physical merchandise or foreign exchange fulfillment.",
+        "statement_parts": {
+          "action": "Buy and sell",
+          "object": "digital game currency",
+          "outcome": "to complete timely and profitable transactions"
+        }
+      }
+    },
+    "9c200cdd-f5f6-44c4-a323-5c13e7c32432": {
+      "id": "9c200cdd-f5f6-44c4-a323-5c13e7c32432",
+      "text": "Assign business function roles to team members to cover additional operations.",
+      "source": "Wholesale and Retail Buyers, Except Farm Products",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "team role assignment",
+        "source_count": 1,
+        "source_statements": [
+          "Assign roles and expand the team to cover additional business functions as the businesses grow, ensuring effective management."
+        ],
+        "merge_type": "single",
+        "notes": "Distinct staffing and work allocation task; not redundant with pricing, inventory, or transaction activities.",
+        "statement_parts": {
+          "action": "Assign",
+          "object": "business function roles to team members",
+          "outcome": "to cover additional operations"
+        }
+      }
+    },
+    "f48dd7e2-7c06-4c62-927d-434cecab8766": {
+      "id": "f48dd7e2-7c06-4c62-927d-434cecab8766",
+      "text": "Capture gameplay footage from video games to provide source material for videos and guides.",
+      "source": "Writers and Authors",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "gameplay capture",
+        "source_count": 1,
+        "source_statements": [
+          "Play games such as Arknights, Genshin Impact, and Honkai Star Rail to capture gameplay footage for use in content creation and guides."
+        ],
+        "merge_type": "single",
+        "notes": "This statement describes the distinct production task of recording raw gameplay footage. It is related to editing and guide writing but requires different methods and produces a different immediate output.",
+        "statement_parts": {
+          "action": "Capture",
+          "object": "gameplay footage from video games",
+          "outcome": "to provide source material for videos and guides"
+        }
+      }
+    },
+    "97c68884-1f58-4e71-ba76-65eb22dce40d": {
+      "id": "97c68884-1f58-4e71-ba76-65eb22dce40d",
+      "text": "Edit gameplay clips into videos and guide content to produce engaging material for viewers.",
+      "source": "Writers and Authors",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "video editing",
+        "source_count": 1,
+        "source_statements": [
+          "Edit captured gameplay clips into videos or guides to produce engaging content for viewers."
+        ],
+        "merge_type": "single",
+        "notes": "This statement stands alone as a post-production task focused on transforming captured footage into publishable content.",
+        "statement_parts": {
+          "action": "Edit",
+          "object": "gameplay clips into videos and guide content",
+          "outcome": "to produce engaging material for viewers"
+        }
+      }
+    },
+    "4057d60b-c6fc-4cdd-b405-e55b827cddd2": {
+      "id": "4057d60b-c6fc-4cdd-b405-e55b827cddd2",
+      "text": "Write game update guides and informational content to inform and assist viewers.",
+      "source": "Writers and Authors",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "guide writing",
+        "source_count": 1,
+        "source_statements": [
+          "Create guides and informational content based on new game updates to inform and assist viewers."
+        ],
+        "merge_type": "single",
+        "notes": "This is a distinct writing task centered on producing explanatory content about game updates, separate from footage capture, editing, and idea generation.",
+        "statement_parts": {
+          "action": "Write",
+          "object": "game update guides and informational content",
+          "outcome": "to inform and assist viewers"
+        }
+      }
+    },
+    "34409ef8-f001-45e0-b496-9ba28189a5b3": {
+      "id": "34409ef8-f001-45e0-b496-9ba28189a5b3",
+      "text": "Monitor community trends and memes to generate content ideas for relevant and engaging posts and videos.",
+      "source": "Writers and Authors",
+      "timestamp": "2026-04-16T10:46:31.706503",
+      "metadata": {
+        "abbreviated_phrase": "idea generation",
+        "source_count": 1,
+        "source_statements": [
+          "Generate content ideas by monitoring popular community trends and memes to increase engagement and relevance."
+        ],
+        "merge_type": "single",
+        "notes": "This statement describes editorial planning and ideation based on audience culture and trends, which is distinct from content production tasks.",
+        "statement_parts": {
+          "action": "Monitor",
+          "object": "community trends and memes",
+          "outcome": "to generate content ideas for relevant and engaging posts and videos"
+        }
+      }
+    }
+  },
+  "lambda_": 0.1,
+  "eps": 0.5,
+  "max_split_size": 5,
+  "split_depth_limit": 1,
+  "criteria": [
+    "Same core action and object domain (e.g. both involve reviewing code with teammates) OR",
+    "One is a specific instance of the other (attending standups IS sharing progress updates with the team) OR",
+    "One is a subtask of the other",
+    "A job analyst would describe them with the same canonical task statement",
+    "Tasks represent the same type of work even if phrased differently by different people"
+  ],
+  "total_processed": 129,
+  "last_fade_count": 129,
+  "outlier_buffer": [
+    {
+      "task": {
+        "id": "f0e891c4-5bd6-49db-9184-b0a64ef4d5a0",
+        "text": "Track inventory stock and SKUs in Google Sheets to maintain accurate inventory records.",
+        "source": "Wholesale and Retail Buyers, Except Farm Products",
+        "timestamp": "2026-04-16T10:46:31.706503",
+        "metadata": {
+          "abbreviated_phrase": "inventory tracking",
+          "source_count": 1,
+          "source_statements": [
+            "Manually track and update inventory stock and SKUs for the trading card shop using Google Sheets formulas to maintain accurate records."
+          ],
+          "merge_type": "single",
+          "notes": "Distinct inventory control task involving stock records, SKU maintenance, and a named tool.",
+          "statement_parts": {
+            "action": "Track",
+            "object": "inventory stock and SKUs in Google Sheets",
+            "outcome": "to maintain accurate inventory records"
+          }
+        }
+      },
+      "weight": 0.5358867312681466
+    },
+    {
+      "task": {
+        "id": "a5725263-6665-48d1-8534-021c3066b4aa",
+        "text": "Coordinate foreign currency transactions with established agents to fulfill customer requests for balances such as USD or Alipay.",
+        "source": "Wholesale and Retail Buyers, Except Farm Products",
+        "timestamp": "2026-04-16T10:46:31.706503",
+        "metadata": {
+          "abbreviated_phrase": "currency transactions",
+          "source_count": 1,
+          "source_statements": [
+            "Facilitate foreign currency transactions for customers by coordinating with established agents to fulfill requests such as USD or Alipay balances."
+          ],
+          "merge_type": "single",
+          "notes": "Distinct transaction coordination task involving external agents and customer currency requests.",
+          "statement_parts": {
+            "action": "Coordinate",
+            "object": "foreign currency transactions with established agents",
+            "outcome": "to fulfill customer requests for balances such as USD or Alipay"
+          }
+        }
+      },
+      "weight": 0.5358867312681466
+    },
+    {
+      "task": {
+        "id": "9c200cdd-f5f6-44c4-a323-5c13e7c32432",
+        "text": "Assign business function roles to team members to cover additional operations.",
+        "source": "Wholesale and Retail Buyers, Except Farm Products",
+        "timestamp": "2026-04-16T10:46:31.706503",
+        "metadata": {
+          "abbreviated_phrase": "team role assignment",
+          "source_count": 1,
+          "source_statements": [
+            "Assign roles and expand the team to cover additional business functions as the businesses grow, ensuring effective management."
+          ],
+          "merge_type": "single",
+          "notes": "Distinct staffing and work allocation task; not redundant with pricing, inventory, or transaction activities.",
+          "statement_parts": {
+            "action": "Assign",
+            "object": "business function roles to team members",
+            "outcome": "to cover additional operations"
+          }
+        }
+      },
+      "weight": 0.5358867312681466
+    },
+    {
+      "task": {
+        "id": "4057d60b-c6fc-4cdd-b405-e55b827cddd2",
+        "text": "Write game update guides and informational content to inform and assist viewers.",
+        "source": "Writers and Authors",
+        "timestamp": "2026-04-16T10:46:31.706503",
+        "metadata": {
+          "abbreviated_phrase": "guide writing",
+          "source_count": 1,
+          "source_statements": [
+            "Create guides and informational content based on new game updates to inform and assist viewers."
+          ],
+          "merge_type": "single",
+          "notes": "This is a distinct writing task centered on producing explanatory content about game updates, separate from footage capture, editing, and idea generation.",
+          "statement_parts": {
+            "action": "Write",
+            "object": "game update guides and informational content",
+            "outcome": "to inform and assist viewers"
+          }
+        }
+      },
+      "weight": 0.5358867312681466
+    },
+    {
+      "task": {
+        "id": "34409ef8-f001-45e0-b496-9ba28189a5b3",
+        "text": "Monitor community trends and memes to generate content ideas for relevant and engaging posts and videos.",
+        "source": "Writers and Authors",
+        "timestamp": "2026-04-16T10:46:31.706503",
+        "metadata": {
+          "abbreviated_phrase": "idea generation",
+          "source_count": 1,
+          "source_statements": [
+            "Generate content ideas by monitoring popular community trends and memes to increase engagement and relevance."
+          ],
+          "merge_type": "single",
+          "notes": "This statement describes editorial planning and ideation based on audience culture and trends, which is distinct from content production tasks.",
+          "statement_parts": {
+            "action": "Monitor",
+            "object": "community trends and memes",
+            "outcome": "to generate content ideas for relevant and engaging posts and videos"
+          }
+        }
+      },
+      "weight": 0.5358867312681466
+    }
+  ]
+}

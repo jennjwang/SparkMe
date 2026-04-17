@@ -1,0 +1,68 @@
+[
+  {
+    "id": "14623",
+    "label": "Analyze problems to develop solutions involving computer har",
+    "description": "Analyze problems to develop solutions involving computer hardware and software.",
+    "parent": null
+  },
+  {
+    "id": "14626",
+    "label": "Apply theoretical expertise and innovation to create or appl",
+    "description": "Apply theoretical expertise and innovation to create or apply new technology, such as adapting principles for applying computers to new uses.",
+    "parent": null
+  },
+  {
+    "id": "14624",
+    "label": "Assign or schedule tasks to meet work priorities and goals.",
+    "description": "Assign or schedule tasks to meet work priorities and goals.",
+    "parent": null
+  },
+  {
+    "id": "14628",
+    "label": "Meet with managers, vendors, and others to solicit cooperati",
+    "description": "Meet with managers, vendors, and others to solicit cooperation and resolve problems.",
+    "parent": null
+  },
+  {
+    "id": "14633",
+    "label": "Design computers and the software that runs them.",
+    "description": "Design computers and the software that runs them.",
+    "parent": null
+  },
+  {
+    "id": "14629",
+    "label": "Conduct logical analyses of business, scientific, engineerin",
+    "description": "Conduct logical analyses of business, scientific, engineering, and other technical problems, formulating mathematical models of problems for solution by computers.",
+    "parent": null
+  },
+  {
+    "id": "14625",
+    "label": "Evaluate project plans and proposals to assess feasibility i",
+    "description": "Evaluate project plans and proposals to assess feasibility issues.",
+    "parent": null
+  },
+  {
+    "id": "14635",
+    "label": "Participate in multidisciplinary projects in areas such as v",
+    "description": "Participate in multidisciplinary projects in areas such as virtual reality, human-computer interaction, or robotics.",
+    "parent": null
+  },
+  {
+    "id": "14627",
+    "label": "Consult with users, management, vendors, and technicians to ",
+    "description": "Consult with users, management, vendors, and technicians to determine computing needs and system requirements.",
+    "parent": null
+  },
+  {
+    "id": "14630",
+    "label": "Develop and interpret organizational goals, policies, and pr",
+    "description": "Develop and interpret organizational goals, policies, and procedures.",
+    "parent": null
+  },
+  {
+    "id": "14632",
+    "label": "Develop performance standards, and evaluate work in light of",
+    "description": "Develop performance standards, and evaluate work in light of established standards.",
+    "parent": null
+  }
+]

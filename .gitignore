@@ -210,8 +210,10 @@ gcp-key.json
 logs/
 
 .venv-analysis/
-analysis/
 .claude/
 data/
 user_study/
 results/
+pilot/
+
+*.DS_Store

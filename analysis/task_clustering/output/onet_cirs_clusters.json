@@ -1,0 +1,565 @@
+{
+  "clusters": {
+    "14623": {
+      "id": "14623",
+      "leader": "Analyze problems to develop solutions involving computer hardware and software.",
+      "members": [
+        "d253b7f1-f556-4227-9378-f0e995b0c4b8",
+        "1b7a46a5-9d39-463f-8ad8-10855f279438"
+      ],
+      "weight": 1.0978203433272966,
+      "last_updated": "2026-04-16T10:58:42.126347",
+      "created_at": "2026-04-16T10:58:42.126013",
+      "parent_id": null,
+      "children": [],
+      "level": 0,
+      "anchored": true
+    },
+    "14626": {
+      "id": "14626",
+      "leader": "Apply theoretical expertise and innovation to create or apply new technology, such as adapting principles for applying computers to new uses.",
+      "members": [
+        "034728df-e3f6-4f49-b00a-4beb9ba635ff",
+        "224eaca1-b822-444d-809b-d051d030a94a",
+        "f0a2b4b1-442b-4006-9906-777a93af45f2"
+      ],
+      "weight": 2.883515572306531,
+      "last_updated": "2026-04-16T10:58:42.126347",
+      "created_at": "2026-04-16T10:58:42.126013",
+      "parent_id": null,
+      "children": [],
+      "level": 0,
+      "anchored": true
+    },
+    "14624": {
+      "id": "14624",
+      "leader": "Assign or schedule tasks to meet work priorities and goals.",
+      "members": [],
+      "weight": 0.2679433656340732,
+      "last_updated": "2026-04-16T10:58:42.126013",
+      "created_at": "2026-04-16T10:58:42.126013",
+      "parent_id": null,
+      "children": [],
+      "level": 0,
+      "anchored": true
+    },
+    "14628": {
+      "id": "14628",
+      "leader": "Meet with managers, vendors, and others to solicit cooperation and resolve problems.",
+      "members": [
+        "a631256b-7a3e-4713-b899-b94fa998743c",
+        "59cea311-559b-4567-9067-1d578af62032"
+      ],
+      "weight": 2.2009763571708807,
+      "last_updated": "2026-04-16T10:58:42.126347",
+      "created_at": "2026-04-16T10:58:42.126013",
+      "parent_id": null,
+      "children": [],
+      "level": 0,
+      "anchored": true
+    },
+    "14633": {
+      "id": "14633",
+      "leader": "Design computers and the software that runs them.",
+      "members": [
+        "d0f9d8e0-5da7-4184-8b9d-9450e64a2d01",
+        "b2e9408b-0d8a-4359-9945-ec4520000fa3"
+      ],
+      "weight": 2.267943365634073,
+      "last_updated": "2026-04-16T10:58:42.126347",
+      "created_at": "2026-04-16T10:58:42.126013",
+      "parent_id": null,
+      "children": [],
+      "level": 0,
+      "anchored": true
+    },
+    "14629": {
+      "id": "14629",
+      "leader": "Conduct logical analyses of business, scientific, engineering, and other technical problems, formulating mathematical models of problems for solution by computers.",
+      "members": [
+        "f6002d08-24c7-419c-a8e5-7193abdcdb31"
+      ],
+      "weight": 0.5358867312681465,
+      "last_updated": "2026-04-16T10:58:42.126347",
+      "created_at": "2026-04-16T10:58:42.126013",
+      "parent_id": null,
+      "children": [],
+      "level": 0,
+      "anchored": true
+    },
+    "14625": {
+      "id": "14625",
+      "leader": "Evaluate project plans and proposals to assess feasibility issues.",
+      "members": [],
+      "weight": 0.2679433656340732,
+      "last_updated": "2026-04-16T10:58:42.126013",
+      "created_at": "2026-04-16T10:58:42.126013",
+      "parent_id": null,
+      "children": [],
+      "level": 0,
+      "anchored": true
+    },
+    "14635": {
+      "id": "14635",
+      "leader": "Participate in multidisciplinary projects in areas such as virtual reality, human-computer interaction, or robotics.",
+      "members": [
+        "ecb7d206-056b-45cd-bafd-9b1a96e5eb81"
+      ],
+      "weight": 1.2679433656340733,
+      "last_updated": "2026-04-16T10:58:42.126347",
+      "created_at": "2026-04-16T10:58:42.126013",
+      "parent_id": null,
+      "children": [],
+      "level": 0,
+      "anchored": true
+    },
+    "14627": {
+      "id": "14627",
+      "leader": "Consult with users, management, vendors, and technicians to determine computing needs and system requirements.",
+      "members": [
+        "d5b58853-1ec2-4603-9dae-0f4bc2d7e863"
+      ],
+      "weight": 0.5358867312681465,
+      "last_updated": "2026-04-16T10:58:42.126347",
+      "created_at": "2026-04-16T10:58:42.126013",
+      "parent_id": null,
+      "children": [],
+      "level": 0,
+      "anchored": true
+    },
+    "14630": {
+      "id": "14630",
+      "leader": "Develop and interpret organizational goals, policies, and procedures.",
+      "members": [],
+      "weight": 0.2679433656340732,
+      "last_updated": "2026-04-16T10:58:42.126013",
+      "created_at": "2026-04-16T10:58:42.126013",
+      "parent_id": null,
+      "children": [],
+      "level": 0,
+      "anchored": true
+    },
+    "14632": {
+      "id": "14632",
+      "leader": "Develop performance standards, and evaluate work in light of established standards.",
+      "members": [
+        "a4b72fa2-2441-4789-ba22-7802267c5106"
+      ],
+      "weight": 1.2679433656340733,
+      "last_updated": "2026-04-16T10:58:42.126347",
+      "created_at": "2026-04-16T10:58:42.126013",
+      "parent_id": null,
+      "children": [],
+      "level": 0,
+      "anchored": true
+    }
+  },
+  "items": {
+    "a579b808-d5ff-4ea0-9bb5-196d8299198c": {
+      "id": "a579b808-d5ff-4ea0-9bb5-196d8299198c",
+      "text": "Review research literature to identify relevant prior work and techniques.",
+      "source": "Computer and Information Research Scientists",
+      "timestamp": "2026-04-16T10:58:42.126347",
+      "metadata": {
+        "abbreviated_phrase": "literature review",
+        "source_count": 2,
+        "source_statements": [
+          "Read current state-of-the-art research papers in AI and climate science to identify new techniques and ideas for improving climate prediction.",
+          "Sift through large volumes of new literature in the vision-language model (VLM) space to identify relevant papers for research.",
+          "Conduct independent research, including implementation, literature review, and brainstorming new ideas, using AI tools to increase productivity.",
+          "Use AI tools to conduct deep research before meetings with advisors to discuss prior works and assess feasibility of proposed research topics."
+        ],
+        "merge_type": "partial_overlap",
+        "notes": "Merged literature-scanning and prior-work review tasks across AI/climate and VLM contexts. AI tools were explicitly mentioned by one participant and can generalize to the broader review activity.",
+        "statement_parts": {
+          "action": "Review",
+          "object": "research literature",
+          "outcome": "to identify relevant prior work and techniques"
+        }
+      }
+    },
+    "f6002d08-24c7-419c-a8e5-7193abdcdb31": {
+      "id": "f6002d08-24c7-419c-a8e5-7193abdcdb31",
+      "text": "Compare and select AI methods for identified research problems to choose approaches for experimentation.",
+      "source": "Computer and Information Research Scientists",
+      "timestamp": "2026-04-16T10:58:42.126347",
+      "metadata": {
+        "abbreviated_phrase": "method selection",
+        "source_count": 1,
+        "source_statements": [
+          "Survey, compare, and select AI techniques for adaptation and application to identified climate science problems."
+        ],
+        "merge_type": "single",
+        "notes": "Distinct from literature review because it focuses on evaluating candidate methods for a specific problem and deciding what to test.",
+        "statement_parts": {
+          "action": "Compare and select",
+          "object": "AI methods for identified research problems",
+          "outcome": "to choose approaches for experimentation"
+        }
+      }
+    },
+    "d5b58853-1ec2-4603-9dae-0f4bc2d7e863": {
+      "id": "d5b58853-1ec2-4603-9dae-0f4bc2d7e863",
+      "text": "Consult domain experts to identify research problems that can be addressed with AI methods.",
+      "source": "Computer and Information Research Scientists",
+      "timestamp": "2026-04-16T10:58:42.126347",
+      "metadata": {
+        "abbreviated_phrase": "expert consultation",
+        "source_count": 1,
+        "source_statements": [
+          "Collaborate and communicate with climate science experts to identify key problems and challenges in the field that can be addressed using AI techniques."
+        ],
+        "merge_type": "single",
+        "notes": "Kept separate because it centers on eliciting problem definitions from experts rather than reviewing literature or selecting methods.",
+        "statement_parts": {
+          "action": "Consult",
+          "object": "domain experts",
+          "outcome": "to identify research problems that can be addressed with AI methods"
+        }
+      }
+    },
+    "728c0778-7c2b-4acf-a166-379b4b3f1235": {
+      "id": "728c0778-7c2b-4acf-a166-379b4b3f1235",
+      "text": "Design experiments and prototype model architectures to test research hypotheses and evaluate AI methods.",
+      "source": "Computer and Information Research Scientists",
+      "timestamp": "2026-04-16T10:58:42.126347",
+      "metadata": {
+        "abbreviated_phrase": "experiment design",
+        "source_count": 3,
+        "source_statements": [
+          "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+          "Design experiments and explore new NLP architectures to ensure technical rigor in model evaluation frameworks.",
+          "Brainstorm and prototype new architectures for multimodal alignment or novel evaluation metrics to validate research hypotheses."
+        ],
+        "merge_type": "partial_overlap",
+        "notes": "Merged experiment design, execution, and architecture prototyping because all describe setting up and running research tests. Preserved both hypothesis-testing and evaluation aspects.",
+        "statement_parts": {
+          "action": "Design",
+          "object": "experiments and prototype model architectures",
+          "outcome": "to test research hypotheses and evaluate AI methods"
+        }
+      }
+    },
+    "81d93785-4d37-4289-bbd5-9e88879c82da": {
+      "id": "81d93785-4d37-4289-bbd5-9e88879c82da",
+      "text": "Write code for model training, inference, and research prototypes to produce runnable experimental systems.",
+      "source": "Computer and Information Research Scientists",
+      "timestamp": "2026-04-16T10:58:42.126347",
+      "metadata": {
+        "abbreviated_phrase": "research coding",
+        "source_count": 4,
+        "source_statements": [
+          "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+          "Develop and run code for experiments, model inference, and training scripts to translate theoretical NLP concepts into tangible results.",
+          "Offload repetitive boilerplate coding, data preparation, and verification tasks to AI tools to reduce tedium and focus on research.",
+          "Perform coding tasks to solve problems in the context of AI research and product development."
+        ],
+        "merge_type": "partial_overlap",
+        "notes": "Merged coding tasks tied to AI research and experimentation. Included AI-assisted boilerplate coding as a variant of the same core activity.",
+        "statement_parts": {
+          "action": "Write",
+          "object": "code for model training, inference, and research prototypes",
+          "outcome": "to produce runnable experimental systems"
+        }
+      }
+    },
+    "d253b7f1-f556-4227-9378-f0e995b0c4b8": {
+      "id": "d253b7f1-f556-4227-9378-f0e995b0c4b8",
+      "text": "Debug research code and distributed systems to resolve failures in experimental and production workflows.",
+      "source": "Computer and Information Research Scientists",
+      "timestamp": "2026-04-16T10:58:42.126347",
+      "metadata": {
+        "abbreviated_phrase": "code debugging",
+        "source_count": 2,
+        "source_statements": [
+          "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+          "Debug issues in large-scale distributed systems to ensure reliability and efficiency."
+        ],
+        "merge_type": "partial_overlap",
+        "notes": "Merged debugging activities because both involve diagnosing and fixing technical issues, while preserving that one occurs in research code and the other in distributed systems.",
+        "statement_parts": {
+          "action": "Debug",
+          "object": "research code and distributed systems",
+          "outcome": "to resolve failures in experimental and production workflows"
+        }
+      }
+    },
+    "aad836a4-042b-4d5e-8038-fcd46b85a7f5": {
+      "id": "aad836a4-042b-4d5e-8038-fcd46b85a7f5",
+      "text": "Analyze model outputs and platform data to identify patterns, biases, and decision-relevant findings.",
+      "source": "Computer and Information Research Scientists",
+      "timestamp": "2026-04-16T10:58:42.126347",
+      "metadata": {
+        "abbreviated_phrase": "data analysis",
+        "source_count": 2,
+        "source_statements": [
+          "Analyze model outputs to identify patterns or biases that inform evaluation frameworks.",
+          "Perform data analysis on the peer review platform to support decision-making and improve platform outcomes.",
+          "Use AI tools to explore data, prototype solutions, and understand complex system behavior to work more efficiently and focus on higher-level problem solving."
+        ],
+        "merge_type": "partial_overlap",
+        "notes": "Merged analysis of model outputs, operational platform data, and AI-assisted data exploration because all involve examining data to extract actionable findings.",
+        "statement_parts": {
+          "action": "Analyze",
+          "object": "model outputs and platform data",
+          "outcome": "to identify patterns, biases, and decision-relevant findings"
+        }
+      }
+    },
+    "b36670da-d4c1-46ad-b48f-69e9650a3435": {
+      "id": "b36670da-d4c1-46ad-b48f-69e9650a3435",
+      "text": "Annotate datasets to create ground-truth labels for model evaluation.",
+      "source": "Computer and Information Research Scientists",
+      "timestamp": "2026-04-16T10:58:42.126347",
+      "metadata": {
+        "abbreviated_phrase": "data annotation",
+        "source_count": 1,
+        "source_statements": [
+          "Handle data annotation workflows to ensure high-quality ground truth data for robust evaluations."
+        ],
+        "merge_type": "single",
+        "notes": "Distinct manual data-preparation task requiring labeling rather than analysis or coding.",
+        "statement_parts": {
+          "action": "Annotate",
+          "object": "datasets",
+          "outcome": "to create ground-truth labels for model evaluation"
+        }
+      }
+    },
+    "681a20b3-503b-47eb-9411-522d3a0d783e": {
+      "id": "681a20b3-503b-47eb-9411-522d3a0d783e",
+      "text": "Organize experimental results, model checkpoints, and configuration files to track ablation studies.",
+      "source": "Computer and Information Research Scientists",
+      "timestamp": "2026-04-16T10:58:42.126347",
+      "metadata": {
+        "abbreviated_phrase": "experiment tracking",
+        "source_count": 1,
+        "source_statements": [
+          "Organize and manage experimental results, model checkpoints, and configuration files during ablation studies to facilitate actionable insights."
+        ],
+        "merge_type": "single",
+        "notes": "Kept separate because it is specifically about experiment artifact tracking with a named tool.",
+        "statement_parts": {
+          "action": "Organize",
+          "object": "experimental results, model checkpoints, and configuration files",
+          "outcome": "to track ablation studies"
+        }
+      }
+    },
+    "ecb7d206-056b-45cd-bafd-9b1a96e5eb81": {
+      "id": "ecb7d206-056b-45cd-bafd-9b1a96e5eb81",
+      "text": "Write research findings and experimental results in papers or documentation to record and communicate outcomes.",
+      "source": "Computer and Information Research Scientists",
+      "timestamp": "2026-04-16T10:58:42.126347",
+      "metadata": {
+        "abbreviated_phrase": "research writing",
+        "source_count": 1,
+        "source_statements": [
+          "Write up research findings and results from experiments for documentation or publication."
+        ],
+        "merge_type": "single",
+        "notes": "Distinct dissemination task focused on producing written research outputs.",
+        "statement_parts": {
+          "action": "Write",
+          "object": "research findings and experimental results in papers or documentation",
+          "outcome": "to record and communicate outcomes"
+        }
+      }
+    },
+    "d0f9d8e0-5da7-4184-8b9d-9450e64a2d01": {
+      "id": "d0f9d8e0-5da7-4184-8b9d-9450e64a2d01",
+      "text": "Write code for large-scale distributed systems to deliver scalable and reliable system functionality.",
+      "source": "Computer and Information Research Scientists",
+      "timestamp": "2026-04-16T10:58:42.126347",
+      "metadata": {
+        "abbreviated_phrase": "distributed systems coding",
+        "source_count": 1,
+        "source_statements": [
+          "Write and review code for distributed systems to improve scalability and reliability."
+        ],
+        "merge_type": "single",
+        "notes": "Kept separate from research coding because it targets distributed systems engineering rather than model experimentation.",
+        "statement_parts": {
+          "action": "Write",
+          "object": "code for large-scale distributed systems",
+          "outcome": "to deliver scalable and reliable system functionality"
+        }
+      }
+    },
+    "1b7a46a5-9d39-463f-8ad8-10855f279438": {
+      "id": "1b7a46a5-9d39-463f-8ad8-10855f279438",
+      "text": "Break down ambiguous technical problems into structured components to define implementation and design steps.",
+      "source": "Computer and Information Research Scientists",
+      "timestamp": "2026-04-16T10:58:42.126347",
+      "metadata": {
+        "abbreviated_phrase": "problem decomposition",
+        "source_count": 1,
+        "source_statements": [
+          "Break down ambiguous or messy technical problems into structured components to enable problem-solving and system design."
+        ],
+        "merge_type": "single",
+        "notes": "Distinct analytical planning task that precedes coding or experimentation.",
+        "statement_parts": {
+          "action": "Break down",
+          "object": "ambiguous technical problems into structured components",
+          "outcome": "to define implementation and design steps"
+        }
+      }
+    },
+    "224eaca1-b822-444d-809b-d051d030a94a": {
+      "id": "224eaca1-b822-444d-809b-d051d030a94a",
+      "text": "Prototype natural-language interfaces for experiment data to enable users to query results in plain language.",
+      "source": "Computer and Information Research Scientists",
+      "timestamp": "2026-04-16T10:58:42.126347",
+      "metadata": {
+        "abbreviated_phrase": "NL data interface",
+        "source_count": 1,
+        "source_statements": [
+          "Prototype AI-assisted interfaces for querying experiment data in natural language to reduce user friction and speed up data access."
+        ],
+        "merge_type": "single",
+        "notes": "Separate interface prototyping task with a specific user-facing artifact.",
+        "statement_parts": {
+          "action": "Prototype",
+          "object": "natural-language interfaces for experiment data",
+          "outcome": "to enable users to query results in plain language"
+        }
+      }
+    },
+    "f0a2b4b1-442b-4006-9906-777a93af45f2": {
+      "id": "f0a2b4b1-442b-4006-9906-777a93af45f2",
+      "text": "Develop large language models and training or inference methods to produce new AI capabilities.",
+      "source": "Computer and Information Research Scientists",
+      "timestamp": "2026-04-16T10:58:42.126347",
+      "metadata": {
+        "abbreviated_phrase": "LLM development",
+        "source_count": 2,
+        "source_statements": [
+          "Develop new methods in large language model (LLM) training and inference, with a special focus on agentic workflow, to drive AI innovation.",
+          "Serve as a research associate to help build a large language model (LLM) for a university in the UAE."
+        ],
+        "merge_type": "partial_overlap",
+        "notes": "Merged building an LLM with developing new LLM training/inference methods because both center on creating LLM systems, though one emphasizes methodological innovation.",
+        "statement_parts": {
+          "action": "Develop",
+          "object": "large language models and training or inference methods",
+          "outcome": "to produce new AI capabilities"
+        }
+      }
+    },
+    "034728df-e3f6-4f49-b00a-4beb9ba635ff": {
+      "id": "034728df-e3f6-4f49-b00a-4beb9ba635ff",
+      "text": "Design agentic workflows for AI systems to make them reusable across applications.",
+      "source": "Computer and Information Research Scientists",
+      "timestamp": "2026-04-16T10:58:42.126347",
+      "metadata": {
+        "abbreviated_phrase": "agent workflow design",
+        "source_count": 1,
+        "source_statements": [
+          "Design agentic workflows to ensure they can be scaled up easily across different applications."
+        ],
+        "merge_type": "single",
+        "notes": "Kept separate from LLM development and agent implementation because it focuses on workflow architecture.",
+        "statement_parts": {
+          "action": "Design",
+          "object": "agentic workflows for AI systems",
+          "outcome": "to make them reusable across applications"
+        }
+      }
+    },
+    "b2e9408b-0d8a-4359-9945-ec4520000fa3": {
+      "id": "b2e9408b-0d8a-4359-9945-ec4520000fa3",
+      "text": "Build conversational agents to deliver agent-based interactions.",
+      "source": "Computer and Information Research Scientists",
+      "timestamp": "2026-04-16T10:58:42.126347",
+      "metadata": {
+        "abbreviated_phrase": "conversation agents",
+        "source_count": 1,
+        "source_statements": [
+          "Use agentic workflow to build conversation agents using a proprietary framework."
+        ],
+        "merge_type": "single",
+        "notes": "Distinct implementation task for a specific class of AI application.",
+        "statement_parts": {
+          "action": "Build",
+          "object": "conversational agents",
+          "outcome": "to deliver agent-based interactions"
+        }
+      }
+    },
+    "a4b72fa2-2441-4789-ba22-7802267c5106": {
+      "id": "a4b72fa2-2441-4789-ba22-7802267c5106",
+      "text": "Review pull requests to identify where AI assistance can be added to the development workflow.",
+      "source": "Computer and Information Research Scientists",
+      "timestamp": "2026-04-16T10:58:42.126347",
+      "metadata": {
+        "abbreviated_phrase": "PR review",
+        "source_count": 1,
+        "source_statements": [
+          "Review pull requests (PR reviews), a repetitive and less enjoyable task, and identify opportunities where AI assistance could improve manageability."
+        ],
+        "merge_type": "single",
+        "notes": "Separate code-review task focused on process improvement opportunities.",
+        "statement_parts": {
+          "action": "Review",
+          "object": "pull requests",
+          "outcome": "to identify where AI assistance can be added to the development workflow"
+        }
+      }
+    },
+    "59cea311-559b-4567-9067-1d578af62032": {
+      "id": "59cea311-559b-4567-9067-1d578af62032",
+      "text": "Coordinate peer review platform workflows to keep review operations running smoothly.",
+      "source": "Computer and Information Research Scientists",
+      "timestamp": "2026-04-16T10:58:42.126347",
+      "metadata": {
+        "abbreviated_phrase": "workflow coordination",
+        "source_count": 1,
+        "source_statements": [
+          "Manage workflows for a peer review platform to ensure smooth operation and support for an NLP organization."
+        ],
+        "merge_type": "single",
+        "notes": "Distinct operational coordination task tied to a platform rather than research or coding.",
+        "statement_parts": {
+          "action": "Coordinate",
+          "object": "peer review platform workflows",
+          "outcome": "to keep review operations running smoothly"
+        }
+      }
+    },
+    "a631256b-7a3e-4713-b899-b94fa998743c": {
+      "id": "a631256b-7a3e-4713-b899-b94fa998743c",
+      "text": "Resolve user issues on the peer review platform to restore platform functionality.",
+      "source": "Computer and Information Research Scientists",
+      "timestamp": "2026-04-16T10:58:42.126347",
+      "metadata": {
+        "abbreviated_phrase": "user issue resolution",
+        "source_count": 1,
+        "source_statements": [
+          "Provide technical support for the peer review platform to resolve user issues and maintain platform functionality."
+        ],
+        "merge_type": "single",
+        "notes": "Kept separate because troubleshooting user-reported platform issues is different from workflow coordination or data analysis.",
+        "statement_parts": {
+          "action": "Resolve",
+          "object": "user issues on the peer review platform",
+          "outcome": "to restore platform functionality"
+        }
+      }
+    }
+  },
+  "lambda_": 0.1,
+  "eps": 0.5,
+  "max_split_size": 5,
+  "split_depth_limit": 1,
+  "criteria": [
+    "Same core action and object domain (e.g. both involve reviewing code with teammates) OR",
+    "One is a specific instance of the other (attending standups IS sharing progress updates with the team) OR",
+    "One is a subtask of the other",
+    "A job analyst would describe them with the same canonical task statement",
+    "Tasks represent the same type of work even if phrased differently by different people"
+  ],
+  "total_processed": 19,
+  "last_fade_count": 19,
+  "outlier_buffer": []
+}

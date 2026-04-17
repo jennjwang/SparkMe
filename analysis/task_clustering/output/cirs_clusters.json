@@ -1,0 +1,1180 @@
+{
+  "clusters": {
+    "468cc817-e544-4b96-a647-4e596164251d": {
+      "id": "468cc817-e544-4b96-a647-4e596164251d",
+      "leader": "Review and evaluate relevant research literature",
+      "members": [
+        "5c3d7da1-0f76-4781-b7f6-123ae980adda",
+        "7f6a7e68-b9c6-47cd-8c03-e9836c243a00",
+        "8f465863-e19c-4a21-8b85-a04bbd4ee571",
+        "1faffeca-f244-452f-8ae6-06ff3a2ac60a",
+        "9f95bb10-8253-4514-bd7b-e493c6fece27"
+      ],
+      "weight": 5.0,
+      "last_updated": "2026-04-10T14:32:19.298780",
+      "created_at": "2026-04-10T14:32:19.298780",
+      "parent_id": null,
+      "children": [],
+      "level": 0,
+      "anchored": false
+    },
+    "65555d7a-6123-42bb-ba0e-85f91ead4671": {
+      "id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+      "leader": "Design and run model evaluation experiments",
+      "members": [],
+      "weight": 5.0,
+      "last_updated": "2026-04-10T14:32:19.298780",
+      "created_at": "2026-04-10T14:32:19.298780",
+      "parent_id": null,
+      "children": [
+        "aa66f492-c411-474e-b54c-aa44fa5b12d0",
+        "2b54fd32-29d6-48ec-b587-baa3ec61cea7"
+      ],
+      "level": 0,
+      "anchored": false
+    },
+    "aa66f492-c411-474e-b54c-aa44fa5b12d0": {
+      "id": "aa66f492-c411-474e-b54c-aa44fa5b12d0",
+      "leader": "Experiment design and execution",
+      "members": [
+        "caea839e-32cc-4d10-8f52-07ab03ce892b",
+        "f2f685ef-ea91-426b-aec1-b1353400edaf",
+        "312376bc-f169-4729-aff0-6de111fc6c30",
+        "69b70e7c-125e-418a-8164-eb0b0b6c66eb"
+      ],
+      "weight": 4.0,
+      "last_updated": "2026-04-10T14:32:19.298780",
+      "created_at": "2026-04-10T14:32:43.469854",
+      "parent_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+      "children": [],
+      "level": 1,
+      "anchored": false
+    },
+    "2b54fd32-29d6-48ec-b587-baa3ec61cea7": {
+      "id": "2b54fd32-29d6-48ec-b587-baa3ec61cea7",
+      "leader": "Evaluation analysis and tracking",
+      "members": [
+        "caea839e-32cc-4d10-8f52-07ab03ce892b",
+        "744760fb-04ed-4f41-aa09-1e336c13be02"
+      ],
+      "weight": 2.0,
+      "last_updated": "2026-04-10T14:32:43.469854",
+      "created_at": "2026-04-10T14:32:43.469854",
+      "parent_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+      "children": [],
+      "level": 1,
+      "anchored": false
+    },
+    "e9bb1fbe-efc7-41c5-97e6-a93b5163791d": {
+      "id": "e9bb1fbe-efc7-41c5-97e6-a93b5163791d",
+      "leader": "Coordinate and troubleshoot platform workflows",
+      "members": [
+        "4a5ddb16-4b12-40e8-9b60-e0a69af491d1",
+        "42f235a2-6c77-48bc-b80e-e8b00dc36601",
+        "83bd1314-fbfc-4980-8610-262bd90fb4e9",
+        "dbf6f974-b2f4-4cd1-94ed-3eee1877e667"
+      ],
+      "weight": 4.0,
+      "last_updated": "2026-04-10T14:32:19.298780",
+      "created_at": "2026-04-10T14:32:19.298780",
+      "parent_id": null,
+      "children": [],
+      "level": 0,
+      "anchored": false
+    },
+    "0c5fed03-5098-4419-a6c9-1995efaa21ea": {
+      "id": "0c5fed03-5098-4419-a6c9-1995efaa21ea",
+      "leader": "Analyze data to support decision making",
+      "members": [
+        "694ec362-0032-44e6-add2-cc4322827329",
+        "b427b84e-948c-46e0-b8ce-fc255383ad79"
+      ],
+      "weight": 2.0,
+      "last_updated": "2026-04-10T14:32:19.298780",
+      "created_at": "2026-04-10T14:32:19.298780",
+      "parent_id": null,
+      "children": [],
+      "level": 0,
+      "anchored": false
+    },
+    "704e2a60-cd78-406a-a706-77cd4f68ddb7": {
+      "id": "704e2a60-cd78-406a-a706-77cd4f68ddb7",
+      "leader": "Review and improve software code",
+      "members": [
+        "980b3555-4a0f-4f27-86a3-19c04eeb8a17",
+        "dffab406-b383-4210-a3f9-9ed93ddfaf32",
+        "2c95e2b2-72b3-42e6-ba9e-e18533ebe604",
+        "48c2b17d-154f-4898-84c6-c557c753431f"
+      ],
+      "weight": 4.0,
+      "last_updated": "2026-04-10T14:32:19.298780",
+      "created_at": "2026-04-10T14:32:19.298780",
+      "parent_id": null,
+      "children": [],
+      "level": 0,
+      "anchored": false
+    }
+  },
+  "items": {
+    "5c3d7da1-0f76-4781-b7f6-123ae980adda": {
+      "id": "5c3d7da1-0f76-4781-b7f6-123ae980adda",
+      "text": "Read current state-of-the-art research papers in AI and climate science to identify new techniques and ideas for improving climate prediction.",
+      "source": "PhD Student (AI for Climate Science)",
+      "timestamp": "2026-04-10T14:32:19.298780",
+      "metadata": {
+        "action": "Read",
+        "object": "current state-of-the-art research papers in AI and climate science",
+        "purpose": "identify new techniques and ideas for improving climate prediction",
+        "tools": "",
+        "information_sources": "current state-of-the-art research papers",
+        "method": "Find and read through current state-of-the-art papers, focusing on techniques and ideas relevant to AI for climate science.",
+        "judgment": "Selecting which papers and techniques are most relevant or promising for addressing gaps in climate science.",
+        "quality_criteria": "",
+        "work_context": "",
+        "frequency": "",
+        "duration": "20% of research time",
+        "skills": "Ability to survey and critically evaluate scientific literature; interdisciplinary understanding of AI and climate science.",
+        "experience": "",
+        "training": "",
+        "sources": {
+          "task_statement": "So basically my current daily typical day is looking like, it looks like doing research, find the currently state of our papers, read through them and trying to find the best techniques, find the new techniques and find the new ideas and try to propose the new ideas to empower the current gap of some, you know, the science field.",
+          "action": "doing research, find the currently state of our papers, read through them",
+          "object": "doing research, find the currently state of our papers, read through them",
+          "purpose": "find the best techniques, find the new techniques and find the new ideas and try to propose the new ideas to empower the current gap of some, you know, the science field.",
+          "information_sources": "doing research, find the currently state of our papers, read through them",
+          "method": "doing research, find the currently state of our papers, read through them and trying to find the best techniques, find the new techniques and find the new ideas",
+          "judgment": "trying to find the best techniques, find the new techniques and find the new ideas and try to propose the new ideas to empower the current gap of some, you know, the science field.",
+          "duration": "20% maybe 30% 20% of the time, I contribute to the reading stuff.",
+          "skills": "doing research, find the currently state of our papers, read through them and trying to find the best techniques, find the new techniques and find the new ideas"
+        },
+        "_original_statement": "",
+        "_screen_status": "pass",
+        "_screen_reason": "Concrete action on a specific object with a clear purpose; literature review is a common task for computer and information research scientists."
+      }
+    },
+    "7f6a7e68-b9c6-47cd-8c03-e9836c243a00": {
+      "id": "7f6a7e68-b9c6-47cd-8c03-e9836c243a00",
+      "text": "Survey, compare, and select AI techniques for adaptation and application to identified climate science problems.",
+      "source": "PhD Student (AI for Climate Science)",
+      "timestamp": "2026-04-10T14:32:19.298780",
+      "metadata": {
+        "action": "Survey, compare, and select",
+        "object": "AI techniques",
+        "purpose": "adapt and apply them to identified climate science problems",
+        "tools": "",
+        "information_sources": "Current AI techniques, research papers, and expert input on climate science problems.",
+        "method": "Conduct a survey of available AI techniques, understand both the big picture and details, compare each technique, and choose the most suitable one for adaptation.",
+        "judgment": "Evaluate and compare AI techniques to determine which is most suitable for the specific climate science problem.",
+        "quality_criteria": "Selection of the most suitable AI technique for the specific scenario, leading to improved research outcomes.",
+        "work_context": "High autonomy in AI technique selection; time pressure due to fast-paced AI advancements.",
+        "frequency": "",
+        "duration": "",
+        "skills": "Surveying, comparing, and evaluating AI methods; interdisciplinary analysis.",
+        "experience": "",
+        "training": "",
+        "sources": {
+          "task_statement": "I have to do the survey, I have to understand the big picture and also understand the detail of the techniques in terms of AI techniques. In this case, just what I said in the previous, the big picture is very important. So I have to understand, I cannot just stick on, narrow it down to one technique, I have to get a big picture of all the AI techniques right now and compare each of them and then to, you know, to pick one of them and do adaptation and then do the application in the climate science field.",
+          "action": "I have to do the survey, I have to understand the big picture and also understand the detail of the techniques in terms of AI techniques.",
+          "object": "all the AI techniques right now",
+          "purpose": "to pick one of them and do adaptation and then do the application in the climate science field.",
+          "information_sources": "I have to do the survey, I have to understand the big picture and also understand the detail of the techniques in terms of AI techniques.",
+          "method": "I have to do the survey, I have to understand the big picture and also understand the detail of the techniques in terms of AI techniques. In this case, just what I said in the previous, the big picture is very important. So I have to understand, I cannot just stick on, narrow it down to one technique, I have to get a big picture of all the AI techniques right now and compare each of them and then to, you know, to pick one of them and do adaptation and then do the application in the climate science field.",
+          "judgment": "compare each of them and then to, you know, to pick one of them and do adaptation and then do the application in the climate science field.",
+          "quality_criteria": "if you have a very large autonomy, and you can compare, and you can find, you can compare the big picture, and you can, you have a possibility to explore new stuff, and that could always lead to a better result, because you have a better possibility to try different stuff.",
+          "work_context": "especially in the fast pace, in the fast pace of AI advancements, like you have to, you have to have some ability that's that you can quickly, you can quickly, you know, complete problems.",
+          "skills": "I have to do the survey, I have to understand the big picture and also understand the detail of the techniques in terms of AI techniques."
+        },
+        "_original_statement": "",
+        "_screen_status": "pass",
+        "_screen_reason": "This is a coherent research task focused on evaluating and choosing methods, which is typical for the occupation."
+      }
+    },
+    "caea839e-32cc-4d10-8f52-07ab03ce892b": {
+      "id": "caea839e-32cc-4d10-8f52-07ab03ce892b",
+      "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+      "source": "PhD Student (AI for Climate Science)",
+      "timestamp": "2026-04-10T14:32:19.298780",
+      "metadata": {
+        "action": "Conduct experiments",
+        "object": "selected AI methods",
+        "purpose": "apply them to climate science problems and evaluate their effectiveness",
+        "tools": "",
+        "information_sources": "",
+        "method": "Build, code, and debug experiments using chosen AI techniques, then assess results using climate science error metrics.",
+        "judgment": "Assess which memory type or AI method yields better retrieval and lower error in climate science applications.",
+        "quality_criteria": "Reduction in the physical error metric ('arrow') in climate science predictions; improved retrieval quality.",
+        "work_context": "",
+        "frequency": "",
+        "duration": "30% of research time",
+        "skills": "Coding, debugging, experimental design, and evaluation using scientific metrics.",
+        "experience": "",
+        "training": "",
+        "sources": {
+          "task_statement": "30% is 30% of the time, I was like doing the experiments with air method. Because I have to build a lot of stuff, do coding, do debug stuff. This takes a lot of time",
+          "action": "doing the experiments with air method. Because I have to build a lot of stuff, do coding, do debug stuff.",
+          "object": "doing the experiments with air method",
+          "purpose": "apply them to climate science problems and evaluate their effectiveness",
+          "method": "doing the experiments with air method. Because I have to build a lot of stuff, do coding, do debug stuff.",
+          "judgment": "In the previous one, I picked the memories that I randomly picked. We can find that agents have some difficulty to retrieve the very good one, or they try to retrieve the best things that they want, which leads the arrow to be very large. But then if we try to find the suitable, the best memory types for a specific task, and then we find that the agent can have a better retrieval, so they can always find the better stuff they want to find, which causes the arrow to decrease.",
+          "quality_criteria": "So our goal is we try to decrease the arrow as small as possible.",
+          "duration": "30% is 30% of the time, I was like doing the experiments with air method. Because I have to build a lot of stuff, do coding, do debug stuff. This takes a lot of time",
+          "skills": "doing the experiments with air method. Because I have to build a lot of stuff, do coding, do debug stuff."
+        },
+        "_original_statement": "",
+        "_screen_status": "pass",
+        "_screen_reason": "A concrete, bounded experimental task on selected AI methods; coding and debugging are closely related sub-steps within one coherent activity common to the occupation."
+      }
+    },
+    "9c6cb828-b39f-420a-9196-1ff61e3c644b": {
+      "id": "9c6cb828-b39f-420a-9196-1ff61e3c644b",
+      "text": "Write up research findings and results from experiments for documentation or publication.",
+      "source": "PhD Student (AI for Climate Science)",
+      "timestamp": "2026-04-10T14:32:19.298780",
+      "metadata": {
+        "action": "Write up",
+        "object": "research findings and results from experiments",
+        "purpose": "documentation or publication",
+        "tools": "",
+        "information_sources": "",
+        "method": "",
+        "judgment": "",
+        "quality_criteria": "",
+        "work_context": "",
+        "frequency": "",
+        "duration": "10% of research time",
+        "skills": "Scientific writing",
+        "experience": "",
+        "training": "",
+        "sources": {
+          "task_statement": "only 10% I think I focus on writing.",
+          "action": "only 10% I think I focus on writing.",
+          "object": "only 10% I think I focus on writing.",
+          "purpose": "only 10% I think I focus on writing.",
+          "duration": "only 10% I think I focus on writing.",
+          "skills": "only 10% I think I focus on writing."
+        },
+        "_original_statement": "",
+        "_screen_status": "pass",
+        "_screen_reason": "Clear writing task acting on specific research outputs with a defined purpose; this is common for research scientists."
+      }
+    },
+    "d959782a-ef20-41ad-acb5-6742dde63f27": {
+      "id": "d959782a-ef20-41ad-acb5-6742dde63f27",
+      "text": "Consult climate science experts to identify key problems and challenges in the field that can be addressed using AI techniques.",
+      "source": "PhD Student (AI for Climate Science)",
+      "timestamp": "2026-04-10T14:32:19.298780",
+      "metadata": {
+        "action": "Collaborate and communicate",
+        "object": "climate science experts",
+        "purpose": "identify key problems and challenges in the field that can be addressed using AI techniques",
+        "tools": "",
+        "information_sources": "discussions and cooperation with climate science experts",
+        "method": "Engage in cooperation and communication with experts to ask about issues and difficulties in climate science.",
+        "judgment": "",
+        "quality_criteria": "",
+        "work_context": "Limited autonomy in problem identification due to not being a climate science expert; relies on expert input.",
+        "frequency": "",
+        "duration": "10% of research time",
+        "skills": "Communication and collaboration with domain experts.",
+        "experience": "",
+        "training": "",
+        "sources": {
+          "task_statement": "So for this case, we have to do cooperation and we have to do the communication with the expert in the common science and to ask them like, okay, what's the issue you have? What's the problem you have?",
+          "action": "we have to do cooperation and we have to do the communication with the expert in the common science",
+          "object": "the expert in the common science",
+          "purpose": "to ask them like, okay, what's the issue you have? What's the problem you have?",
+          "information_sources": "we have to do cooperation and we have to do the communication with the expert in the common science and to ask them like, okay, what's the issue you have? What's the problem you have?",
+          "method": "we have to do cooperation and we have to do the communication with the expert in the common science and to ask them like, okay, what's the issue you have? What's the problem you have?",
+          "work_context": "there's no autonomy, like I don't have very much autonomy here because I'm not an expert in climate science, but I can do communication, I can do cooperation and to talk to them and discuss with them so we can come, so I can understand what is the difficulty in their field, because they are experts, you know.",
+          "duration": "10% times, what I'm doing is to collaborate with our climate experts to come communicate with them, you know"
+        },
+        "_original_statement": "Collaborate and communicate with climate science experts to identify key problems and challenges in the field that can be addressed using AI techniques.",
+        "_screen_status": "rewritten",
+        "_screen_reason": "Replaced vague bundled verbs with a more specific action. The original is somewhat domain-specific to climate science experts, so it is not common to most workers in the broader occupation category."
+      }
+    },
+    "f2f685ef-ea91-426b-aec1-b1353400edaf": {
+      "id": "f2f685ef-ea91-426b-aec1-b1353400edaf",
+      "text": "Analyze model outputs to identify patterns or biases that inform evaluation frameworks.",
+      "source": "Research Assistant",
+      "timestamp": "2026-04-10T14:32:19.298780",
+      "metadata": {
+        "action": "Analyze",
+        "object": "model outputs",
+        "purpose": "to identify patterns or biases that inform evaluation frameworks",
+        "tools": "",
+        "information_sources": "",
+        "method": "",
+        "judgment": "",
+        "quality_criteria": "",
+        "work_context": "",
+        "frequency": "Weekly (about 20% of work week)",
+        "duration": "20% of work week",
+        "skills": "Data analysis, pattern recognition",
+        "experience": "",
+        "training": "",
+        "sources": {
+          "task_statement": "Another 20% is dedicated to hands-on data analysis, where I dive into model outputs to identify patterns or biases that inform our evaluation frameworks.",
+          "action": "Another 20% is dedicated to hands-on data analysis, where I dive into model outputs to identify patterns or biases that inform our evaluation frameworks.",
+          "object": "Another 20% is dedicated to hands-on data analysis, where I dive into model outputs to identify patterns or biases that inform our evaluation frameworks.",
+          "purpose": "Another 20% is dedicated to hands-on data analysis, where I dive into model outputs to identify patterns or biases that inform our evaluation frameworks.",
+          "frequency": "Another 20% is dedicated to hands-on data analysis, where I dive into model outputs to identify patterns or biases that inform our evaluation frameworks.",
+          "duration": "Another 20% is dedicated to hands-on data analysis, where I dive into model outputs to identify patterns or biases that inform our evaluation frameworks.",
+          "skills": "Another 20% is dedicated to hands-on data analysis, where I dive into model outputs to identify patterns or biases that inform our evaluation frameworks."
+        },
+        "_original_statement": "",
+        "_screen_status": "pass",
+        "_screen_reason": "Concrete, bounded analytical task on a specific object that is typical for research scientists."
+      }
+    },
+    "312376bc-f169-4729-aff0-6de111fc6c30": {
+      "id": "312376bc-f169-4729-aff0-6de111fc6c30",
+      "text": "Design experiments to ensure technical rigor in model evaluation frameworks.",
+      "source": "Research Assistant",
+      "timestamp": "2026-04-10T14:32:19.298780",
+      "metadata": {
+        "action": "Design",
+        "object": "experiments and new NLP architectures",
+        "purpose": "to ensure technical rigor in model evaluation frameworks",
+        "tools": "",
+        "information_sources": "",
+        "method": "",
+        "judgment": "",
+        "quality_criteria": "",
+        "work_context": "",
+        "frequency": "Weekly (about 50% of work week)",
+        "duration": "50% of work week",
+        "skills": "Technical proficiency in NLP, experimental design",
+        "experience": "",
+        "training": "",
+        "sources": {
+          "task_statement": "In my role at the SALT Lab, I balance my time to ensure that technical rigor is always backed by clear communication, typically allocating about 50% of my week to core research tasks like designing experiments and exploring new NLP architectures.",
+          "action": "typically allocating about 50% of my week to core research tasks like designing experiments and exploring new NLP architectures.",
+          "object": "typically allocating about 50% of my week to core research tasks like designing experiments and exploring new NLP architectures.",
+          "purpose": "In my role at the SALT Lab, I balance my time to ensure that technical rigor is always backed by clear communication, typically allocating about 50% of my week to core research tasks like designing experiments and exploring new NLP architectures.",
+          "frequency": "typically allocating about 50% of my week to core research tasks like designing experiments and exploring new NLP architectures.",
+          "duration": "typically allocating about 50% of my week to core research tasks like designing experiments and exploring new NLP architectures.",
+          "skills": "I focus on developing robust frameworks to measure the performance and reliability of large language models, ensuring they are not only technically proficient but also aligned with human intent."
+        },
+        "_original_statement": "Design experiments and explore new NLP architectures to ensure technical rigor in model evaluation frameworks.",
+        "_screen_status": "rewritten",
+        "_screen_reason": "Bundles two activities: designing experiments and exploring new NLP architectures. Kept the clearest single task."
+      }
+    },
+    "744760fb-04ed-4f41-aa09-1e336c13be02": {
+      "id": "744760fb-04ed-4f41-aa09-1e336c13be02",
+      "text": "Develop code for experiments, model inference, and training scripts to translate theoretical NLP concepts into tangible results.",
+      "source": "Research Assistant",
+      "timestamp": "2026-04-10T14:32:19.298780",
+      "metadata": {
+        "action": "Develop and run",
+        "object": "code for experiments, model inference, and training scripts",
+        "purpose": "to translate theoretical NLP concepts into tangible results",
+        "tools": "",
+        "information_sources": "",
+        "method": "Structured execution and debugging",
+        "judgment": "",
+        "quality_criteria": "",
+        "work_context": "",
+        "frequency": "",
+        "duration": "",
+        "skills": "Technical confidence in coding, structured execution, debugging",
+        "experience": "",
+        "training": "",
+        "sources": {
+          "task_statement": "I find that my technical confidence is highest when I am \"in the code,\" particularly when running experiments, performing model inference, or developing training scripts. These tasks come naturally to me because they allow me to translate theoretical NLP concepts into tangible results through structured execution and debugging.",
+          "action": "I find that my technical confidence is highest when I am \"in the code,\" particularly when running experiments, performing model inference, or developing training scripts.",
+          "object": "I find that my technical confidence is highest when I am \"in the code,\" particularly when running experiments, performing model inference, or developing training scripts.",
+          "purpose": "These tasks come naturally to me because they allow me to translate theoretical NLP concepts into tangible results through structured execution and debugging.",
+          "method": "These tasks come naturally to me because they allow me to translate theoretical NLP concepts into tangible results through structured execution and debugging.",
+          "skills": "I find that my technical confidence is highest when I am \"in the code,\" particularly when running experiments, performing model inference, or developing training scripts."
+        },
+        "_original_statement": "Develop and run code for experiments, model inference, and training scripts to translate theoretical NLP concepts into tangible results.",
+        "_screen_status": "rewritten",
+        "_screen_reason": "Combines developing and running code across several related activities. Rewritten to one coherent coding task."
+      }
+    },
+    "339e1d8e-e48f-4ced-bd4a-4517a49de495": {
+      "id": "339e1d8e-e48f-4ced-bd4a-4517a49de495",
+      "text": "Annotate data to ensure high-quality ground truth data for robust evaluations.",
+      "source": "Research Assistant",
+      "timestamp": "2026-04-10T14:32:19.298780",
+      "metadata": {
+        "action": "Handle",
+        "object": "data annotation workflows",
+        "purpose": "to ensure high-quality ground truth data for robust evaluations",
+        "tools": "",
+        "information_sources": "",
+        "method": "Meticulous process of ensuring data quality",
+        "judgment": "",
+        "quality_criteria": "",
+        "work_context": "",
+        "frequency": "",
+        "duration": "",
+        "skills": "Meticulousness, data annotation skills",
+        "experience": "",
+        "training": "",
+        "sources": {
+          "task_statement": "Additionally, I feel especially skilled in handling data annotation workflows, as I enjoy the meticulous process of ensuring high-quality ground truth data, which is foundational for the robust evaluations we prioritize in the SALT Lab.",
+          "action": "Additionally, I feel especially skilled in handling data annotation workflows",
+          "object": "Additionally, I feel especially skilled in handling data annotation workflows",
+          "purpose": "as I enjoy the meticulous process of ensuring high-quality ground truth data, which is foundational for the robust evaluations we prioritize in the SALT Lab.",
+          "method": "as I enjoy the meticulous process of ensuring high-quality ground truth data, which is foundational for the robust evaluations we prioritize in the SALT Lab.",
+          "skills": "Additionally, I feel especially skilled in handling data annotation workflows, as I enjoy the meticulous process of ensuring high-quality ground truth data, which is foundational for the robust evaluations we prioritize in the SALT Lab."
+        },
+        "_original_statement": "Handle data annotation workflows to ensure high-quality ground truth data for robust evaluations.",
+        "_screen_status": "rewritten",
+        "_screen_reason": "Replaced vague verb 'Handle' with the more specific action implied by the statement."
+      }
+    },
+    "ace0998e-5c7c-4560-a040-dc892b66ca04": {
+      "id": "ace0998e-5c7c-4560-a040-dc892b66ca04",
+      "text": "Organize experimental results, model checkpoints, and configuration files using Weights & Biases to facilitate actionable insights.",
+      "source": "Research Assistant",
+      "timestamp": "2026-04-10T14:32:19.298780",
+      "metadata": {
+        "action": "Organize and manage",
+        "object": "experimental results, model checkpoints, and configuration files during ablation studies",
+        "purpose": "to facilitate actionable insights",
+        "tools": "Weights & Biases",
+        "information_sources": "",
+        "method": "Manual organization and meticulous version control across many iterations",
+        "judgment": "",
+        "quality_criteria": "",
+        "work_context": "High administrative overhead, complexity increases with volume of experiments, causing frustration and loss of motivation",
+        "frequency": "",
+        "duration": "",
+        "skills": "Version control, organization, attention to detail",
+        "experience": "",
+        "training": "",
+        "sources": {
+          "task_statement": "One of the most persistent bottlenecks in my workflow is the sheer complexity of managing experimental results, especially when performing extensive ablation studies. Even with powerful tracking tools like Weights & Biases, the sheer volume of model checkpoints, configuration files, and downstream analysis outputs can become quite overwhelming and frustrating to organize manually. This administrative overhead often slows down the transition from raw data to actionable insights, as ensuring version control across dozens of iterations requires meticulous effort.",
+          "action": "One of the most persistent bottlenecks in my workflow is the sheer complexity of managing experimental results, especially when performing extensive ablation studies.",
+          "object": "the sheer volume of model checkpoints, configuration files, and downstream analysis outputs can become quite overwhelming and frustrating to organize manually.",
+          "purpose": "This administrative overhead often slows down the transition from raw data to actionable insights, as ensuring version control across dozens of iterations requires meticulous effort.",
+          "tools": "Even with powerful tracking tools like Weights & Biases, the sheer volume of model checkpoints, configuration files, and downstream analysis outputs can become quite overwhelming and frustrating to organize manually.",
+          "method": "as ensuring version control across dozens of iterations requires meticulous effort.",
+          "work_context": "One of the most persistent bottlenecks in my workflow is the sheer complexity of managing experimental results, especially when performing extensive ablation studies. Even with powerful tracking tools like Weights & Biases, the sheer volume of model checkpoints, configuration files, and downstream analysis outputs can become quite overwhelming and frustrating to organize manually. This administrative overhead often slows down the transition from raw data to actionable insights, as ensuring version control across dozens of iterations requires meticulous effort. It causes me headaches and frustrating and makes me lose motivation overall.",
+          "skills": "as ensuring version control across dozens of iterations requires meticulous effort."
+        },
+        "_original_statement": "Organize and manage experimental results, model checkpoints, and configuration files during ablation studies to facilitate actionable insights.",
+        "_screen_status": "rewritten",
+        "_screen_reason": "Original uses vague management language. Rewritten with a more observable action while preserving the tool and purpose."
+      }
+    },
+    "694ec362-0032-44e6-add2-cc4322827329": {
+      "id": "694ec362-0032-44e6-add2-cc4322827329",
+      "text": "[AI Researcher] Perform data analysis on the peer review platform to support decision-making and improve platform outcomes.",
+      "source": "AI Researcher",
+      "timestamp": "2026-04-10T14:32:19.298780",
+      "metadata": {
+        "_original_statement": "",
+        "_screen_status": "pass",
+        "_screen_reason": "This is a clear, bounded analytical task on a specific system and is common in research-oriented computing roles."
+      }
+    },
+    "4a5ddb16-4b12-40e8-9b60-e0a69af491d1": {
+      "id": "4a5ddb16-4b12-40e8-9b60-e0a69af491d1",
+      "text": "Coordinate workflows for a peer review platform to support an NLP organization.",
+      "source": "AI Researcher",
+      "timestamp": "2026-04-10T14:32:19.298780",
+      "metadata": {
+        "_original_statement": "[AI Researcher] Manage workflows for a peer review platform to ensure smooth operation and support for an NLP organization.",
+        "_screen_status": "rewritten",
+        "_screen_reason": "The original uses the vague verb 'manage' and describes a platform-operations duty that is not typical for most computer and information research scientists. Rewritten to a more observable action while preserving the activity."
+      }
+    },
+    "42f235a2-6c77-48bc-b80e-e8b00dc36601": {
+      "id": "42f235a2-6c77-48bc-b80e-e8b00dc36601",
+      "text": "Troubleshoot user issues on the peer review platform to maintain platform functionality.",
+      "source": "AI Researcher",
+      "timestamp": "2026-04-10T14:32:19.298780",
+      "metadata": {
+        "_original_statement": "[AI Researcher] Provide technical support for the peer review platform to resolve user issues and maintain platform functionality.",
+        "_screen_status": "rewritten",
+        "_screen_reason": "The original uses the vague phrase 'provide technical support.' Rewritten to the concrete action implied by the statement. Platform support is also not a typical task for most workers in this occupation."
+      }
+    },
+    "917bfe4b-4bb8-4f79-b1c5-340b8a4ee68c": {
+      "id": "917bfe4b-4bb8-4f79-b1c5-340b8a4ee68c",
+      "text": "Build a large language model (LLM) for a university in the UAE.",
+      "source": "AI Researcher",
+      "timestamp": "2026-04-10T14:32:19.298780",
+      "metadata": {
+        "_original_statement": "[AI Researcher] Serve as a research associate to help build a large language model (LLM) for a university in the UAE.",
+        "_screen_status": "rewritten",
+        "_screen_reason": "The original begins with the role phrase 'serve as a research associate' rather than a task. Rewritten to the concrete work activity implied."
+      }
+    },
+    "4ebb82d3-bf49-4dc3-9bc1-202c3938f6c3": {
+      "id": "4ebb82d3-bf49-4dc3-9bc1-202c3938f6c3",
+      "text": "Complete coursework for mandatory PhD classes using AI tools to accelerate understanding.",
+      "source": "PhD Student",
+      "timestamp": "2026-04-10T14:32:19.298780",
+      "metadata": {
+        "_original_statement": "[PhD Student] Use AI tools to accelerate understanding and completion of coursework for mandatory PhD classes.",
+        "_screen_status": "rewritten",
+        "_screen_reason": "Original object was vague because it focused on using tools rather than the work product; coursework is a clearer task object. Coursework for mandatory classes is not common to most Computer and Information Research Scientists."
+      }
+    },
+    "8f465863-e19c-4a21-8b85-a04bbd4ee571": {
+      "id": "8f465863-e19c-4a21-8b85-a04bbd4ee571",
+      "text": "Review research literature using AI tools to increase productivity.",
+      "source": "PhD Student",
+      "timestamp": "2026-04-10T14:32:19.298780",
+      "metadata": {
+        "_original_statement": "[PhD Student] Conduct independent research, including implementation, literature review, and brainstorming new ideas, using AI tools to increase productivity.",
+        "_screen_status": "rewritten",
+        "_screen_reason": "The statement bundles several distinct activities and uses a broad object. Rewritten to one clear, common research task drawn directly from the original."
+      }
+    },
+    "1faffeca-f244-452f-8ae6-06ff3a2ac60a": {
+      "id": "1faffeca-f244-452f-8ae6-06ff3a2ac60a",
+      "text": "Review new literature in the vision-language model (VLM) space to identify relevant papers for research.",
+      "source": "PhD Student",
+      "timestamp": "2026-04-10T14:32:19.298780",
+      "metadata": {
+        "_original_statement": "[PhD Student] Sift through large volumes of new literature in the vision-language model (VLM) space to identify relevant papers for research.",
+        "_screen_status": "rewritten",
+        "_screen_reason": "Rewritten only to use a more standard observable verb. The task is valid, but the VLM-specific focus is narrower than what most workers in this occupation perform."
+      }
+    },
+    "69b70e7c-125e-418a-8164-eb0b0b6c66eb": {
+      "id": "69b70e7c-125e-418a-8164-eb0b0b6c66eb",
+      "text": "Prototype new architectures for multimodal alignment to validate research hypotheses.",
+      "source": "PhD Student",
+      "timestamp": "2026-04-10T14:32:19.298780",
+      "metadata": {
+        "_original_statement": "[PhD Student] Brainstorm and prototype new architectures for multimodal alignment or novel evaluation metrics to validate research hypotheses.",
+        "_screen_status": "rewritten",
+        "_screen_reason": "Original statement combined alternative activities and was highly specialized. Rewritten to one coherent task using details from the statement, but it remains narrower than typical occupation-wide work."
+      }
+    },
+    "68615239-8968-4c0d-a15a-af07dcc8152a": {
+      "id": "68615239-8968-4c0d-a15a-af07dcc8152a",
+      "text": "Automate boilerplate coding using AI tools to reduce tedium and focus on research.",
+      "source": "PhD Student",
+      "timestamp": "2026-04-10T14:32:19.298780",
+      "metadata": {
+        "_original_statement": "[PhD Student] Offload repetitive boilerplate coding, data preparation, and verification tasks to AI tools to reduce tedium and focus on research.",
+        "_screen_status": "rewritten",
+        "_screen_reason": "Offload is not a concrete observable work action, and the statement bundles multiple tasks. Rewritten to one specific, common technical activity."
+      }
+    },
+    "9f95bb10-8253-4514-bd7b-e493c6fece27": {
+      "id": "9f95bb10-8253-4514-bd7b-e493c6fece27",
+      "text": "Review prior works using AI tools before meetings with advisors to assess feasibility of proposed research topics.",
+      "source": "PhD Student",
+      "timestamp": "2026-04-10T14:32:19.298780",
+      "metadata": {
+        "_original_statement": "[PhD Student] Use AI tools to conduct deep research before meetings with advisors to discuss prior works and assess feasibility of proposed research topics.",
+        "_screen_status": "rewritten",
+        "_screen_reason": "Original phrasing was vague about both action and object. Rewritten to a clearer research activity, but advisor meetings are specific to the student's setting rather than common to most workers in the occupation."
+      }
+    },
+    "69627e05-6987-4783-9e45-ee23da09b299": {
+      "id": "69627e05-6987-4783-9e45-ee23da09b299",
+      "text": "Prototype AI-assisted interfaces for querying experiment data in natural language to reduce user friction and speed up data access.",
+      "source": "Graduate Student (Software Engineering)",
+      "timestamp": "2026-04-10T14:32:19.298780",
+      "metadata": {
+        "action": "prototype",
+        "object": "AI-assisted interfaces for querying experiment data in natural language",
+        "purpose": "reduce user friction and speed up data access",
+        "tools": "AI-assisted interface",
+        "information_sources": "early feedback from users",
+        "method": "adding guardrails, tightening data sources, and getting early feedback from users",
+        "judgment": "deciding to prototype an AI-assisted interface that let users ask questions in natural language instead of digging through dashboards; making sure the AI responses were accurate and trustworthy, not just convenient",
+        "quality_criteria": "users able to get answers much faster; changed how they interacted with the system; AI responses are accurate and trustworthy",
+        "work_context": "",
+        "frequency": "",
+        "duration": "",
+        "skills": "",
+        "experience": "",
+        "training": "",
+        "sources": {
+          "task_statement": "I decided to prototype an AI-assisted interface that let users ask questions in natural language instead of digging through dashboards. That wasn\u2019t an initial requirement, but I felt it could really reduce friction. The outcome was better than I expected. Once people tried it, they were able to get answers much faster and it changed how they interacted with the system.",
+          "action": "I decided to prototype an AI-assisted interface that let users ask questions in natural language instead of digging through dashboards.",
+          "object": "I decided to prototype an AI-assisted interface that let users ask questions in natural language instead of digging through dashboards.",
+          "purpose": "That wasn\u2019t an initial requirement, but I felt it could really reduce friction.",
+          "tools": "I decided to prototype an AI-assisted interface that let users ask questions in natural language instead of digging through dashboards.",
+          "information_sources": "getting early feedback from users",
+          "method": "I navigated that by adding guardrails, tightening data sources, and getting early feedback from users.",
+          "judgment": "I decided to prototype an AI-assisted interface that let users ask questions in natural language instead of digging through dashboards. That wasn\u2019t an initial requirement, but I felt it could really reduce friction. At the same time, it also surfaced challenges I didn\u2019t fully anticipate, like making sure the AI responses were accurate and trustworthy, not just convenient.",
+          "quality_criteria": "Once people tried it, they were able to get answers much faster and it changed how they interacted with the system. At the same time, it also surfaced challenges I didn\u2019t fully anticipate, like making sure the AI responses were accurate and trustworthy, not just convenient."
+        },
+        "_original_statement": "",
+        "_screen_status": "pass",
+        "_screen_reason": "Specific prototyping task with a concrete object and clear purpose; this is plausibly common research-oriented computing work."
+      }
+    },
+    "4613d51b-5489-4986-9823-89aeed58f834": {
+      "id": "4613d51b-5489-4986-9823-89aeed58f834",
+      "text": "Break down ambiguous or messy technical problems into structured components to enable problem-solving and system design.",
+      "source": "Graduate Student (Software Engineering)",
+      "timestamp": "2026-04-10T14:32:19.298780",
+      "metadata": {
+        "action": "break down",
+        "object": "ambiguous or messy technical problems",
+        "purpose": "enable problem-solving and system design",
+        "tools": "",
+        "information_sources": "",
+        "method": "",
+        "judgment": "deciding what information actually matters",
+        "quality_criteria": "",
+        "work_context": "",
+        "frequency": "",
+        "duration": "",
+        "skills": "problem-solving; structuring ambiguous problems",
+        "experience": "",
+        "training": "",
+        "sources": {
+          "task_statement": "I find it most natural when I\u2019m breaking down messy or ambiguous problems and turning them into something more structured. That might be designing a system, figuring out why something isn\u2019t working, or deciding what information actually matters. That kind of problem-solving feels pretty intuitive to me.",
+          "action": "I find it most natural when I\u2019m breaking down messy or ambiguous problems and turning them into something more structured.",
+          "object": "I find it most natural when I\u2019m breaking down messy or ambiguous problems and turning them into something more structured.",
+          "purpose": "That might be designing a system, figuring out why something isn\u2019t working, or deciding what information actually matters.",
+          "judgment": "deciding what information actually matters.",
+          "skills": "I find it most natural when I\u2019m breaking down messy or ambiguous problems and turning them into something more structured. That might be designing a system, figuring out why something isn\u2019t working, or deciding what information actually matters. That kind of problem-solving feels pretty intuitive to me."
+        },
+        "_original_statement": "",
+        "_screen_status": "pass",
+        "_screen_reason": "This is a concrete analytical task with a clear object and purpose, and it is common in research and advanced computing work."
+      }
+    },
+    "980b3555-4a0f-4f27-86a3-19c04eeb8a17": {
+      "id": "980b3555-4a0f-4f27-86a3-19c04eeb8a17",
+      "text": "Write and review code for distributed systems to improve scalability and reliability.",
+      "source": "Graduate Student (Software Engineering)",
+      "timestamp": "2026-04-10T14:32:19.298780",
+      "metadata": {
+        "action": "write and review",
+        "object": "code for distributed systems",
+        "purpose": "improve scalability and reliability",
+        "tools": "",
+        "information_sources": "",
+        "method": "",
+        "judgment": "making design decisions focused on scalability and reliability",
+        "quality_criteria": "",
+        "work_context": "",
+        "frequency": "mostly focus on building and improving systems (day-to-day basis)",
+        "duration": "a little over half of my time goes into hands-on engineering work, mostly coding and debugging",
+        "skills": "",
+        "experience": "",
+        "training": "",
+        "sources": {
+          "task_statement": "On a day-to-day basis, I mostly focus on building and improving systems. That usually means writing and reviewing code, debugging issues, and thinking through design decisions, especially around scalability and reliability.",
+          "action": "On a day-to-day basis, I mostly focus on building and improving systems. That usually means writing and reviewing code, debugging issues, and thinking through design decisions, especially around scalability and reliability.",
+          "object": "On a day-to-day basis, I mostly focus on building and improving systems. That usually means writing and reviewing code, debugging issues, and thinking through design decisions, especially around scalability and reliability.",
+          "purpose": "On a day-to-day basis, I mostly focus on building and improving systems. That usually means writing and reviewing code, debugging issues, and thinking through design decisions, especially around scalability and reliability.",
+          "judgment": "On a day-to-day basis, I mostly focus on building and improving systems. That usually means writing and reviewing code, debugging issues, and thinking through design decisions, especially around scalability and reliability.",
+          "frequency": "On a day-to-day basis, I mostly focus on building and improving systems. That usually means writing and reviewing code, debugging issues, and thinking through design decisions, especially around scalability and reliability.",
+          "duration": "Roughly speaking, I\u2019d say a little over half of my time goes into hands-on engineering work, mostly coding and debugging."
+        },
+        "_original_statement": "Write and review code for distributed systems to improve scalability and reliability.",
+        "_screen_status": "rewritten",
+        "_screen_reason": "The task itself is clear and well-formed, but it is more typical of software engineering than of most Computer and Information Research Scientists."
+      }
+    },
+    "83bd1314-fbfc-4980-8610-262bd90fb4e9": {
+      "id": "83bd1314-fbfc-4980-8610-262bd90fb4e9",
+      "text": "Debug issues in large-scale distributed systems to ensure reliability and efficiency.",
+      "source": "Graduate Student (Software Engineering)",
+      "timestamp": "2026-04-10T14:32:19.298780",
+      "metadata": {
+        "action": "debug",
+        "object": "issues in large-scale distributed systems",
+        "purpose": "ensure reliability and efficiency",
+        "tools": "",
+        "information_sources": "",
+        "method": "",
+        "judgment": "",
+        "quality_criteria": "",
+        "work_context": "",
+        "frequency": "mostly focus on building and improving systems (day-to-day basis)",
+        "duration": "a little over half of my time goes into hands-on engineering work, mostly coding and debugging",
+        "skills": "",
+        "experience": "",
+        "training": "",
+        "sources": {
+          "task_statement": "On a day-to-day basis, I mostly focus on building and improving systems. That usually means writing and reviewing code, debugging issues, and thinking through design decisions, especially around scalability and reliability.",
+          "action": "On a day-to-day basis, I mostly focus on building and improving systems. That usually means writing and reviewing code, debugging issues, and thinking through design decisions, especially around scalability and reliability.",
+          "object": "On a day-to-day basis, I mostly focus on building and improving systems. That usually means writing and reviewing code, debugging issues, and thinking through design decisions, especially around scalability and reliability.",
+          "purpose": "On a day-to-day basis, I mostly focus on building and improving systems. That usually means writing and reviewing code, debugging issues, and thinking through design decisions, especially around scalability and reliability.",
+          "frequency": "On a day-to-day basis, I mostly focus on building and improving systems. That usually means writing and reviewing code, debugging issues, and thinking through design decisions, especially around scalability and reliability.",
+          "duration": "Roughly speaking, I\u2019d say a little over half of my time goes into hands-on engineering work, mostly coding and debugging."
+        },
+        "_original_statement": "Debug issues in large-scale distributed systems to ensure reliability and efficiency.",
+        "_screen_status": "rewritten",
+        "_screen_reason": "This is a valid, specific task, but debugging distributed systems is not common to most workers in the Computer and Information Research Scientists occupation."
+      }
+    },
+    "b427b84e-948c-46e0-b8ce-fc255383ad79": {
+      "id": "b427b84e-948c-46e0-b8ce-fc255383ad79",
+      "text": "Use AI tools to explore data to work more efficiently and focus on higher-level problem solving.",
+      "source": "Graduate Student (Software Engineering)",
+      "timestamp": "2026-04-10T14:32:19.298780",
+      "metadata": {
+        "action": "use",
+        "object": "AI tools",
+        "purpose": "explore data, prototype solutions, and understand complex system behavior to work more efficiently and focus on higher-level problem solving",
+        "tools": "AI tools",
+        "information_sources": "",
+        "method": "",
+        "judgment": "",
+        "quality_criteria": "",
+        "work_context": "",
+        "frequency": "AI plays more of a supportive role in my work. I use it to speed up things like exploring data, prototyping solutions, or understanding complex behavior in systems.",
+        "duration": "The remaining time is more exploratory, where I\u2019m using AI tools to prototype ideas, analyze data, or speed up research and learning.",
+        "skills": "",
+        "experience": "",
+        "training": "",
+        "sources": {
+          "task_statement": "AI plays more of a supportive role in my work. I use it to speed up things like exploring data, prototyping solutions, or understanding complex behavior in systems. In some cases, I also work on AI-powered tools that make it easier for people to interact with data or debug issues. Overall, I see AI as something that helps me work more efficiently and focus on higher-level problem solving.",
+          "action": "AI plays more of a supportive role in my work. I use it to speed up things like exploring data, prototyping solutions, or understanding complex behavior in systems.",
+          "object": "AI plays more of a supportive role in my work. I use it to speed up things like exploring data, prototyping solutions, or understanding complex behavior in systems.",
+          "purpose": "Overall, I see AI as something that helps me work more efficiently and focus on higher-level problem solving.",
+          "tools": "AI plays more of a supportive role in my work. I use it to speed up things like exploring data, prototyping solutions, or understanding complex behavior in systems.",
+          "frequency": "AI plays more of a supportive role in my work. I use it to speed up things like exploring data, prototyping solutions, or understanding complex behavior in systems.",
+          "duration": "The remaining time is more exploratory, where I\u2019m using AI tools to prototype ideas, analyze data, or speed up research and learning."
+        },
+        "_original_statement": "Use AI tools to explore data, prototype solutions, and understand complex system behavior to work more efficiently and focus on higher-level problem solving.",
+        "_screen_status": "rewritten",
+        "_screen_reason": "The original bundles multiple activities (explore data, prototype solutions, understand system behavior). Rewritten to a single coherent task using only details from the statement."
+      }
+    },
+    "14582941-695a-433c-bea4-dd46a22dfd9f": {
+      "id": "14582941-695a-433c-bea4-dd46a22dfd9f",
+      "text": "Develop new methods in large language model (LLM) training and inference, with a special focus on agentic workflow, to drive AI innovation.",
+      "source": "Research Scientist (Fintech)",
+      "timestamp": "2026-04-10T14:32:19.298780",
+      "metadata": {
+        "action": "Develop",
+        "object": "new methods in LLM training and inference, especially agentic workflow",
+        "purpose": "to drive AI innovation",
+        "tools": "",
+        "information_sources": "",
+        "method": "",
+        "judgment": "",
+        "quality_criteria": "",
+        "work_context": "",
+        "frequency": "",
+        "duration": "",
+        "skills": "",
+        "experience": "",
+        "training": "",
+        "sources": {
+          "task_statement": "I develop new methods in LLM training and inference, specially in agentic workflow.",
+          "action": "I develop new methods in LLM training and inference, specially in agentic workflow.",
+          "object": "I develop new methods in LLM training and inference, specially in agentic workflow.",
+          "purpose": "Yes, the company encourages the innovation. We also use LLM on work."
+        },
+        "_original_statement": "",
+        "_screen_status": "pass",
+        "_screen_reason": "Concrete research and development task on LLM methods; typical for computer and information research scientists."
+      }
+    },
+    "dffab406-b383-4210-a3f9-9ed93ddfaf32": {
+      "id": "dffab406-b383-4210-a3f9-9ed93ddfaf32",
+      "text": "Review pull requests (PR reviews), a repetitive and less enjoyable task, and identify opportunities where AI assistance could improve manageability.",
+      "source": "Research Scientist (Fintech)",
+      "timestamp": "2026-04-10T14:32:19.298780",
+      "metadata": {
+        "action": "Review",
+        "object": "pull requests (PR reviews)",
+        "purpose": "to identify opportunities where AI assistance could improve manageability",
+        "tools": "",
+        "information_sources": "",
+        "method": "",
+        "judgment": "",
+        "quality_criteria": "",
+        "work_context": "",
+        "frequency": "",
+        "duration": "",
+        "skills": "",
+        "experience": "",
+        "training": "",
+        "sources": {
+          "task_statement": "PR reviews.",
+          "action": "PR reviews.",
+          "object": "PR reviews.",
+          "purpose": "if I can have an AI to help me, it would be great"
+        },
+        "_original_statement": "",
+        "_screen_status": "pass",
+        "_screen_reason": "Coherent task centered on reviewing pull requests to assess where AI could help; recognizable activity in research/software-oriented computing roles."
+      }
+    },
+    "dbf6f974-b2f4-4cd1-94ed-3eee1877e667": {
+      "id": "dbf6f974-b2f4-4cd1-94ed-3eee1877e667",
+      "text": "Design agentic workflows to support scaling across different applications.",
+      "source": "Research Scientist (Fintech)",
+      "timestamp": "2026-04-10T14:32:19.298780",
+      "metadata": {
+        "action": "Design",
+        "object": "agentic workflows",
+        "purpose": "to ensure they can be scaled up easily across different applications",
+        "tools": "",
+        "information_sources": "",
+        "method": "Carefully design the workflow to make sure it can be scale up easily.",
+        "judgment": "",
+        "quality_criteria": "",
+        "work_context": "",
+        "frequency": "",
+        "duration": "",
+        "skills": "",
+        "experience": "",
+        "training": "",
+        "sources": {
+          "task_statement": "We carefully design the workflow to make sure it can be scale up easily.",
+          "action": "We carefully design the workflow to make sure it can be scale up easily.",
+          "object": "We carefully design the workflow to make sure it can be scale up easily.",
+          "purpose": "We carefully design the workflow to make sure it can be scale up easily.",
+          "method": "We carefully design the workflow to make sure it can be scale up easily."
+        },
+        "_original_statement": "Design agentic workflows to ensure they can be scaled up easily across different applications.",
+        "_screen_status": "rewritten",
+        "_screen_reason": "Task is valid, but the original purpose used vague outcome language ('ensure'). Rewritten for clearer task phrasing. Agentic workflows are somewhat specialized rather than common to most workers in this occupation."
+      }
+    },
+    "2c95e2b2-72b3-42e6-ba9e-e18533ebe604": {
+      "id": "2c95e2b2-72b3-42e6-ba9e-e18533ebe604",
+      "text": "Build conversation agents using agentic workflow and a proprietary framework.",
+      "source": "Research Scientist (Fintech)",
+      "timestamp": "2026-04-10T14:32:19.298780",
+      "metadata": {
+        "action": "Use",
+        "object": "agentic workflow",
+        "purpose": "to build conversation agents",
+        "tools": "a proprietary framework",
+        "information_sources": "",
+        "method": "",
+        "judgment": "",
+        "quality_criteria": "",
+        "work_context": "",
+        "frequency": "",
+        "duration": "",
+        "skills": "",
+        "experience": "",
+        "training": "",
+        "sources": {
+          "task_statement": "For example is conversation agents. We use the agentic workflow to build the agent. We have a framework which I can't disclose here.",
+          "action": "For example is conversation agents. We use the agentic workflow to build the agent. We have a framework which I can't disclose here.",
+          "object": "For example is conversation agents. We use the agentic workflow to build the agent. We have a framework which I can't disclose here.",
+          "purpose": "For example is conversation agents. We use the agentic workflow to build the agent. We have a framework which I can't disclose here.",
+          "tools": "For example is conversation agents. We use the agentic workflow to build the agent. We have a framework which I can't disclose here."
+        },
+        "_original_statement": "Use agentic workflow to build conversation agents using a proprietary framework.",
+        "_screen_status": "rewritten",
+        "_screen_reason": "Replaced vague action 'Use' with the more concrete implied action 'Build.' Proprietary framework and conversation-agent work are somewhat specialized rather than common to most workers in this occupation."
+      }
+    },
+    "48c2b17d-154f-4898-84c6-c557c753431f": {
+      "id": "48c2b17d-154f-4898-84c6-c557c753431f",
+      "text": "Write code to solve problems in the context of AI research and product development.",
+      "source": "Research Scientist (Fintech)",
+      "timestamp": "2026-04-10T14:32:19.298780",
+      "metadata": {
+        "action": "Perform",
+        "object": "coding tasks",
+        "purpose": "to solve problems in the context of AI research and product development",
+        "tools": "",
+        "information_sources": "",
+        "method": "",
+        "judgment": "",
+        "quality_criteria": "",
+        "work_context": "",
+        "frequency": "",
+        "duration": "",
+        "skills": "coding",
+        "experience": "",
+        "training": "",
+        "sources": {
+          "task_statement": "yeah coding.",
+          "action": "yeah coding.",
+          "object": "yeah coding.",
+          "purpose": "I think to be able solve the problem.",
+          "skills": "yeah coding."
+        },
+        "_original_statement": "Perform coding tasks to solve problems in the context of AI research and product development.",
+        "_screen_status": "rewritten",
+        "_screen_reason": "Original wording was vague ('Perform coding tasks'). Rewritten with a more specific action while preserving the stated purpose."
+      }
+    }
+  },
+  "lambda_": 0.1,
+  "eps": 0.5,
+  "max_split_size": 5,
+  "split_depth_limit": 1,
+  "criteria": [
+    "Same core action and object domain (e.g. both involve reviewing code with teammates) OR",
+    "One is a specific instance of the other (attending standups IS sharing progress updates with the team) OR",
+    "One is a subtask of the other",
+    "A job analyst would describe them with the same canonical task statement",
+    "Tasks represent the same type of work even if phrased differently by different people"
+  ],
+  "total_processed": 30,
+  "last_fade_count": 0,
+  "outlier_buffer": [
+    {
+      "task": {
+        "id": "9c6cb828-b39f-420a-9196-1ff61e3c644b",
+        "text": "Write up research findings and results from experiments for documentation or publication.",
+        "source": "PhD Student (AI for Climate Science)",
+        "timestamp": "2026-04-10T14:32:19.298780",
+        "metadata": {
+          "action": "Write up",
+          "object": "research findings and results from experiments",
+          "purpose": "documentation or publication",
+          "tools": "",
+          "information_sources": "",
+          "method": "",
+          "judgment": "",
+          "quality_criteria": "",
+          "work_context": "",
+          "frequency": "",
+          "duration": "10% of research time",
+          "skills": "Scientific writing",
+          "experience": "",
+          "training": "",
+          "sources": {
+            "task_statement": "only 10% I think I focus on writing.",
+            "action": "only 10% I think I focus on writing.",
+            "object": "only 10% I think I focus on writing.",
+            "purpose": "only 10% I think I focus on writing.",
+            "duration": "only 10% I think I focus on writing.",
+            "skills": "only 10% I think I focus on writing."
+          },
+          "_original_statement": "",
+          "_screen_status": "pass",
+          "_screen_reason": "Clear writing task acting on specific research outputs with a defined purpose; this is common for research scientists."
+        }
+      },
+      "weight": 1.0
+    },
+    {
+      "task": {
+        "id": "d959782a-ef20-41ad-acb5-6742dde63f27",
+        "text": "Consult climate science experts to identify key problems and challenges in the field that can be addressed using AI techniques.",
+        "source": "PhD Student (AI for Climate Science)",
+        "timestamp": "2026-04-10T14:32:19.298780",
+        "metadata": {
+          "action": "Collaborate and communicate",
+          "object": "climate science experts",
+          "purpose": "identify key problems and challenges in the field that can be addressed using AI techniques",
+          "tools": "",
+          "information_sources": "discussions and cooperation with climate science experts",
+          "method": "Engage in cooperation and communication with experts to ask about issues and difficulties in climate science.",
+          "judgment": "",
+          "quality_criteria": "",
+          "work_context": "Limited autonomy in problem identification due to not being a climate science expert; relies on expert input.",
+          "frequency": "",
+          "duration": "10% of research time",
+          "skills": "Communication and collaboration with domain experts.",
+          "experience": "",
+          "training": "",
+          "sources": {
+            "task_statement": "So for this case, we have to do cooperation and we have to do the communication with the expert in the common science and to ask them like, okay, what's the issue you have? What's the problem you have?",
+            "action": "we have to do cooperation and we have to do the communication with the expert in the common science",
+            "object": "the expert in the common science",
+            "purpose": "to ask them like, okay, what's the issue you have? What's the problem you have?",
+            "information_sources": "we have to do cooperation and we have to do the communication with the expert in the common science and to ask them like, okay, what's the issue you have? What's the problem you have?",
+            "method": "we have to do cooperation and we have to do the communication with the expert in the common science and to ask them like, okay, what's the issue you have? What's the problem you have?",
+            "work_context": "there's no autonomy, like I don't have very much autonomy here because I'm not an expert in climate science, but I can do communication, I can do cooperation and to talk to them and discuss with them so we can come, so I can understand what is the difficulty in their field, because they are experts, you know.",
+            "duration": "10% times, what I'm doing is to collaborate with our climate experts to come communicate with them, you know"
+          },
+          "_original_statement": "Collaborate and communicate with climate science experts to identify key problems and challenges in the field that can be addressed using AI techniques.",
+          "_screen_status": "rewritten",
+          "_screen_reason": "Replaced vague bundled verbs with a more specific action. The original is somewhat domain-specific to climate science experts, so it is not common to most workers in the broader occupation category."
+        }
+      },
+      "weight": 1.0
+    },
+    {
+      "task": {
+        "id": "339e1d8e-e48f-4ced-bd4a-4517a49de495",
+        "text": "Annotate data to ensure high-quality ground truth data for robust evaluations.",
+        "source": "Research Assistant",
+        "timestamp": "2026-04-10T14:32:19.298780",
+        "metadata": {
+          "action": "Handle",
+          "object": "data annotation workflows",
+          "purpose": "to ensure high-quality ground truth data for robust evaluations",
+          "tools": "",
+          "information_sources": "",
+          "method": "Meticulous process of ensuring data quality",
+          "judgment": "",
+          "quality_criteria": "",
+          "work_context": "",
+          "frequency": "",
+          "duration": "",
+          "skills": "Meticulousness, data annotation skills",
+          "experience": "",
+          "training": "",
+          "sources": {
+            "task_statement": "Additionally, I feel especially skilled in handling data annotation workflows, as I enjoy the meticulous process of ensuring high-quality ground truth data, which is foundational for the robust evaluations we prioritize in the SALT Lab.",
+            "action": "Additionally, I feel especially skilled in handling data annotation workflows",
+            "object": "Additionally, I feel especially skilled in handling data annotation workflows",
+            "purpose": "as I enjoy the meticulous process of ensuring high-quality ground truth data, which is foundational for the robust evaluations we prioritize in the SALT Lab.",
+            "method": "as I enjoy the meticulous process of ensuring high-quality ground truth data, which is foundational for the robust evaluations we prioritize in the SALT Lab.",
+            "skills": "Additionally, I feel especially skilled in handling data annotation workflows, as I enjoy the meticulous process of ensuring high-quality ground truth data, which is foundational for the robust evaluations we prioritize in the SALT Lab."
+          },
+          "_original_statement": "Handle data annotation workflows to ensure high-quality ground truth data for robust evaluations.",
+          "_screen_status": "rewritten",
+          "_screen_reason": "Replaced vague verb 'Handle' with the more specific action implied by the statement."
+        }
+      },
+      "weight": 1.0
+    },
+    {
+      "task": {
+        "id": "917bfe4b-4bb8-4f79-b1c5-340b8a4ee68c",
+        "text": "Build a large language model (LLM) for a university in the UAE.",
+        "source": "AI Researcher",
+        "timestamp": "2026-04-10T14:32:19.298780",
+        "metadata": {
+          "_original_statement": "[AI Researcher] Serve as a research associate to help build a large language model (LLM) for a university in the UAE.",
+          "_screen_status": "rewritten",
+          "_screen_reason": "The original begins with the role phrase 'serve as a research associate' rather than a task. Rewritten to the concrete work activity implied."
+        }
+      },
+      "weight": 1.0
+    },
+    {
+      "task": {
+        "id": "4ebb82d3-bf49-4dc3-9bc1-202c3938f6c3",
+        "text": "Complete coursework for mandatory PhD classes using AI tools to accelerate understanding.",
+        "source": "PhD Student",
+        "timestamp": "2026-04-10T14:32:19.298780",
+        "metadata": {
+          "_original_statement": "[PhD Student] Use AI tools to accelerate understanding and completion of coursework for mandatory PhD classes.",
+          "_screen_status": "rewritten",
+          "_screen_reason": "Original object was vague because it focused on using tools rather than the work product; coursework is a clearer task object. Coursework for mandatory classes is not common to most Computer and Information Research Scientists."
+        }
+      },
+      "weight": 1.0
+    },
+    {
+      "task": {
+        "id": "68615239-8968-4c0d-a15a-af07dcc8152a",
+        "text": "Automate boilerplate coding using AI tools to reduce tedium and focus on research.",
+        "source": "PhD Student",
+        "timestamp": "2026-04-10T14:32:19.298780",
+        "metadata": {
+          "_original_statement": "[PhD Student] Offload repetitive boilerplate coding, data preparation, and verification tasks to AI tools to reduce tedium and focus on research.",
+          "_screen_status": "rewritten",
+          "_screen_reason": "Offload is not a concrete observable work action, and the statement bundles multiple tasks. Rewritten to one specific, common technical activity."
+        }
+      },
+      "weight": 1.0
+    },
+    {
+      "task": {
+        "id": "69627e05-6987-4783-9e45-ee23da09b299",
+        "text": "Prototype AI-assisted interfaces for querying experiment data in natural language to reduce user friction and speed up data access.",
+        "source": "Graduate Student (Software Engineering)",
+        "timestamp": "2026-04-10T14:32:19.298780",
+        "metadata": {
+          "action": "prototype",
+          "object": "AI-assisted interfaces for querying experiment data in natural language",
+          "purpose": "reduce user friction and speed up data access",
+          "tools": "AI-assisted interface",
+          "information_sources": "early feedback from users",
+          "method": "adding guardrails, tightening data sources, and getting early feedback from users",
+          "judgment": "deciding to prototype an AI-assisted interface that let users ask questions in natural language instead of digging through dashboards; making sure the AI responses were accurate and trustworthy, not just convenient",
+          "quality_criteria": "users able to get answers much faster; changed how they interacted with the system; AI responses are accurate and trustworthy",
+          "work_context": "",
+          "frequency": "",
+          "duration": "",
+          "skills": "",
+          "experience": "",
+          "training": "",
+          "sources": {
+            "task_statement": "I decided to prototype an AI-assisted interface that let users ask questions in natural language instead of digging through dashboards. That wasn\u2019t an initial requirement, but I felt it could really reduce friction. The outcome was better than I expected. Once people tried it, they were able to get answers much faster and it changed how they interacted with the system.",
+            "action": "I decided to prototype an AI-assisted interface that let users ask questions in natural language instead of digging through dashboards.",
+            "object": "I decided to prototype an AI-assisted interface that let users ask questions in natural language instead of digging through dashboards.",
+            "purpose": "That wasn\u2019t an initial requirement, but I felt it could really reduce friction.",
+            "tools": "I decided to prototype an AI-assisted interface that let users ask questions in natural language instead of digging through dashboards.",
+            "information_sources": "getting early feedback from users",
+            "method": "I navigated that by adding guardrails, tightening data sources, and getting early feedback from users.",
+            "judgment": "I decided to prototype an AI-assisted interface that let users ask questions in natural language instead of digging through dashboards. That wasn\u2019t an initial requirement, but I felt it could really reduce friction. At the same time, it also surfaced challenges I didn\u2019t fully anticipate, like making sure the AI responses were accurate and trustworthy, not just convenient.",
+            "quality_criteria": "Once people tried it, they were able to get answers much faster and it changed how they interacted with the system. At the same time, it also surfaced challenges I didn\u2019t fully anticipate, like making sure the AI responses were accurate and trustworthy, not just convenient."
+          },
+          "_original_statement": "",
+          "_screen_status": "pass",
+          "_screen_reason": "Specific prototyping task with a concrete object and clear purpose; this is plausibly common research-oriented computing work."
+        }
+      },
+      "weight": 1.0
+    },
+    {
+      "task": {
+        "id": "4613d51b-5489-4986-9823-89aeed58f834",
+        "text": "Break down ambiguous or messy technical problems into structured components to enable problem-solving and system design.",
+        "source": "Graduate Student (Software Engineering)",
+        "timestamp": "2026-04-10T14:32:19.298780",
+        "metadata": {
+          "action": "break down",
+          "object": "ambiguous or messy technical problems",
+          "purpose": "enable problem-solving and system design",
+          "tools": "",
+          "information_sources": "",
+          "method": "",
+          "judgment": "deciding what information actually matters",
+          "quality_criteria": "",
+          "work_context": "",
+          "frequency": "",
+          "duration": "",
+          "skills": "problem-solving; structuring ambiguous problems",
+          "experience": "",
+          "training": "",
+          "sources": {
+            "task_statement": "I find it most natural when I\u2019m breaking down messy or ambiguous problems and turning them into something more structured. That might be designing a system, figuring out why something isn\u2019t working, or deciding what information actually matters. That kind of problem-solving feels pretty intuitive to me.",
+            "action": "I find it most natural when I\u2019m breaking down messy or ambiguous problems and turning them into something more structured.",
+            "object": "I find it most natural when I\u2019m breaking down messy or ambiguous problems and turning them into something more structured.",
+            "purpose": "That might be designing a system, figuring out why something isn\u2019t working, or deciding what information actually matters.",
+            "judgment": "deciding what information actually matters.",
+            "skills": "I find it most natural when I\u2019m breaking down messy or ambiguous problems and turning them into something more structured. That might be designing a system, figuring out why something isn\u2019t working, or deciding what information actually matters. That kind of problem-solving feels pretty intuitive to me."
+          },
+          "_original_statement": "",
+          "_screen_status": "pass",
+          "_screen_reason": "This is a concrete analytical task with a clear object and purpose, and it is common in research and advanced computing work."
+        }
+      },
+      "weight": 1.0
+    },
+    {
+      "task": {
+        "id": "14582941-695a-433c-bea4-dd46a22dfd9f",
+        "text": "Develop new methods in large language model (LLM) training and inference, with a special focus on agentic workflow, to drive AI innovation.",
+        "source": "Research Scientist (Fintech)",
+        "timestamp": "2026-04-10T14:32:19.298780",
+        "metadata": {
+          "action": "Develop",
+          "object": "new methods in LLM training and inference, especially agentic workflow",
+          "purpose": "to drive AI innovation",
+          "tools": "",
+          "information_sources": "",
+          "method": "",
+          "judgment": "",
+          "quality_criteria": "",
+          "work_context": "",
+          "frequency": "",
+          "duration": "",
+          "skills": "",
+          "experience": "",
+          "training": "",
+          "sources": {
+            "task_statement": "I develop new methods in LLM training and inference, specially in agentic workflow.",
+            "action": "I develop new methods in LLM training and inference, specially in agentic workflow.",
+            "object": "I develop new methods in LLM training and inference, specially in agentic workflow.",
+            "purpose": "Yes, the company encourages the innovation. We also use LLM on work."
+          },
+          "_original_statement": "",
+          "_screen_status": "pass",
+          "_screen_reason": "Concrete research and development task on LLM methods; typical for computer and information research scientists."
+        }
+      },
+      "weight": 1.0
+    }
+  ]
+}

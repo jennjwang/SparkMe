@@ -1,0 +1,28 @@
+{
+  "input": {
+    "path": "analysis/task_clustering/input_cirs.json",
+    "text_field": "task_statement",
+    "source_field": "occupation",
+    "timestamp_field": null,
+    "items_field": "tasks"
+  },
+
+  "output": {
+    "state": "analysis/task_clustering/output/cirs_clusters.json",
+    "hierarchy": "analysis/task_clustering/output/cirs_hierarchy.json"
+  },
+
+  "taxonomy": null,
+  "criteria": "analysis/task_clustering/criteria.txt",
+  "resume": null,
+
+  "algorithm": {
+    "model": "gpt-5.4",
+    "lambda": 0.1,
+    "eps": 0.5,
+    "max_split_size": 5,
+    "split_depth_limit": 1,
+    "fade_interval_interviews": 10,
+    "no_splits": false
+  }
+}

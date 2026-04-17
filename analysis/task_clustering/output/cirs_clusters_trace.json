@@ -1,0 +1,3560 @@
+[
+  {
+    "step": 1,
+    "task_text": "Read current state-of-the-art research papers in AI and climate science to identify new techniques and ideas for improving climate prediction.",
+    "task_source": "PhD Student (AI for Climate Science)",
+    "assigned_id": null,
+    "assigned_label": "",
+    "assigned_level": 0,
+    "clusters": [],
+    "reasonings": [
+      "[buffer] Buffer empty \u2014 added to outlier buffer."
+    ]
+  },
+  {
+    "step": 2,
+    "task_text": "Survey, compare, and select AI techniques for adaptation and application to identified climate science problems.",
+    "task_source": "PhD Student (AI for Climate Science)",
+    "assigned_id": "468cc817-e544-4b96-a647-4e596164251d",
+    "assigned_label": "Review and evaluate relevant research methods",
+    "assigned_level": 0,
+    "clusters": [
+      {
+        "id": "468cc817-e544-4b96-a647-4e596164251d",
+        "leader": "Review and evaluate relevant research methods",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 2
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Read current state-of-the-art research papers in AI and climate science to identify new techniques and ideas for improving climate prediction.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Survey, compare, and select AI techniques for adaptation and application to identified climate science problems.",
+            "source": "PhD Student (AI for Climate Science)"
+          }
+        ]
+      }
+    ],
+    "reasonings": [
+      "[buffer] Both tasks involve surveying and evaluating AI methods in the climate science domain to identify suitable techniques for climate-related applications, so they are the same type of research-selection work.",
+      "[buffer] Promoted 'Read current state-of-the-art research papers in AI and clim' + new task \u2192 cluster 468cc817"
+    ]
+  },
+  {
+    "step": 3,
+    "task_text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+    "task_source": "PhD Student (AI for Climate Science)",
+    "assigned_id": null,
+    "assigned_label": "",
+    "assigned_level": 0,
+    "clusters": [
+      {
+        "id": "468cc817-e544-4b96-a647-4e596164251d",
+        "leader": "Review and evaluate relevant research methods",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 2
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Read current state-of-the-art research papers in AI and climate science to identify new techniques and ideas for improving climate prediction.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Survey, compare, and select AI techniques for adaptation and application to identified climate science problems.",
+            "source": "PhD Student (AI for Climate Science)"
+          }
+        ]
+      }
+    ],
+    "reasonings": [
+      "[L0] The new task centers on implementing, debugging, and experimentally applying AI methods to climate science problems, which is broader and more hands-on than simply reviewing and evaluating research methods.",
+      "[buffer] Buffer empty \u2014 added to outlier buffer."
+    ]
+  },
+  {
+    "step": 4,
+    "task_text": "Write up research findings and results from experiments for documentation or publication.",
+    "task_source": "PhD Student (AI for Climate Science)",
+    "assigned_id": null,
+    "assigned_label": "",
+    "assigned_level": 0,
+    "clusters": [
+      {
+        "id": "468cc817-e544-4b96-a647-4e596164251d",
+        "leader": "Review and evaluate relevant research methods",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 2
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Read current state-of-the-art research papers in AI and climate science to identify new techniques and ideas for improving climate prediction.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Survey, compare, and select AI techniques for adaptation and application to identified climate science problems.",
+            "source": "PhD Student (AI for Climate Science)"
+          }
+        ]
+      }
+    ],
+    "reasonings": [
+      "[L0] Writing up research findings for documentation or publication is a different core activity from reviewing and evaluating research methods, so it does not fit the existing cluster.",
+      "[buffer] The new task is about writing and documenting research results for publication, which is a different core activity from conducting and debugging experiments to evaluate AI methods."
+    ]
+  },
+  {
+    "step": 5,
+    "task_text": "Consult climate science experts to identify key problems and challenges in the field that can be addressed using AI techniques.",
+    "task_source": "PhD Student (AI for Climate Science)",
+    "assigned_id": null,
+    "assigned_label": "",
+    "assigned_level": 0,
+    "clusters": [
+      {
+        "id": "468cc817-e544-4b96-a647-4e596164251d",
+        "leader": "Review and evaluate relevant research methods",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 2
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Read current state-of-the-art research papers in AI and climate science to identify new techniques and ideas for improving climate prediction.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Survey, compare, and select AI techniques for adaptation and application to identified climate science problems.",
+            "source": "PhD Student (AI for Climate Science)"
+          }
+        ]
+      }
+    ],
+    "reasonings": [
+      "[L0] Consulting climate science experts to identify AI-addressable challenges is primarily stakeholder/domain-expert elicitation and problem scoping, which is different from reviewing and evaluating research methods.",
+      "[buffer] The new task is about consulting experts to identify research problems, which is a distinct problem-definition and stakeholder-engagement activity rather than conducting AI experiments or writing up results."
+    ]
+  },
+  {
+    "step": 6,
+    "task_text": "Analyze model outputs to identify patterns or biases that inform evaluation frameworks.",
+    "task_source": "Research Assistant",
+    "assigned_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+    "assigned_label": "Design and evaluate computational experiments",
+    "assigned_level": 0,
+    "clusters": [
+      {
+        "id": "468cc817-e544-4b96-a647-4e596164251d",
+        "leader": "Review and evaluate relevant research methods",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 2
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Read current state-of-the-art research papers in AI and climate science to identify new techniques and ideas for improving climate prediction.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Survey, compare, and select AI techniques for adaptation and application to identified climate science problems.",
+            "source": "PhD Student (AI for Climate Science)"
+          }
+        ]
+      },
+      {
+        "id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "leader": "Design and evaluate computational experiments",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Analyze model outputs to identify patterns or biases that inform evaluation frameworks.",
+            "source": "Research Assistant"
+          }
+        ]
+      }
+    ],
+    "reasonings": [
+      "[L0] Analyzing model outputs for patterns or biases to shape evaluation frameworks is a distinct AI evaluation/assessment activity, not the same as reviewing and evaluating research methods.",
+      "[buffer] This task is about evaluating AI/model outputs for patterns and biases, which aligns with conducting and assessing AI experiments rather than writing results or consulting domain experts.",
+      "[buffer] Promoted 'Conduct experiments with selected AI methods, including codi' + new task \u2192 cluster 65555d7a"
+    ]
+  },
+  {
+    "step": 7,
+    "task_text": "Design experiments to ensure technical rigor in model evaluation frameworks.",
+    "task_source": "Research Assistant",
+    "assigned_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+    "assigned_label": "Design and evaluate computational experiments",
+    "assigned_level": 0,
+    "clusters": [
+      {
+        "id": "468cc817-e544-4b96-a647-4e596164251d",
+        "leader": "Review and evaluate relevant research methods",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 2
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Read current state-of-the-art research papers in AI and climate science to identify new techniques and ideas for improving climate prediction.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Survey, compare, and select AI techniques for adaptation and application to identified climate science problems.",
+            "source": "PhD Student (AI for Climate Science)"
+          }
+        ]
+      },
+      {
+        "id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "leader": "Design and evaluate computational experiments",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 3,
+        "weight": 3.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 2
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Analyze model outputs to identify patterns or biases that inform evaluation frameworks.",
+            "source": "Research Assistant"
+          },
+          {
+            "text": "Design experiments to ensure technical rigor in model evaluation frameworks.",
+            "source": "Research Assistant"
+          }
+        ]
+      }
+    ],
+    "reasonings": [
+      "[L0] Designing experiments for technical rigor in model evaluation frameworks is a specific instance of designing computational experiments."
+    ]
+  },
+  {
+    "step": 8,
+    "task_text": "Develop code for experiments, model inference, and training scripts to translate theoretical NLP concepts into tangible results.",
+    "task_source": "Research Assistant",
+    "assigned_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+    "assigned_label": "Design and evaluate computational experiments",
+    "assigned_level": 0,
+    "clusters": [
+      {
+        "id": "468cc817-e544-4b96-a647-4e596164251d",
+        "leader": "Review and evaluate relevant research methods",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 2
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Read current state-of-the-art research papers in AI and climate science to identify new techniques and ideas for improving climate prediction.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Survey, compare, and select AI techniques for adaptation and application to identified climate science problems.",
+            "source": "PhD Student (AI for Climate Science)"
+          }
+        ]
+      },
+      {
+        "id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "leader": "Design and evaluate computational experiments",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 4,
+        "weight": 4.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 3
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Analyze model outputs to identify patterns or biases that inform evaluation frameworks.",
+            "source": "Research Assistant"
+          },
+          {
+            "text": "Design experiments to ensure technical rigor in model evaluation frameworks.",
+            "source": "Research Assistant"
+          },
+          {
+            "text": "Develop code for experiments, model inference, and training scripts to translate theoretical NLP concepts into tangible results.",
+            "source": "Research Assistant"
+          }
+        ]
+      }
+    ],
+    "reasonings": [
+      "[L0] Developing code for experiments, inference, and training directly supports implementing and assessing computational experiments rather than reviewing research methods."
+    ]
+  },
+  {
+    "step": 9,
+    "task_text": "Annotate data to ensure high-quality ground truth data for robust evaluations.",
+    "task_source": "Research Assistant",
+    "assigned_id": null,
+    "assigned_label": "",
+    "assigned_level": 0,
+    "clusters": [
+      {
+        "id": "468cc817-e544-4b96-a647-4e596164251d",
+        "leader": "Review and evaluate relevant research methods",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 2
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Read current state-of-the-art research papers in AI and climate science to identify new techniques and ideas for improving climate prediction.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Survey, compare, and select AI techniques for adaptation and application to identified climate science problems.",
+            "source": "PhD Student (AI for Climate Science)"
+          }
+        ]
+      },
+      {
+        "id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "leader": "Design and evaluate computational experiments",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 4,
+        "weight": 4.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 3
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Analyze model outputs to identify patterns or biases that inform evaluation frameworks.",
+            "source": "Research Assistant"
+          },
+          {
+            "text": "Design experiments to ensure technical rigor in model evaluation frameworks.",
+            "source": "Research Assistant"
+          },
+          {
+            "text": "Develop code for experiments, model inference, and training scripts to translate theoretical NLP concepts into tangible results.",
+            "source": "Research Assistant"
+          }
+        ]
+      }
+    ],
+    "reasonings": [
+      "[L0] Annotating data to create high-quality ground truth is a distinct data labeling/curation activity and does not match reviewing research methods or designing/evaluating computational experiments.",
+      "[buffer] The new task is about annotating data for evaluation quality, which is a distinct type of work from writing research findings or consulting climate science experts."
+    ]
+  },
+  {
+    "step": 10,
+    "task_text": "Organize experimental results, model checkpoints, and configuration files using Weights & Biases to facilitate actionable insights.",
+    "task_source": "Research Assistant",
+    "assigned_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+    "assigned_label": "Design and run model evaluation experiments",
+    "assigned_level": 0,
+    "clusters": [
+      {
+        "id": "468cc817-e544-4b96-a647-4e596164251d",
+        "leader": "Review and evaluate relevant research methods",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 2
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Read current state-of-the-art research papers in AI and climate science to identify new techniques and ideas for improving climate prediction.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Survey, compare, and select AI techniques for adaptation and application to identified climate science problems.",
+            "source": "PhD Student (AI for Climate Science)"
+          }
+        ]
+      },
+      {
+        "id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "leader": "Design and run model evaluation experiments",
+        "level": 0,
+        "parent_id": null,
+        "children": [
+          "aa66f492-c411-474e-b54c-aa44fa5b12d0",
+          "2b54fd32-29d6-48ec-b587-baa3ec61cea7"
+        ],
+        "member_count": 0,
+        "weight": 5.0,
+        "sources": {},
+        "anchored": false,
+        "members": []
+      },
+      {
+        "id": "aa66f492-c411-474e-b54c-aa44fa5b12d0",
+        "leader": "Experiment design and execution",
+        "level": 1,
+        "parent_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "children": [],
+        "member_count": 3,
+        "weight": 3.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 2
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Analyze model outputs to identify patterns or biases that inform evaluation frameworks.",
+            "source": "Research Assistant"
+          },
+          {
+            "text": "Design experiments to ensure technical rigor in model evaluation frameworks.",
+            "source": "Research Assistant"
+          }
+        ]
+      },
+      {
+        "id": "2b54fd32-29d6-48ec-b587-baa3ec61cea7",
+        "leader": "Evaluation analysis and tracking",
+        "level": 1,
+        "parent_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Develop code for experiments, model inference, and training scripts to translate theoretical NLP concepts into tangible results.",
+            "source": "Research Assistant"
+          }
+        ]
+      }
+    ],
+    "reasonings": [
+      "[L0] Organizing experimental results, checkpoints, and configs in Weights & Biases is part of managing and assessing computational experiment outputs, so it fits the broader work of designing and evaluating computational experiments."
+    ]
+  },
+  {
+    "step": 11,
+    "task_text": "[AI Researcher] Perform data analysis on the peer review platform to support decision-making and improve platform outcomes.",
+    "task_source": "AI Researcher",
+    "assigned_id": null,
+    "assigned_label": "",
+    "assigned_level": 0,
+    "clusters": [
+      {
+        "id": "468cc817-e544-4b96-a647-4e596164251d",
+        "leader": "Review and evaluate relevant research methods",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 2
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Read current state-of-the-art research papers in AI and climate science to identify new techniques and ideas for improving climate prediction.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Survey, compare, and select AI techniques for adaptation and application to identified climate science problems.",
+            "source": "PhD Student (AI for Climate Science)"
+          }
+        ]
+      },
+      {
+        "id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "leader": "Design and run model evaluation experiments",
+        "level": 0,
+        "parent_id": null,
+        "children": [
+          "aa66f492-c411-474e-b54c-aa44fa5b12d0",
+          "2b54fd32-29d6-48ec-b587-baa3ec61cea7"
+        ],
+        "member_count": 0,
+        "weight": 5.0,
+        "sources": {},
+        "anchored": false,
+        "members": []
+      },
+      {
+        "id": "aa66f492-c411-474e-b54c-aa44fa5b12d0",
+        "leader": "Experiment design and execution",
+        "level": 1,
+        "parent_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "children": [],
+        "member_count": 3,
+        "weight": 3.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 2
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Analyze model outputs to identify patterns or biases that inform evaluation frameworks.",
+            "source": "Research Assistant"
+          },
+          {
+            "text": "Design experiments to ensure technical rigor in model evaluation frameworks.",
+            "source": "Research Assistant"
+          }
+        ]
+      },
+      {
+        "id": "2b54fd32-29d6-48ec-b587-baa3ec61cea7",
+        "leader": "Evaluation analysis and tracking",
+        "level": 1,
+        "parent_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Develop code for experiments, model inference, and training scripts to translate theoretical NLP concepts into tangible results.",
+            "source": "Research Assistant"
+          }
+        ]
+      }
+    ],
+    "reasonings": [
+      "[L0] The task focuses on analyzing platform data to inform decisions and improve outcomes, which is distinct from reviewing research methods or running model evaluation experiments.",
+      "[buffer] The new task is about analyzing platform data to inform decisions and improve outcomes, which is distinct from writing up findings, consulting domain experts, or annotating data."
+    ]
+  },
+  {
+    "step": 12,
+    "task_text": "Coordinate workflows for a peer review platform to support an NLP organization.",
+    "task_source": "AI Researcher",
+    "assigned_id": null,
+    "assigned_label": "",
+    "assigned_level": 0,
+    "clusters": [
+      {
+        "id": "468cc817-e544-4b96-a647-4e596164251d",
+        "leader": "Review and evaluate relevant research methods",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 2
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Read current state-of-the-art research papers in AI and climate science to identify new techniques and ideas for improving climate prediction.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Survey, compare, and select AI techniques for adaptation and application to identified climate science problems.",
+            "source": "PhD Student (AI for Climate Science)"
+          }
+        ]
+      },
+      {
+        "id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "leader": "Design and run model evaluation experiments",
+        "level": 0,
+        "parent_id": null,
+        "children": [
+          "aa66f492-c411-474e-b54c-aa44fa5b12d0",
+          "2b54fd32-29d6-48ec-b587-baa3ec61cea7"
+        ],
+        "member_count": 0,
+        "weight": 5.0,
+        "sources": {},
+        "anchored": false,
+        "members": []
+      },
+      {
+        "id": "aa66f492-c411-474e-b54c-aa44fa5b12d0",
+        "leader": "Experiment design and execution",
+        "level": 1,
+        "parent_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "children": [],
+        "member_count": 3,
+        "weight": 3.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 2
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Analyze model outputs to identify patterns or biases that inform evaluation frameworks.",
+            "source": "Research Assistant"
+          },
+          {
+            "text": "Design experiments to ensure technical rigor in model evaluation frameworks.",
+            "source": "Research Assistant"
+          }
+        ]
+      },
+      {
+        "id": "2b54fd32-29d6-48ec-b587-baa3ec61cea7",
+        "leader": "Evaluation analysis and tracking",
+        "level": 1,
+        "parent_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Develop code for experiments, model inference, and training scripts to translate theoretical NLP concepts into tangible results.",
+            "source": "Research Assistant"
+          }
+        ]
+      }
+    ],
+    "reasonings": [
+      "[L0] Coordinating workflows for a peer review platform is operational/project coordination work, which is distinct from reviewing research methods or running model evaluation experiments.",
+      "[buffer] Coordinating workflows for a peer review platform is operational support work and does not match writing research results, consulting climate experts, data annotation, or analyzing peer review platform data."
+    ]
+  },
+  {
+    "step": 13,
+    "task_text": "Troubleshoot user issues on the peer review platform to maintain platform functionality.",
+    "task_source": "AI Researcher",
+    "assigned_id": "e9bb1fbe-efc7-41c5-97e6-a93b5163791d",
+    "assigned_label": "Coordinate and troubleshoot platform workflows",
+    "assigned_level": 0,
+    "clusters": [
+      {
+        "id": "468cc817-e544-4b96-a647-4e596164251d",
+        "leader": "Review and evaluate relevant research methods",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 2
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Read current state-of-the-art research papers in AI and climate science to identify new techniques and ideas for improving climate prediction.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Survey, compare, and select AI techniques for adaptation and application to identified climate science problems.",
+            "source": "PhD Student (AI for Climate Science)"
+          }
+        ]
+      },
+      {
+        "id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "leader": "Design and run model evaluation experiments",
+        "level": 0,
+        "parent_id": null,
+        "children": [
+          "aa66f492-c411-474e-b54c-aa44fa5b12d0",
+          "2b54fd32-29d6-48ec-b587-baa3ec61cea7"
+        ],
+        "member_count": 0,
+        "weight": 5.0,
+        "sources": {},
+        "anchored": false,
+        "members": []
+      },
+      {
+        "id": "aa66f492-c411-474e-b54c-aa44fa5b12d0",
+        "leader": "Experiment design and execution",
+        "level": 1,
+        "parent_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "children": [],
+        "member_count": 3,
+        "weight": 3.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 2
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Analyze model outputs to identify patterns or biases that inform evaluation frameworks.",
+            "source": "Research Assistant"
+          },
+          {
+            "text": "Design experiments to ensure technical rigor in model evaluation frameworks.",
+            "source": "Research Assistant"
+          }
+        ]
+      },
+      {
+        "id": "2b54fd32-29d6-48ec-b587-baa3ec61cea7",
+        "leader": "Evaluation analysis and tracking",
+        "level": 1,
+        "parent_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Develop code for experiments, model inference, and training scripts to translate theoretical NLP concepts into tangible results.",
+            "source": "Research Assistant"
+          }
+        ]
+      },
+      {
+        "id": "e9bb1fbe-efc7-41c5-97e6-a93b5163791d",
+        "leader": "Coordinate and troubleshoot platform workflows",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "AI Researcher": 2
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Coordinate workflows for a peer review platform to support an NLP organization.",
+            "source": "AI Researcher"
+          },
+          {
+            "text": "Troubleshoot user issues on the peer review platform to maintain platform functionality.",
+            "source": "AI Researcher"
+          }
+        ]
+      }
+    ],
+    "reasonings": [
+      "[L0] Troubleshooting user issues on a peer review platform is platform support/maintenance work, which does not match reviewing research methods or designing model evaluation experiments.",
+      "[buffer] Troubleshooting user issues on the peer review platform is part of coordinating and maintaining platform operations, which fits the workflow-support work in cluster 5.",
+      "[buffer] Promoted 'Coordinate workflows for a peer review platform to support a' + new task \u2192 cluster e9bb1fbe"
+    ]
+  },
+  {
+    "step": 14,
+    "task_text": "Build a large language model (LLM) for a university in the UAE.",
+    "task_source": "AI Researcher",
+    "assigned_id": null,
+    "assigned_label": "",
+    "assigned_level": 0,
+    "clusters": [
+      {
+        "id": "468cc817-e544-4b96-a647-4e596164251d",
+        "leader": "Review and evaluate relevant research methods",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 2
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Read current state-of-the-art research papers in AI and climate science to identify new techniques and ideas for improving climate prediction.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Survey, compare, and select AI techniques for adaptation and application to identified climate science problems.",
+            "source": "PhD Student (AI for Climate Science)"
+          }
+        ]
+      },
+      {
+        "id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "leader": "Design and run model evaluation experiments",
+        "level": 0,
+        "parent_id": null,
+        "children": [
+          "aa66f492-c411-474e-b54c-aa44fa5b12d0",
+          "2b54fd32-29d6-48ec-b587-baa3ec61cea7"
+        ],
+        "member_count": 0,
+        "weight": 5.0,
+        "sources": {},
+        "anchored": false,
+        "members": []
+      },
+      {
+        "id": "aa66f492-c411-474e-b54c-aa44fa5b12d0",
+        "leader": "Experiment design and execution",
+        "level": 1,
+        "parent_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "children": [],
+        "member_count": 3,
+        "weight": 3.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 2
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Analyze model outputs to identify patterns or biases that inform evaluation frameworks.",
+            "source": "Research Assistant"
+          },
+          {
+            "text": "Design experiments to ensure technical rigor in model evaluation frameworks.",
+            "source": "Research Assistant"
+          }
+        ]
+      },
+      {
+        "id": "2b54fd32-29d6-48ec-b587-baa3ec61cea7",
+        "leader": "Evaluation analysis and tracking",
+        "level": 1,
+        "parent_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Develop code for experiments, model inference, and training scripts to translate theoretical NLP concepts into tangible results.",
+            "source": "Research Assistant"
+          }
+        ]
+      },
+      {
+        "id": "e9bb1fbe-efc7-41c5-97e6-a93b5163791d",
+        "leader": "Coordinate and troubleshoot platform workflows",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "AI Researcher": 2
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Coordinate workflows for a peer review platform to support an NLP organization.",
+            "source": "AI Researcher"
+          },
+          {
+            "text": "Troubleshoot user issues on the peer review platform to maintain platform functionality.",
+            "source": "AI Researcher"
+          }
+        ]
+      }
+    ],
+    "reasonings": [
+      "[L0] Building an LLM for a university is a broader model development task and does not match reviewing research methods, running evaluation experiments, or coordinating platform workflows.",
+      "[buffer] Building an LLM for a university is a model development task that does not match writing research results, consulting climate experts, annotating data, or analyzing peer review platform data."
+    ]
+  },
+  {
+    "step": 15,
+    "task_text": "Complete coursework for mandatory PhD classes using AI tools to accelerate understanding.",
+    "task_source": "PhD Student",
+    "assigned_id": null,
+    "assigned_label": "",
+    "assigned_level": 0,
+    "clusters": [
+      {
+        "id": "468cc817-e544-4b96-a647-4e596164251d",
+        "leader": "Review and evaluate relevant research methods",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 2
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Read current state-of-the-art research papers in AI and climate science to identify new techniques and ideas for improving climate prediction.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Survey, compare, and select AI techniques for adaptation and application to identified climate science problems.",
+            "source": "PhD Student (AI for Climate Science)"
+          }
+        ]
+      },
+      {
+        "id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "leader": "Design and run model evaluation experiments",
+        "level": 0,
+        "parent_id": null,
+        "children": [
+          "aa66f492-c411-474e-b54c-aa44fa5b12d0",
+          "2b54fd32-29d6-48ec-b587-baa3ec61cea7"
+        ],
+        "member_count": 0,
+        "weight": 5.0,
+        "sources": {},
+        "anchored": false,
+        "members": []
+      },
+      {
+        "id": "aa66f492-c411-474e-b54c-aa44fa5b12d0",
+        "leader": "Experiment design and execution",
+        "level": 1,
+        "parent_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "children": [],
+        "member_count": 3,
+        "weight": 3.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 2
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Analyze model outputs to identify patterns or biases that inform evaluation frameworks.",
+            "source": "Research Assistant"
+          },
+          {
+            "text": "Design experiments to ensure technical rigor in model evaluation frameworks.",
+            "source": "Research Assistant"
+          }
+        ]
+      },
+      {
+        "id": "2b54fd32-29d6-48ec-b587-baa3ec61cea7",
+        "leader": "Evaluation analysis and tracking",
+        "level": 1,
+        "parent_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Develop code for experiments, model inference, and training scripts to translate theoretical NLP concepts into tangible results.",
+            "source": "Research Assistant"
+          }
+        ]
+      },
+      {
+        "id": "e9bb1fbe-efc7-41c5-97e6-a93b5163791d",
+        "leader": "Coordinate and troubleshoot platform workflows",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "AI Researcher": 2
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Coordinate workflows for a peer review platform to support an NLP organization.",
+            "source": "AI Researcher"
+          },
+          {
+            "text": "Troubleshoot user issues on the peer review platform to maintain platform functionality.",
+            "source": "AI Researcher"
+          }
+        ]
+      }
+    ],
+    "reasonings": [
+      "[L0] Completing mandatory PhD coursework is academic learning/studying work, which does not match reviewing research methods, running model evaluations, or coordinating platform workflows.",
+      "[buffer] Completing mandatory PhD coursework with AI support is a distinct educational/learning activity and does not match any existing cluster focused on research writing, expert consultation, data annotation, platform analysis, or LLM building."
+    ]
+  },
+  {
+    "step": 16,
+    "task_text": "Review research literature using AI tools to increase productivity.",
+    "task_source": "PhD Student",
+    "assigned_id": "468cc817-e544-4b96-a647-4e596164251d",
+    "assigned_label": "Review and evaluate relevant research methods",
+    "assigned_level": 0,
+    "clusters": [
+      {
+        "id": "468cc817-e544-4b96-a647-4e596164251d",
+        "leader": "Review and evaluate relevant research methods",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 3,
+        "weight": 3.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 2,
+          "PhD Student": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Read current state-of-the-art research papers in AI and climate science to identify new techniques and ideas for improving climate prediction.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Survey, compare, and select AI techniques for adaptation and application to identified climate science problems.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Review research literature using AI tools to increase productivity.",
+            "source": "PhD Student"
+          }
+        ]
+      },
+      {
+        "id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "leader": "Design and run model evaluation experiments",
+        "level": 0,
+        "parent_id": null,
+        "children": [
+          "aa66f492-c411-474e-b54c-aa44fa5b12d0",
+          "2b54fd32-29d6-48ec-b587-baa3ec61cea7"
+        ],
+        "member_count": 0,
+        "weight": 5.0,
+        "sources": {},
+        "anchored": false,
+        "members": []
+      },
+      {
+        "id": "aa66f492-c411-474e-b54c-aa44fa5b12d0",
+        "leader": "Experiment design and execution",
+        "level": 1,
+        "parent_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "children": [],
+        "member_count": 3,
+        "weight": 3.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 2
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Analyze model outputs to identify patterns or biases that inform evaluation frameworks.",
+            "source": "Research Assistant"
+          },
+          {
+            "text": "Design experiments to ensure technical rigor in model evaluation frameworks.",
+            "source": "Research Assistant"
+          }
+        ]
+      },
+      {
+        "id": "2b54fd32-29d6-48ec-b587-baa3ec61cea7",
+        "leader": "Evaluation analysis and tracking",
+        "level": 1,
+        "parent_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Develop code for experiments, model inference, and training scripts to translate theoretical NLP concepts into tangible results.",
+            "source": "Research Assistant"
+          }
+        ]
+      },
+      {
+        "id": "e9bb1fbe-efc7-41c5-97e6-a93b5163791d",
+        "leader": "Coordinate and troubleshoot platform workflows",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "AI Researcher": 2
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Coordinate workflows for a peer review platform to support an NLP organization.",
+            "source": "AI Researcher"
+          },
+          {
+            "text": "Troubleshoot user issues on the peer review platform to maintain platform functionality.",
+            "source": "AI Researcher"
+          }
+        ]
+      }
+    ],
+    "reasonings": [
+      "[L0] Reviewing research literature with AI tools is still fundamentally about evaluating relevant research approaches and sources, matching the core work of reviewing and evaluating research methods."
+    ]
+  },
+  {
+    "step": 17,
+    "task_text": "Review new literature in the vision-language model (VLM) space to identify relevant papers for research.",
+    "task_source": "PhD Student",
+    "assigned_id": "468cc817-e544-4b96-a647-4e596164251d",
+    "assigned_label": "Review and evaluate relevant research methods",
+    "assigned_level": 0,
+    "clusters": [
+      {
+        "id": "468cc817-e544-4b96-a647-4e596164251d",
+        "leader": "Review and evaluate relevant research methods",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 4,
+        "weight": 4.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 2,
+          "PhD Student": 2
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Read current state-of-the-art research papers in AI and climate science to identify new techniques and ideas for improving climate prediction.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Survey, compare, and select AI techniques for adaptation and application to identified climate science problems.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Review research literature using AI tools to increase productivity.",
+            "source": "PhD Student"
+          },
+          {
+            "text": "Review new literature in the vision-language model (VLM) space to identify relevant papers for research.",
+            "source": "PhD Student"
+          }
+        ]
+      },
+      {
+        "id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "leader": "Design and run model evaluation experiments",
+        "level": 0,
+        "parent_id": null,
+        "children": [
+          "aa66f492-c411-474e-b54c-aa44fa5b12d0",
+          "2b54fd32-29d6-48ec-b587-baa3ec61cea7"
+        ],
+        "member_count": 0,
+        "weight": 5.0,
+        "sources": {},
+        "anchored": false,
+        "members": []
+      },
+      {
+        "id": "aa66f492-c411-474e-b54c-aa44fa5b12d0",
+        "leader": "Experiment design and execution",
+        "level": 1,
+        "parent_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "children": [],
+        "member_count": 3,
+        "weight": 3.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 2
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Analyze model outputs to identify patterns or biases that inform evaluation frameworks.",
+            "source": "Research Assistant"
+          },
+          {
+            "text": "Design experiments to ensure technical rigor in model evaluation frameworks.",
+            "source": "Research Assistant"
+          }
+        ]
+      },
+      {
+        "id": "2b54fd32-29d6-48ec-b587-baa3ec61cea7",
+        "leader": "Evaluation analysis and tracking",
+        "level": 1,
+        "parent_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Develop code for experiments, model inference, and training scripts to translate theoretical NLP concepts into tangible results.",
+            "source": "Research Assistant"
+          }
+        ]
+      },
+      {
+        "id": "e9bb1fbe-efc7-41c5-97e6-a93b5163791d",
+        "leader": "Coordinate and troubleshoot platform workflows",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "AI Researcher": 2
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Coordinate workflows for a peer review platform to support an NLP organization.",
+            "source": "AI Researcher"
+          },
+          {
+            "text": "Troubleshoot user issues on the peer review platform to maintain platform functionality.",
+            "source": "AI Researcher"
+          }
+        ]
+      }
+    ],
+    "reasonings": [
+      "[L0] Reviewing new VLM literature to identify relevant papers is the same type of work as reviewing and evaluating relevant research methods."
+    ]
+  },
+  {
+    "step": 18,
+    "task_text": "Prototype new architectures for multimodal alignment to validate research hypotheses.",
+    "task_source": "PhD Student",
+    "assigned_id": "aa66f492-c411-474e-b54c-aa44fa5b12d0",
+    "assigned_label": "Experiment design and execution",
+    "assigned_level": 1,
+    "clusters": [
+      {
+        "id": "468cc817-e544-4b96-a647-4e596164251d",
+        "leader": "Review and evaluate relevant research methods",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 4,
+        "weight": 4.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 2,
+          "PhD Student": 2
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Read current state-of-the-art research papers in AI and climate science to identify new techniques and ideas for improving climate prediction.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Survey, compare, and select AI techniques for adaptation and application to identified climate science problems.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Review research literature using AI tools to increase productivity.",
+            "source": "PhD Student"
+          },
+          {
+            "text": "Review new literature in the vision-language model (VLM) space to identify relevant papers for research.",
+            "source": "PhD Student"
+          }
+        ]
+      },
+      {
+        "id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "leader": "Design and run model evaluation experiments",
+        "level": 0,
+        "parent_id": null,
+        "children": [
+          "aa66f492-c411-474e-b54c-aa44fa5b12d0",
+          "2b54fd32-29d6-48ec-b587-baa3ec61cea7"
+        ],
+        "member_count": 0,
+        "weight": 5.0,
+        "sources": {},
+        "anchored": false,
+        "members": []
+      },
+      {
+        "id": "aa66f492-c411-474e-b54c-aa44fa5b12d0",
+        "leader": "Experiment design and execution",
+        "level": 1,
+        "parent_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "children": [],
+        "member_count": 4,
+        "weight": 4.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 2,
+          "PhD Student": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Analyze model outputs to identify patterns or biases that inform evaluation frameworks.",
+            "source": "Research Assistant"
+          },
+          {
+            "text": "Design experiments to ensure technical rigor in model evaluation frameworks.",
+            "source": "Research Assistant"
+          },
+          {
+            "text": "Prototype new architectures for multimodal alignment to validate research hypotheses.",
+            "source": "PhD Student"
+          }
+        ]
+      },
+      {
+        "id": "2b54fd32-29d6-48ec-b587-baa3ec61cea7",
+        "leader": "Evaluation analysis and tracking",
+        "level": 1,
+        "parent_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Develop code for experiments, model inference, and training scripts to translate theoretical NLP concepts into tangible results.",
+            "source": "Research Assistant"
+          }
+        ]
+      },
+      {
+        "id": "e9bb1fbe-efc7-41c5-97e6-a93b5163791d",
+        "leader": "Coordinate and troubleshoot platform workflows",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "AI Researcher": 2
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Coordinate workflows for a peer review platform to support an NLP organization.",
+            "source": "AI Researcher"
+          },
+          {
+            "text": "Troubleshoot user issues on the peer review platform to maintain platform functionality.",
+            "source": "AI Researcher"
+          }
+        ]
+      }
+    ],
+    "reasonings": [
+      "[L0] Prototyping new multimodal alignment architectures is model development work to test research ideas, which is closer to designing and running experiments than to reviewing methods or coordinating workflows.",
+      "[L1] Prototyping new architectures to test research hypotheses is a form of designing and running experiments rather than analyzing results."
+    ]
+  },
+  {
+    "step": 19,
+    "task_text": "Automate boilerplate coding using AI tools to reduce tedium and focus on research.",
+    "task_source": "PhD Student",
+    "assigned_id": null,
+    "assigned_label": "",
+    "assigned_level": 0,
+    "clusters": [
+      {
+        "id": "468cc817-e544-4b96-a647-4e596164251d",
+        "leader": "Review and evaluate relevant research methods",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 4,
+        "weight": 4.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 2,
+          "PhD Student": 2
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Read current state-of-the-art research papers in AI and climate science to identify new techniques and ideas for improving climate prediction.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Survey, compare, and select AI techniques for adaptation and application to identified climate science problems.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Review research literature using AI tools to increase productivity.",
+            "source": "PhD Student"
+          },
+          {
+            "text": "Review new literature in the vision-language model (VLM) space to identify relevant papers for research.",
+            "source": "PhD Student"
+          }
+        ]
+      },
+      {
+        "id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "leader": "Design and run model evaluation experiments",
+        "level": 0,
+        "parent_id": null,
+        "children": [
+          "aa66f492-c411-474e-b54c-aa44fa5b12d0",
+          "2b54fd32-29d6-48ec-b587-baa3ec61cea7"
+        ],
+        "member_count": 0,
+        "weight": 5.0,
+        "sources": {},
+        "anchored": false,
+        "members": []
+      },
+      {
+        "id": "aa66f492-c411-474e-b54c-aa44fa5b12d0",
+        "leader": "Experiment design and execution",
+        "level": 1,
+        "parent_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "children": [],
+        "member_count": 4,
+        "weight": 4.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 2,
+          "PhD Student": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Analyze model outputs to identify patterns or biases that inform evaluation frameworks.",
+            "source": "Research Assistant"
+          },
+          {
+            "text": "Design experiments to ensure technical rigor in model evaluation frameworks.",
+            "source": "Research Assistant"
+          },
+          {
+            "text": "Prototype new architectures for multimodal alignment to validate research hypotheses.",
+            "source": "PhD Student"
+          }
+        ]
+      },
+      {
+        "id": "2b54fd32-29d6-48ec-b587-baa3ec61cea7",
+        "leader": "Evaluation analysis and tracking",
+        "level": 1,
+        "parent_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Develop code for experiments, model inference, and training scripts to translate theoretical NLP concepts into tangible results.",
+            "source": "Research Assistant"
+          }
+        ]
+      },
+      {
+        "id": "e9bb1fbe-efc7-41c5-97e6-a93b5163791d",
+        "leader": "Coordinate and troubleshoot platform workflows",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "AI Researcher": 2
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Coordinate workflows for a peer review platform to support an NLP organization.",
+            "source": "AI Researcher"
+          },
+          {
+            "text": "Troubleshoot user issues on the peer review platform to maintain platform functionality.",
+            "source": "AI Researcher"
+          }
+        ]
+      }
+    ],
+    "reasonings": [
+      "[L0] Automating boilerplate coding with AI is a software development productivity task, which does not match reviewing research methods, running model evaluations, or coordinating platform workflows.",
+      "[buffer] Automating boilerplate coding with AI is a software development task that does not match any existing cluster\u2019s core work, since none cover general coding assistance or code generation."
+    ]
+  },
+  {
+    "step": 20,
+    "task_text": "Review prior works using AI tools before meetings with advisors to assess feasibility of proposed research topics.",
+    "task_source": "PhD Student",
+    "assigned_id": "468cc817-e544-4b96-a647-4e596164251d",
+    "assigned_label": "Review and evaluate relevant research literature",
+    "assigned_level": 0,
+    "clusters": [
+      {
+        "id": "468cc817-e544-4b96-a647-4e596164251d",
+        "leader": "Review and evaluate relevant research literature",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 5,
+        "weight": 5.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 2,
+          "PhD Student": 3
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Read current state-of-the-art research papers in AI and climate science to identify new techniques and ideas for improving climate prediction.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Survey, compare, and select AI techniques for adaptation and application to identified climate science problems.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Review research literature using AI tools to increase productivity.",
+            "source": "PhD Student"
+          },
+          {
+            "text": "Review new literature in the vision-language model (VLM) space to identify relevant papers for research.",
+            "source": "PhD Student"
+          },
+          {
+            "text": "Review prior works using AI tools before meetings with advisors to assess feasibility of proposed research topics.",
+            "source": "PhD Student"
+          }
+        ]
+      },
+      {
+        "id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "leader": "Design and run model evaluation experiments",
+        "level": 0,
+        "parent_id": null,
+        "children": [
+          "aa66f492-c411-474e-b54c-aa44fa5b12d0",
+          "2b54fd32-29d6-48ec-b587-baa3ec61cea7"
+        ],
+        "member_count": 0,
+        "weight": 5.0,
+        "sources": {},
+        "anchored": false,
+        "members": []
+      },
+      {
+        "id": "aa66f492-c411-474e-b54c-aa44fa5b12d0",
+        "leader": "Experiment design and execution",
+        "level": 1,
+        "parent_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "children": [],
+        "member_count": 4,
+        "weight": 4.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 2,
+          "PhD Student": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Analyze model outputs to identify patterns or biases that inform evaluation frameworks.",
+            "source": "Research Assistant"
+          },
+          {
+            "text": "Design experiments to ensure technical rigor in model evaluation frameworks.",
+            "source": "Research Assistant"
+          },
+          {
+            "text": "Prototype new architectures for multimodal alignment to validate research hypotheses.",
+            "source": "PhD Student"
+          }
+        ]
+      },
+      {
+        "id": "2b54fd32-29d6-48ec-b587-baa3ec61cea7",
+        "leader": "Evaluation analysis and tracking",
+        "level": 1,
+        "parent_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Develop code for experiments, model inference, and training scripts to translate theoretical NLP concepts into tangible results.",
+            "source": "Research Assistant"
+          }
+        ]
+      },
+      {
+        "id": "e9bb1fbe-efc7-41c5-97e6-a93b5163791d",
+        "leader": "Coordinate and troubleshoot platform workflows",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "AI Researcher": 2
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Coordinate workflows for a peer review platform to support an NLP organization.",
+            "source": "AI Researcher"
+          },
+          {
+            "text": "Troubleshoot user issues on the peer review platform to maintain platform functionality.",
+            "source": "AI Researcher"
+          }
+        ]
+      }
+    ],
+    "reasonings": [
+      "[L0] The task is about reviewing prior research and assessing feasibility of research ideas, which matches evaluating relevant research methods and literature."
+    ]
+  },
+  {
+    "step": 21,
+    "task_text": "Prototype AI-assisted interfaces for querying experiment data in natural language to reduce user friction and speed up data access.",
+    "task_source": "Graduate Student (Software Engineering)",
+    "assigned_id": null,
+    "assigned_label": "",
+    "assigned_level": 0,
+    "clusters": [
+      {
+        "id": "468cc817-e544-4b96-a647-4e596164251d",
+        "leader": "Review and evaluate relevant research literature",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 5,
+        "weight": 5.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 2,
+          "PhD Student": 3
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Read current state-of-the-art research papers in AI and climate science to identify new techniques and ideas for improving climate prediction.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Survey, compare, and select AI techniques for adaptation and application to identified climate science problems.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Review research literature using AI tools to increase productivity.",
+            "source": "PhD Student"
+          },
+          {
+            "text": "Review new literature in the vision-language model (VLM) space to identify relevant papers for research.",
+            "source": "PhD Student"
+          },
+          {
+            "text": "Review prior works using AI tools before meetings with advisors to assess feasibility of proposed research topics.",
+            "source": "PhD Student"
+          }
+        ]
+      },
+      {
+        "id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "leader": "Design and run model evaluation experiments",
+        "level": 0,
+        "parent_id": null,
+        "children": [
+          "aa66f492-c411-474e-b54c-aa44fa5b12d0",
+          "2b54fd32-29d6-48ec-b587-baa3ec61cea7"
+        ],
+        "member_count": 0,
+        "weight": 5.0,
+        "sources": {},
+        "anchored": false,
+        "members": []
+      },
+      {
+        "id": "aa66f492-c411-474e-b54c-aa44fa5b12d0",
+        "leader": "Experiment design and execution",
+        "level": 1,
+        "parent_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "children": [],
+        "member_count": 4,
+        "weight": 4.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 2,
+          "PhD Student": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Analyze model outputs to identify patterns or biases that inform evaluation frameworks.",
+            "source": "Research Assistant"
+          },
+          {
+            "text": "Design experiments to ensure technical rigor in model evaluation frameworks.",
+            "source": "Research Assistant"
+          },
+          {
+            "text": "Prototype new architectures for multimodal alignment to validate research hypotheses.",
+            "source": "PhD Student"
+          }
+        ]
+      },
+      {
+        "id": "2b54fd32-29d6-48ec-b587-baa3ec61cea7",
+        "leader": "Evaluation analysis and tracking",
+        "level": 1,
+        "parent_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Develop code for experiments, model inference, and training scripts to translate theoretical NLP concepts into tangible results.",
+            "source": "Research Assistant"
+          }
+        ]
+      },
+      {
+        "id": "e9bb1fbe-efc7-41c5-97e6-a93b5163791d",
+        "leader": "Coordinate and troubleshoot platform workflows",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "AI Researcher": 2
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Coordinate workflows for a peer review platform to support an NLP organization.",
+            "source": "AI Researcher"
+          },
+          {
+            "text": "Troubleshoot user issues on the peer review platform to maintain platform functionality.",
+            "source": "AI Researcher"
+          }
+        ]
+      }
+    ],
+    "reasonings": [
+      "[L0] This task is about designing a user-facing AI/data-access interface rather than reviewing literature, running model evaluations, or coordinating platform workflows, so it does not match the existing clusters.",
+      "[buffer] Prototyping natural-language interfaces for querying experiment data is a distinct product/design-and-access task that does not match writing results, data annotation/analysis, expert consultation, coursework, LLM building, or boilerplate code automation."
+    ]
+  },
+  {
+    "step": 22,
+    "task_text": "Break down ambiguous or messy technical problems into structured components to enable problem-solving and system design.",
+    "task_source": "Graduate Student (Software Engineering)",
+    "assigned_id": null,
+    "assigned_label": "",
+    "assigned_level": 0,
+    "clusters": [
+      {
+        "id": "468cc817-e544-4b96-a647-4e596164251d",
+        "leader": "Review and evaluate relevant research literature",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 5,
+        "weight": 5.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 2,
+          "PhD Student": 3
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Read current state-of-the-art research papers in AI and climate science to identify new techniques and ideas for improving climate prediction.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Survey, compare, and select AI techniques for adaptation and application to identified climate science problems.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Review research literature using AI tools to increase productivity.",
+            "source": "PhD Student"
+          },
+          {
+            "text": "Review new literature in the vision-language model (VLM) space to identify relevant papers for research.",
+            "source": "PhD Student"
+          },
+          {
+            "text": "Review prior works using AI tools before meetings with advisors to assess feasibility of proposed research topics.",
+            "source": "PhD Student"
+          }
+        ]
+      },
+      {
+        "id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "leader": "Design and run model evaluation experiments",
+        "level": 0,
+        "parent_id": null,
+        "children": [
+          "aa66f492-c411-474e-b54c-aa44fa5b12d0",
+          "2b54fd32-29d6-48ec-b587-baa3ec61cea7"
+        ],
+        "member_count": 0,
+        "weight": 5.0,
+        "sources": {},
+        "anchored": false,
+        "members": []
+      },
+      {
+        "id": "aa66f492-c411-474e-b54c-aa44fa5b12d0",
+        "leader": "Experiment design and execution",
+        "level": 1,
+        "parent_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "children": [],
+        "member_count": 4,
+        "weight": 4.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 2,
+          "PhD Student": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Analyze model outputs to identify patterns or biases that inform evaluation frameworks.",
+            "source": "Research Assistant"
+          },
+          {
+            "text": "Design experiments to ensure technical rigor in model evaluation frameworks.",
+            "source": "Research Assistant"
+          },
+          {
+            "text": "Prototype new architectures for multimodal alignment to validate research hypotheses.",
+            "source": "PhD Student"
+          }
+        ]
+      },
+      {
+        "id": "2b54fd32-29d6-48ec-b587-baa3ec61cea7",
+        "leader": "Evaluation analysis and tracking",
+        "level": 1,
+        "parent_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Develop code for experiments, model inference, and training scripts to translate theoretical NLP concepts into tangible results.",
+            "source": "Research Assistant"
+          }
+        ]
+      },
+      {
+        "id": "e9bb1fbe-efc7-41c5-97e6-a93b5163791d",
+        "leader": "Coordinate and troubleshoot platform workflows",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "AI Researcher": 2
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Coordinate workflows for a peer review platform to support an NLP organization.",
+            "source": "AI Researcher"
+          },
+          {
+            "text": "Troubleshoot user issues on the peer review platform to maintain platform functionality.",
+            "source": "AI Researcher"
+          }
+        ]
+      }
+    ],
+    "reasonings": [
+      "[L0] The new task is about structuring and decomposing technical problems for solution design, which is distinct from literature review, model evaluation experiments, or coordinating platform workflows.",
+      "[buffer] The new task is about general problem decomposition and system design, which does not match any existing cluster\u2019s specific domains like writing research, consulting experts, annotation, platform analysis, LLM building, coursework, coding automation, or interface prototyping."
+    ]
+  },
+  {
+    "step": 23,
+    "task_text": "Write and review code for distributed systems to improve scalability and reliability.",
+    "task_source": "Graduate Student (Software Engineering)",
+    "assigned_id": null,
+    "assigned_label": "",
+    "assigned_level": 0,
+    "clusters": [
+      {
+        "id": "468cc817-e544-4b96-a647-4e596164251d",
+        "leader": "Review and evaluate relevant research literature",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 5,
+        "weight": 5.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 2,
+          "PhD Student": 3
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Read current state-of-the-art research papers in AI and climate science to identify new techniques and ideas for improving climate prediction.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Survey, compare, and select AI techniques for adaptation and application to identified climate science problems.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Review research literature using AI tools to increase productivity.",
+            "source": "PhD Student"
+          },
+          {
+            "text": "Review new literature in the vision-language model (VLM) space to identify relevant papers for research.",
+            "source": "PhD Student"
+          },
+          {
+            "text": "Review prior works using AI tools before meetings with advisors to assess feasibility of proposed research topics.",
+            "source": "PhD Student"
+          }
+        ]
+      },
+      {
+        "id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "leader": "Design and run model evaluation experiments",
+        "level": 0,
+        "parent_id": null,
+        "children": [
+          "aa66f492-c411-474e-b54c-aa44fa5b12d0",
+          "2b54fd32-29d6-48ec-b587-baa3ec61cea7"
+        ],
+        "member_count": 0,
+        "weight": 5.0,
+        "sources": {},
+        "anchored": false,
+        "members": []
+      },
+      {
+        "id": "aa66f492-c411-474e-b54c-aa44fa5b12d0",
+        "leader": "Experiment design and execution",
+        "level": 1,
+        "parent_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "children": [],
+        "member_count": 4,
+        "weight": 4.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 2,
+          "PhD Student": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Analyze model outputs to identify patterns or biases that inform evaluation frameworks.",
+            "source": "Research Assistant"
+          },
+          {
+            "text": "Design experiments to ensure technical rigor in model evaluation frameworks.",
+            "source": "Research Assistant"
+          },
+          {
+            "text": "Prototype new architectures for multimodal alignment to validate research hypotheses.",
+            "source": "PhD Student"
+          }
+        ]
+      },
+      {
+        "id": "2b54fd32-29d6-48ec-b587-baa3ec61cea7",
+        "leader": "Evaluation analysis and tracking",
+        "level": 1,
+        "parent_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Develop code for experiments, model inference, and training scripts to translate theoretical NLP concepts into tangible results.",
+            "source": "Research Assistant"
+          }
+        ]
+      },
+      {
+        "id": "e9bb1fbe-efc7-41c5-97e6-a93b5163791d",
+        "leader": "Coordinate and troubleshoot platform workflows",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "AI Researcher": 2
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Coordinate workflows for a peer review platform to support an NLP organization.",
+            "source": "AI Researcher"
+          },
+          {
+            "text": "Troubleshoot user issues on the peer review platform to maintain platform functionality.",
+            "source": "AI Researcher"
+          }
+        ]
+      }
+    ],
+    "reasonings": [
+      "[L0] The new task is focused on software engineering work\u2014writing and reviewing distributed systems code for scalability and reliability\u2014which does not match research review, model evaluation experiments, or platform workflow coordination.",
+      "[buffer] This task is about writing and reviewing distributed systems code for scalability and reliability, which is a distinct software engineering activity not captured by the existing clusters except only loosely by boilerplate automation."
+    ]
+  },
+  {
+    "step": 24,
+    "task_text": "Debug issues in large-scale distributed systems to ensure reliability and efficiency.",
+    "task_source": "Graduate Student (Software Engineering)",
+    "assigned_id": "e9bb1fbe-efc7-41c5-97e6-a93b5163791d",
+    "assigned_label": "Coordinate and troubleshoot platform workflows",
+    "assigned_level": 0,
+    "clusters": [
+      {
+        "id": "468cc817-e544-4b96-a647-4e596164251d",
+        "leader": "Review and evaluate relevant research literature",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 5,
+        "weight": 5.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 2,
+          "PhD Student": 3
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Read current state-of-the-art research papers in AI and climate science to identify new techniques and ideas for improving climate prediction.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Survey, compare, and select AI techniques for adaptation and application to identified climate science problems.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Review research literature using AI tools to increase productivity.",
+            "source": "PhD Student"
+          },
+          {
+            "text": "Review new literature in the vision-language model (VLM) space to identify relevant papers for research.",
+            "source": "PhD Student"
+          },
+          {
+            "text": "Review prior works using AI tools before meetings with advisors to assess feasibility of proposed research topics.",
+            "source": "PhD Student"
+          }
+        ]
+      },
+      {
+        "id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "leader": "Design and run model evaluation experiments",
+        "level": 0,
+        "parent_id": null,
+        "children": [
+          "aa66f492-c411-474e-b54c-aa44fa5b12d0",
+          "2b54fd32-29d6-48ec-b587-baa3ec61cea7"
+        ],
+        "member_count": 0,
+        "weight": 5.0,
+        "sources": {},
+        "anchored": false,
+        "members": []
+      },
+      {
+        "id": "aa66f492-c411-474e-b54c-aa44fa5b12d0",
+        "leader": "Experiment design and execution",
+        "level": 1,
+        "parent_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "children": [],
+        "member_count": 4,
+        "weight": 4.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 2,
+          "PhD Student": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Analyze model outputs to identify patterns or biases that inform evaluation frameworks.",
+            "source": "Research Assistant"
+          },
+          {
+            "text": "Design experiments to ensure technical rigor in model evaluation frameworks.",
+            "source": "Research Assistant"
+          },
+          {
+            "text": "Prototype new architectures for multimodal alignment to validate research hypotheses.",
+            "source": "PhD Student"
+          }
+        ]
+      },
+      {
+        "id": "2b54fd32-29d6-48ec-b587-baa3ec61cea7",
+        "leader": "Evaluation analysis and tracking",
+        "level": 1,
+        "parent_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Develop code for experiments, model inference, and training scripts to translate theoretical NLP concepts into tangible results.",
+            "source": "Research Assistant"
+          }
+        ]
+      },
+      {
+        "id": "e9bb1fbe-efc7-41c5-97e6-a93b5163791d",
+        "leader": "Coordinate and troubleshoot platform workflows",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 3,
+        "weight": 3.0,
+        "sources": {
+          "AI Researcher": 2,
+          "Graduate Student (Software Engineering)": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Coordinate workflows for a peer review platform to support an NLP organization.",
+            "source": "AI Researcher"
+          },
+          {
+            "text": "Troubleshoot user issues on the peer review platform to maintain platform functionality.",
+            "source": "AI Researcher"
+          },
+          {
+            "text": "Debug issues in large-scale distributed systems to ensure reliability and efficiency.",
+            "source": "Graduate Student (Software Engineering)"
+          }
+        ]
+      }
+    ],
+    "reasonings": [
+      "[L0] Debugging issues in large-scale distributed systems is troubleshooting operational platform/system workflows to maintain reliability and efficiency, which matches coordinating and troubleshooting platform workflows."
+    ]
+  },
+  {
+    "step": 25,
+    "task_text": "Use AI tools to explore data to work more efficiently and focus on higher-level problem solving.",
+    "task_source": "Graduate Student (Software Engineering)",
+    "assigned_id": "0c5fed03-5098-4419-a6c9-1995efaa21ea",
+    "assigned_label": "Analyze data to support decision making",
+    "assigned_level": 0,
+    "clusters": [
+      {
+        "id": "468cc817-e544-4b96-a647-4e596164251d",
+        "leader": "Review and evaluate relevant research literature",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 5,
+        "weight": 5.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 2,
+          "PhD Student": 3
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Read current state-of-the-art research papers in AI and climate science to identify new techniques and ideas for improving climate prediction.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Survey, compare, and select AI techniques for adaptation and application to identified climate science problems.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Review research literature using AI tools to increase productivity.",
+            "source": "PhD Student"
+          },
+          {
+            "text": "Review new literature in the vision-language model (VLM) space to identify relevant papers for research.",
+            "source": "PhD Student"
+          },
+          {
+            "text": "Review prior works using AI tools before meetings with advisors to assess feasibility of proposed research topics.",
+            "source": "PhD Student"
+          }
+        ]
+      },
+      {
+        "id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "leader": "Design and run model evaluation experiments",
+        "level": 0,
+        "parent_id": null,
+        "children": [
+          "aa66f492-c411-474e-b54c-aa44fa5b12d0",
+          "2b54fd32-29d6-48ec-b587-baa3ec61cea7"
+        ],
+        "member_count": 0,
+        "weight": 5.0,
+        "sources": {},
+        "anchored": false,
+        "members": []
+      },
+      {
+        "id": "aa66f492-c411-474e-b54c-aa44fa5b12d0",
+        "leader": "Experiment design and execution",
+        "level": 1,
+        "parent_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "children": [],
+        "member_count": 4,
+        "weight": 4.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 2,
+          "PhD Student": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Analyze model outputs to identify patterns or biases that inform evaluation frameworks.",
+            "source": "Research Assistant"
+          },
+          {
+            "text": "Design experiments to ensure technical rigor in model evaluation frameworks.",
+            "source": "Research Assistant"
+          },
+          {
+            "text": "Prototype new architectures for multimodal alignment to validate research hypotheses.",
+            "source": "PhD Student"
+          }
+        ]
+      },
+      {
+        "id": "2b54fd32-29d6-48ec-b587-baa3ec61cea7",
+        "leader": "Evaluation analysis and tracking",
+        "level": 1,
+        "parent_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Develop code for experiments, model inference, and training scripts to translate theoretical NLP concepts into tangible results.",
+            "source": "Research Assistant"
+          }
+        ]
+      },
+      {
+        "id": "e9bb1fbe-efc7-41c5-97e6-a93b5163791d",
+        "leader": "Coordinate and troubleshoot platform workflows",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 3,
+        "weight": 3.0,
+        "sources": {
+          "AI Researcher": 2,
+          "Graduate Student (Software Engineering)": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Coordinate workflows for a peer review platform to support an NLP organization.",
+            "source": "AI Researcher"
+          },
+          {
+            "text": "Troubleshoot user issues on the peer review platform to maintain platform functionality.",
+            "source": "AI Researcher"
+          },
+          {
+            "text": "Debug issues in large-scale distributed systems to ensure reliability and efficiency.",
+            "source": "Graduate Student (Software Engineering)"
+          }
+        ]
+      },
+      {
+        "id": "0c5fed03-5098-4419-a6c9-1995efaa21ea",
+        "leader": "Analyze data to support decision making",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "AI Researcher": 1,
+          "Graduate Student (Software Engineering)": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "[AI Researcher] Perform data analysis on the peer review platform to support decision-making and improve platform outcomes.",
+            "source": "AI Researcher"
+          },
+          {
+            "text": "Use AI tools to explore data to work more efficiently and focus on higher-level problem solving.",
+            "source": "Graduate Student (Software Engineering)"
+          }
+        ]
+      }
+    ],
+    "reasonings": [
+      "[L0] Using AI tools to explore data is a distinct task focused on data analysis and insight generation, which does not match literature review, model evaluation experiments, or platform workflow coordination.",
+      "[buffer] This is best treated as general data analysis work using AI to improve efficiency and support higher-level decisions, which matches the existing data-analysis cluster despite broader wording.",
+      "[buffer] Promoted '[AI Researcher] Perform data analysis on the peer review pla' + new task \u2192 cluster 0c5fed03"
+    ]
+  },
+  {
+    "step": 26,
+    "task_text": "Develop new methods in large language model (LLM) training and inference, with a special focus on agentic workflow, to drive AI innovation.",
+    "task_source": "Research Scientist (Fintech)",
+    "assigned_id": null,
+    "assigned_label": "",
+    "assigned_level": 0,
+    "clusters": [
+      {
+        "id": "468cc817-e544-4b96-a647-4e596164251d",
+        "leader": "Review and evaluate relevant research literature",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 5,
+        "weight": 5.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 2,
+          "PhD Student": 3
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Read current state-of-the-art research papers in AI and climate science to identify new techniques and ideas for improving climate prediction.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Survey, compare, and select AI techniques for adaptation and application to identified climate science problems.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Review research literature using AI tools to increase productivity.",
+            "source": "PhD Student"
+          },
+          {
+            "text": "Review new literature in the vision-language model (VLM) space to identify relevant papers for research.",
+            "source": "PhD Student"
+          },
+          {
+            "text": "Review prior works using AI tools before meetings with advisors to assess feasibility of proposed research topics.",
+            "source": "PhD Student"
+          }
+        ]
+      },
+      {
+        "id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "leader": "Design and run model evaluation experiments",
+        "level": 0,
+        "parent_id": null,
+        "children": [
+          "aa66f492-c411-474e-b54c-aa44fa5b12d0",
+          "2b54fd32-29d6-48ec-b587-baa3ec61cea7"
+        ],
+        "member_count": 0,
+        "weight": 5.0,
+        "sources": {},
+        "anchored": false,
+        "members": []
+      },
+      {
+        "id": "aa66f492-c411-474e-b54c-aa44fa5b12d0",
+        "leader": "Experiment design and execution",
+        "level": 1,
+        "parent_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "children": [],
+        "member_count": 4,
+        "weight": 4.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 2,
+          "PhD Student": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Analyze model outputs to identify patterns or biases that inform evaluation frameworks.",
+            "source": "Research Assistant"
+          },
+          {
+            "text": "Design experiments to ensure technical rigor in model evaluation frameworks.",
+            "source": "Research Assistant"
+          },
+          {
+            "text": "Prototype new architectures for multimodal alignment to validate research hypotheses.",
+            "source": "PhD Student"
+          }
+        ]
+      },
+      {
+        "id": "2b54fd32-29d6-48ec-b587-baa3ec61cea7",
+        "leader": "Evaluation analysis and tracking",
+        "level": 1,
+        "parent_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Develop code for experiments, model inference, and training scripts to translate theoretical NLP concepts into tangible results.",
+            "source": "Research Assistant"
+          }
+        ]
+      },
+      {
+        "id": "e9bb1fbe-efc7-41c5-97e6-a93b5163791d",
+        "leader": "Coordinate and troubleshoot platform workflows",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 3,
+        "weight": 3.0,
+        "sources": {
+          "AI Researcher": 2,
+          "Graduate Student (Software Engineering)": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Coordinate workflows for a peer review platform to support an NLP organization.",
+            "source": "AI Researcher"
+          },
+          {
+            "text": "Troubleshoot user issues on the peer review platform to maintain platform functionality.",
+            "source": "AI Researcher"
+          },
+          {
+            "text": "Debug issues in large-scale distributed systems to ensure reliability and efficiency.",
+            "source": "Graduate Student (Software Engineering)"
+          }
+        ]
+      },
+      {
+        "id": "0c5fed03-5098-4419-a6c9-1995efaa21ea",
+        "leader": "Analyze data to support decision making",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "AI Researcher": 1,
+          "Graduate Student (Software Engineering)": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "[AI Researcher] Perform data analysis on the peer review platform to support decision-making and improve platform outcomes.",
+            "source": "AI Researcher"
+          },
+          {
+            "text": "Use AI tools to explore data to work more efficiently and focus on higher-level problem solving.",
+            "source": "Graduate Student (Software Engineering)"
+          }
+        ]
+      }
+    ],
+    "reasonings": [
+      "[L0] Developing new LLM training and inference methods focused on agentic workflows is a research and experimentation task that does not match literature review, model evaluation, platform coordination, or general data analysis clusters.",
+      "[buffer] Developing new LLM training and inference methods focused on agentic workflows is broader AI model research and innovation work, which does not match any existing cluster closely enough beyond the very general LLM theme."
+    ]
+  },
+  {
+    "step": 27,
+    "task_text": "Review pull requests (PR reviews), a repetitive and less enjoyable task, and identify opportunities where AI assistance could improve manageability.",
+    "task_source": "Research Scientist (Fintech)",
+    "assigned_id": "704e2a60-cd78-406a-a706-77cd4f68ddb7",
+    "assigned_label": "Review and improve software code",
+    "assigned_level": 0,
+    "clusters": [
+      {
+        "id": "468cc817-e544-4b96-a647-4e596164251d",
+        "leader": "Review and evaluate relevant research literature",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 5,
+        "weight": 5.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 2,
+          "PhD Student": 3
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Read current state-of-the-art research papers in AI and climate science to identify new techniques and ideas for improving climate prediction.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Survey, compare, and select AI techniques for adaptation and application to identified climate science problems.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Review research literature using AI tools to increase productivity.",
+            "source": "PhD Student"
+          },
+          {
+            "text": "Review new literature in the vision-language model (VLM) space to identify relevant papers for research.",
+            "source": "PhD Student"
+          },
+          {
+            "text": "Review prior works using AI tools before meetings with advisors to assess feasibility of proposed research topics.",
+            "source": "PhD Student"
+          }
+        ]
+      },
+      {
+        "id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "leader": "Design and run model evaluation experiments",
+        "level": 0,
+        "parent_id": null,
+        "children": [
+          "aa66f492-c411-474e-b54c-aa44fa5b12d0",
+          "2b54fd32-29d6-48ec-b587-baa3ec61cea7"
+        ],
+        "member_count": 0,
+        "weight": 5.0,
+        "sources": {},
+        "anchored": false,
+        "members": []
+      },
+      {
+        "id": "aa66f492-c411-474e-b54c-aa44fa5b12d0",
+        "leader": "Experiment design and execution",
+        "level": 1,
+        "parent_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "children": [],
+        "member_count": 4,
+        "weight": 4.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 2,
+          "PhD Student": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Analyze model outputs to identify patterns or biases that inform evaluation frameworks.",
+            "source": "Research Assistant"
+          },
+          {
+            "text": "Design experiments to ensure technical rigor in model evaluation frameworks.",
+            "source": "Research Assistant"
+          },
+          {
+            "text": "Prototype new architectures for multimodal alignment to validate research hypotheses.",
+            "source": "PhD Student"
+          }
+        ]
+      },
+      {
+        "id": "2b54fd32-29d6-48ec-b587-baa3ec61cea7",
+        "leader": "Evaluation analysis and tracking",
+        "level": 1,
+        "parent_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Develop code for experiments, model inference, and training scripts to translate theoretical NLP concepts into tangible results.",
+            "source": "Research Assistant"
+          }
+        ]
+      },
+      {
+        "id": "e9bb1fbe-efc7-41c5-97e6-a93b5163791d",
+        "leader": "Coordinate and troubleshoot platform workflows",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 3,
+        "weight": 3.0,
+        "sources": {
+          "AI Researcher": 2,
+          "Graduate Student (Software Engineering)": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Coordinate workflows for a peer review platform to support an NLP organization.",
+            "source": "AI Researcher"
+          },
+          {
+            "text": "Troubleshoot user issues on the peer review platform to maintain platform functionality.",
+            "source": "AI Researcher"
+          },
+          {
+            "text": "Debug issues in large-scale distributed systems to ensure reliability and efficiency.",
+            "source": "Graduate Student (Software Engineering)"
+          }
+        ]
+      },
+      {
+        "id": "0c5fed03-5098-4419-a6c9-1995efaa21ea",
+        "leader": "Analyze data to support decision making",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "AI Researcher": 1,
+          "Graduate Student (Software Engineering)": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "[AI Researcher] Perform data analysis on the peer review platform to support decision-making and improve platform outcomes.",
+            "source": "AI Researcher"
+          },
+          {
+            "text": "Use AI tools to explore data to work more efficiently and focus on higher-level problem solving.",
+            "source": "Graduate Student (Software Engineering)"
+          }
+        ]
+      },
+      {
+        "id": "704e2a60-cd78-406a-a706-77cd4f68ddb7",
+        "leader": "Review and improve software code",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "Graduate Student (Software Engineering)": 1,
+          "Research Scientist (Fintech)": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Write and review code for distributed systems to improve scalability and reliability.",
+            "source": "Graduate Student (Software Engineering)"
+          },
+          {
+            "text": "Review pull requests (PR reviews), a repetitive and less enjoyable task, and identify opportunities where AI assistance could improve manageability.",
+            "source": "Research Scientist (Fintech)"
+          }
+        ]
+      }
+    ],
+    "reasonings": [
+      "[L0] Reviewing pull requests is a software engineering code review activity, which does not match literature review, model evaluation experiments, platform workflow coordination, or data analysis.",
+      "[buffer] Reviewing pull requests is a direct instance of reviewing code with teammates, which matches the cluster about writing and reviewing code for distributed systems.",
+      "[buffer] Promoted 'Write and review code for distributed systems to improve sca' + new task \u2192 cluster 704e2a60"
+    ]
+  },
+  {
+    "step": 28,
+    "task_text": "Design agentic workflows to support scaling across different applications.",
+    "task_source": "Research Scientist (Fintech)",
+    "assigned_id": "e9bb1fbe-efc7-41c5-97e6-a93b5163791d",
+    "assigned_label": "Coordinate and troubleshoot platform workflows",
+    "assigned_level": 0,
+    "clusters": [
+      {
+        "id": "468cc817-e544-4b96-a647-4e596164251d",
+        "leader": "Review and evaluate relevant research literature",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 5,
+        "weight": 5.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 2,
+          "PhD Student": 3
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Read current state-of-the-art research papers in AI and climate science to identify new techniques and ideas for improving climate prediction.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Survey, compare, and select AI techniques for adaptation and application to identified climate science problems.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Review research literature using AI tools to increase productivity.",
+            "source": "PhD Student"
+          },
+          {
+            "text": "Review new literature in the vision-language model (VLM) space to identify relevant papers for research.",
+            "source": "PhD Student"
+          },
+          {
+            "text": "Review prior works using AI tools before meetings with advisors to assess feasibility of proposed research topics.",
+            "source": "PhD Student"
+          }
+        ]
+      },
+      {
+        "id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "leader": "Design and run model evaluation experiments",
+        "level": 0,
+        "parent_id": null,
+        "children": [
+          "aa66f492-c411-474e-b54c-aa44fa5b12d0",
+          "2b54fd32-29d6-48ec-b587-baa3ec61cea7"
+        ],
+        "member_count": 0,
+        "weight": 5.0,
+        "sources": {},
+        "anchored": false,
+        "members": []
+      },
+      {
+        "id": "aa66f492-c411-474e-b54c-aa44fa5b12d0",
+        "leader": "Experiment design and execution",
+        "level": 1,
+        "parent_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "children": [],
+        "member_count": 4,
+        "weight": 4.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 2,
+          "PhD Student": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Analyze model outputs to identify patterns or biases that inform evaluation frameworks.",
+            "source": "Research Assistant"
+          },
+          {
+            "text": "Design experiments to ensure technical rigor in model evaluation frameworks.",
+            "source": "Research Assistant"
+          },
+          {
+            "text": "Prototype new architectures for multimodal alignment to validate research hypotheses.",
+            "source": "PhD Student"
+          }
+        ]
+      },
+      {
+        "id": "2b54fd32-29d6-48ec-b587-baa3ec61cea7",
+        "leader": "Evaluation analysis and tracking",
+        "level": 1,
+        "parent_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Develop code for experiments, model inference, and training scripts to translate theoretical NLP concepts into tangible results.",
+            "source": "Research Assistant"
+          }
+        ]
+      },
+      {
+        "id": "e9bb1fbe-efc7-41c5-97e6-a93b5163791d",
+        "leader": "Coordinate and troubleshoot platform workflows",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 4,
+        "weight": 4.0,
+        "sources": {
+          "AI Researcher": 2,
+          "Graduate Student (Software Engineering)": 1,
+          "Research Scientist (Fintech)": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Coordinate workflows for a peer review platform to support an NLP organization.",
+            "source": "AI Researcher"
+          },
+          {
+            "text": "Troubleshoot user issues on the peer review platform to maintain platform functionality.",
+            "source": "AI Researcher"
+          },
+          {
+            "text": "Debug issues in large-scale distributed systems to ensure reliability and efficiency.",
+            "source": "Graduate Student (Software Engineering)"
+          },
+          {
+            "text": "Design agentic workflows to support scaling across different applications.",
+            "source": "Research Scientist (Fintech)"
+          }
+        ]
+      },
+      {
+        "id": "0c5fed03-5098-4419-a6c9-1995efaa21ea",
+        "leader": "Analyze data to support decision making",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "AI Researcher": 1,
+          "Graduate Student (Software Engineering)": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "[AI Researcher] Perform data analysis on the peer review platform to support decision-making and improve platform outcomes.",
+            "source": "AI Researcher"
+          },
+          {
+            "text": "Use AI tools to explore data to work more efficiently and focus on higher-level problem solving.",
+            "source": "Graduate Student (Software Engineering)"
+          }
+        ]
+      },
+      {
+        "id": "704e2a60-cd78-406a-a706-77cd4f68ddb7",
+        "leader": "Review and improve software code",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "Graduate Student (Software Engineering)": 1,
+          "Research Scientist (Fintech)": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Write and review code for distributed systems to improve scalability and reliability.",
+            "source": "Graduate Student (Software Engineering)"
+          },
+          {
+            "text": "Review pull requests (PR reviews), a repetitive and less enjoyable task, and identify opportunities where AI assistance could improve manageability.",
+            "source": "Research Scientist (Fintech)"
+          }
+        ]
+      }
+    ],
+    "reasonings": [
+      "[L0] Designing agentic workflows for scaling across applications is a workflow/system design activity most aligned with coordinating and improving platform workflows."
+    ]
+  },
+  {
+    "step": 29,
+    "task_text": "Build conversation agents using agentic workflow and a proprietary framework.",
+    "task_source": "Research Scientist (Fintech)",
+    "assigned_id": "704e2a60-cd78-406a-a706-77cd4f68ddb7",
+    "assigned_label": "Review and improve software code",
+    "assigned_level": 0,
+    "clusters": [
+      {
+        "id": "468cc817-e544-4b96-a647-4e596164251d",
+        "leader": "Review and evaluate relevant research literature",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 5,
+        "weight": 5.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 2,
+          "PhD Student": 3
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Read current state-of-the-art research papers in AI and climate science to identify new techniques and ideas for improving climate prediction.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Survey, compare, and select AI techniques for adaptation and application to identified climate science problems.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Review research literature using AI tools to increase productivity.",
+            "source": "PhD Student"
+          },
+          {
+            "text": "Review new literature in the vision-language model (VLM) space to identify relevant papers for research.",
+            "source": "PhD Student"
+          },
+          {
+            "text": "Review prior works using AI tools before meetings with advisors to assess feasibility of proposed research topics.",
+            "source": "PhD Student"
+          }
+        ]
+      },
+      {
+        "id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "leader": "Design and run model evaluation experiments",
+        "level": 0,
+        "parent_id": null,
+        "children": [
+          "aa66f492-c411-474e-b54c-aa44fa5b12d0",
+          "2b54fd32-29d6-48ec-b587-baa3ec61cea7"
+        ],
+        "member_count": 0,
+        "weight": 5.0,
+        "sources": {},
+        "anchored": false,
+        "members": []
+      },
+      {
+        "id": "aa66f492-c411-474e-b54c-aa44fa5b12d0",
+        "leader": "Experiment design and execution",
+        "level": 1,
+        "parent_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "children": [],
+        "member_count": 4,
+        "weight": 4.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 2,
+          "PhD Student": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Analyze model outputs to identify patterns or biases that inform evaluation frameworks.",
+            "source": "Research Assistant"
+          },
+          {
+            "text": "Design experiments to ensure technical rigor in model evaluation frameworks.",
+            "source": "Research Assistant"
+          },
+          {
+            "text": "Prototype new architectures for multimodal alignment to validate research hypotheses.",
+            "source": "PhD Student"
+          }
+        ]
+      },
+      {
+        "id": "2b54fd32-29d6-48ec-b587-baa3ec61cea7",
+        "leader": "Evaluation analysis and tracking",
+        "level": 1,
+        "parent_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Develop code for experiments, model inference, and training scripts to translate theoretical NLP concepts into tangible results.",
+            "source": "Research Assistant"
+          }
+        ]
+      },
+      {
+        "id": "e9bb1fbe-efc7-41c5-97e6-a93b5163791d",
+        "leader": "Coordinate and troubleshoot platform workflows",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 4,
+        "weight": 4.0,
+        "sources": {
+          "AI Researcher": 2,
+          "Graduate Student (Software Engineering)": 1,
+          "Research Scientist (Fintech)": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Coordinate workflows for a peer review platform to support an NLP organization.",
+            "source": "AI Researcher"
+          },
+          {
+            "text": "Troubleshoot user issues on the peer review platform to maintain platform functionality.",
+            "source": "AI Researcher"
+          },
+          {
+            "text": "Debug issues in large-scale distributed systems to ensure reliability and efficiency.",
+            "source": "Graduate Student (Software Engineering)"
+          },
+          {
+            "text": "Design agentic workflows to support scaling across different applications.",
+            "source": "Research Scientist (Fintech)"
+          }
+        ]
+      },
+      {
+        "id": "0c5fed03-5098-4419-a6c9-1995efaa21ea",
+        "leader": "Analyze data to support decision making",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "AI Researcher": 1,
+          "Graduate Student (Software Engineering)": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "[AI Researcher] Perform data analysis on the peer review platform to support decision-making and improve platform outcomes.",
+            "source": "AI Researcher"
+          },
+          {
+            "text": "Use AI tools to explore data to work more efficiently and focus on higher-level problem solving.",
+            "source": "Graduate Student (Software Engineering)"
+          }
+        ]
+      },
+      {
+        "id": "704e2a60-cd78-406a-a706-77cd4f68ddb7",
+        "leader": "Review and improve software code",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 3,
+        "weight": 3.0,
+        "sources": {
+          "Graduate Student (Software Engineering)": 1,
+          "Research Scientist (Fintech)": 2
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Write and review code for distributed systems to improve scalability and reliability.",
+            "source": "Graduate Student (Software Engineering)"
+          },
+          {
+            "text": "Review pull requests (PR reviews), a repetitive and less enjoyable task, and identify opportunities where AI assistance could improve manageability.",
+            "source": "Research Scientist (Fintech)"
+          },
+          {
+            "text": "Build conversation agents using agentic workflow and a proprietary framework.",
+            "source": "Research Scientist (Fintech)"
+          }
+        ]
+      }
+    ],
+    "reasonings": [
+      "[L0] Building conversation agents with an agentic workflow and proprietary framework is primarily a software development task, best matching the cluster about reviewing and improving software code."
+    ]
+  },
+  {
+    "step": 30,
+    "task_text": "Write code to solve problems in the context of AI research and product development.",
+    "task_source": "Research Scientist (Fintech)",
+    "assigned_id": "704e2a60-cd78-406a-a706-77cd4f68ddb7",
+    "assigned_label": "Review and improve software code",
+    "assigned_level": 0,
+    "clusters": [
+      {
+        "id": "468cc817-e544-4b96-a647-4e596164251d",
+        "leader": "Review and evaluate relevant research literature",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 5,
+        "weight": 5.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 2,
+          "PhD Student": 3
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Read current state-of-the-art research papers in AI and climate science to identify new techniques and ideas for improving climate prediction.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Survey, compare, and select AI techniques for adaptation and application to identified climate science problems.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Review research literature using AI tools to increase productivity.",
+            "source": "PhD Student"
+          },
+          {
+            "text": "Review new literature in the vision-language model (VLM) space to identify relevant papers for research.",
+            "source": "PhD Student"
+          },
+          {
+            "text": "Review prior works using AI tools before meetings with advisors to assess feasibility of proposed research topics.",
+            "source": "PhD Student"
+          }
+        ]
+      },
+      {
+        "id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "leader": "Design and run model evaluation experiments",
+        "level": 0,
+        "parent_id": null,
+        "children": [
+          "aa66f492-c411-474e-b54c-aa44fa5b12d0",
+          "2b54fd32-29d6-48ec-b587-baa3ec61cea7"
+        ],
+        "member_count": 0,
+        "weight": 5.0,
+        "sources": {},
+        "anchored": false,
+        "members": []
+      },
+      {
+        "id": "aa66f492-c411-474e-b54c-aa44fa5b12d0",
+        "leader": "Experiment design and execution",
+        "level": 1,
+        "parent_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "children": [],
+        "member_count": 4,
+        "weight": 4.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 2,
+          "PhD Student": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Analyze model outputs to identify patterns or biases that inform evaluation frameworks.",
+            "source": "Research Assistant"
+          },
+          {
+            "text": "Design experiments to ensure technical rigor in model evaluation frameworks.",
+            "source": "Research Assistant"
+          },
+          {
+            "text": "Prototype new architectures for multimodal alignment to validate research hypotheses.",
+            "source": "PhD Student"
+          }
+        ]
+      },
+      {
+        "id": "2b54fd32-29d6-48ec-b587-baa3ec61cea7",
+        "leader": "Evaluation analysis and tracking",
+        "level": 1,
+        "parent_id": "65555d7a-6123-42bb-ba0e-85f91ead4671",
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "PhD Student (AI for Climate Science)": 1,
+          "Research Assistant": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+            "source": "PhD Student (AI for Climate Science)"
+          },
+          {
+            "text": "Develop code for experiments, model inference, and training scripts to translate theoretical NLP concepts into tangible results.",
+            "source": "Research Assistant"
+          }
+        ]
+      },
+      {
+        "id": "e9bb1fbe-efc7-41c5-97e6-a93b5163791d",
+        "leader": "Coordinate and troubleshoot platform workflows",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 4,
+        "weight": 4.0,
+        "sources": {
+          "AI Researcher": 2,
+          "Graduate Student (Software Engineering)": 1,
+          "Research Scientist (Fintech)": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Coordinate workflows for a peer review platform to support an NLP organization.",
+            "source": "AI Researcher"
+          },
+          {
+            "text": "Troubleshoot user issues on the peer review platform to maintain platform functionality.",
+            "source": "AI Researcher"
+          },
+          {
+            "text": "Debug issues in large-scale distributed systems to ensure reliability and efficiency.",
+            "source": "Graduate Student (Software Engineering)"
+          },
+          {
+            "text": "Design agentic workflows to support scaling across different applications.",
+            "source": "Research Scientist (Fintech)"
+          }
+        ]
+      },
+      {
+        "id": "0c5fed03-5098-4419-a6c9-1995efaa21ea",
+        "leader": "Analyze data to support decision making",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 2,
+        "weight": 2.0,
+        "sources": {
+          "AI Researcher": 1,
+          "Graduate Student (Software Engineering)": 1
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "[AI Researcher] Perform data analysis on the peer review platform to support decision-making and improve platform outcomes.",
+            "source": "AI Researcher"
+          },
+          {
+            "text": "Use AI tools to explore data to work more efficiently and focus on higher-level problem solving.",
+            "source": "Graduate Student (Software Engineering)"
+          }
+        ]
+      },
+      {
+        "id": "704e2a60-cd78-406a-a706-77cd4f68ddb7",
+        "leader": "Review and improve software code",
+        "level": 0,
+        "parent_id": null,
+        "children": [],
+        "member_count": 4,
+        "weight": 4.0,
+        "sources": {
+          "Graduate Student (Software Engineering)": 1,
+          "Research Scientist (Fintech)": 3
+        },
+        "anchored": false,
+        "members": [
+          {
+            "text": "Write and review code for distributed systems to improve scalability and reliability.",
+            "source": "Graduate Student (Software Engineering)"
+          },
+          {
+            "text": "Review pull requests (PR reviews), a repetitive and less enjoyable task, and identify opportunities where AI assistance could improve manageability.",
+            "source": "Research Scientist (Fintech)"
+          },
+          {
+            "text": "Build conversation agents using agentic workflow and a proprietary framework.",
+            "source": "Research Scientist (Fintech)"
+          },
+          {
+            "text": "Write code to solve problems in the context of AI research and product development.",
+            "source": "Research Scientist (Fintech)"
+          }
+        ]
+      }
+    ],
+    "reasonings": [
+      "[L0] Writing code for AI research and product development is the same general type of work as reviewing and improving software code, since both center on software engineering for AI systems."
+    ]
+  }
+]

@@ -1,0 +1,101 @@
+[
+  {
+    "id": "14626",
+    "leader": "Apply theoretical expertise and innovation to create or apply new technology, such as adapting principles for applying computers to new uses.",
+    "weight": 2.8835,
+    "member_count": 3,
+    "level": 0,
+    "anchored": true,
+    "children": []
+  },
+  {
+    "id": "14633",
+    "leader": "Design computers and the software that runs them.",
+    "weight": 2.2679,
+    "member_count": 2,
+    "level": 0,
+    "anchored": true,
+    "children": []
+  },
+  {
+    "id": "14628",
+    "leader": "Meet with managers, vendors, and others to solicit cooperation and resolve problems.",
+    "weight": 2.201,
+    "member_count": 2,
+    "level": 0,
+    "anchored": true,
+    "children": []
+  },
+  {
+    "id": "14635",
+    "leader": "Participate in multidisciplinary projects in areas such as virtual reality, human-computer interaction, or robotics.",
+    "weight": 1.2679,
+    "member_count": 1,
+    "level": 0,
+    "anchored": true,
+    "children": []
+  },
+  {
+    "id": "14632",
+    "leader": "Develop performance standards, and evaluate work in light of established standards.",
+    "weight": 1.2679,
+    "member_count": 1,
+    "level": 0,
+    "anchored": true,
+    "children": []
+  },
+  {
+    "id": "14623",
+    "leader": "Analyze problems to develop solutions involving computer hardware and software.",
+    "weight": 1.0978,
+    "member_count": 2,
+    "level": 0,
+    "anchored": true,
+    "children": []
+  },
+  {
+    "id": "14629",
+    "leader": "Conduct logical analyses of business, scientific, engineering, and other technical problems, formulating mathematical models of problems for solution by computers.",
+    "weight": 0.5359,
+    "member_count": 1,
+    "level": 0,
+    "anchored": true,
+    "children": []
+  },
+  {
+    "id": "14627",
+    "leader": "Consult with users, management, vendors, and technicians to determine computing needs and system requirements.",
+    "weight": 0.5359,
+    "member_count": 1,
+    "level": 0,
+    "anchored": true,
+    "children": []
+  },
+  {
+    "id": "14624",
+    "leader": "Assign or schedule tasks to meet work priorities and goals.",
+    "weight": 0.2679,
+    "member_count": 0,
+    "level": 0,
+    "anchored": true,
+    "children": []
+  },
+  {
+    "id": "14625",
+    "leader": "Evaluate project plans and proposals to assess feasibility issues.",
+    "weight": 0.2679,
+    "member_count": 0,
+    "level": 0,
+    "anchored": true,
+    "children": []
+  },
+  {
+    "id": "14630",
+    "leader": "Develop and interpret organizational goals, policies, and procedures.",
+    "weight": 0.2679,
+    "member_count": 0,
+    "level": 0,
+    "anchored": true,
+    "children": []
+  }
+]

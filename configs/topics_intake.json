@@ -36,7 +36,7 @@
           "Names the distinct tasks they actually perform — specific actions and objects, NOT abstract categories like 'research' or 'admin'",
           "Every task should have a single action and object, not a general category or responsibility.",
           "Make sure to ask for a complete list of tasks, not just the most important ones.",
-          "Do NOT keep asking for specifics if the person has already listed their main activities. Confirm that the list is complete and move on."
+          "Do NOT keep asking if the person has already listed their main activities. Confirm that the list is complete and move on."
         ],
         "priority_weight": 1.0
       },
@@ -52,8 +52,7 @@
         "description": "Priority tasks: which tasks are most important, central, or impactful in their work",
         "coverage_criteria": [
           "Names the tasks the participant considers highest priority or most central to their role.",
-          "Distinguishes priority from time-spent — a task can be low-frequency but high-stakes.",
-          "Name the tasks that the participant considers a bottleneck in their work."
+          "Distinguishes priority from time-spent — a task can be low-frequency but high-stakes."
         ],
         "priority_weight": 1.0
       }

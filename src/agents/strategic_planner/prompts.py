@@ -370,6 +370,8 @@ For EACH question:
 - Prefer questions that elicit specific experiences or examples (STAR-style when applicable).
 - Avoid yes/no questions.
 - Avoid introducing assumptions or facts not stated by the user.
+- **Non-leading**: Do NOT presuppose an answer, imply a preferred response, or embed assumptions (e.g., do NOT ask "Was that difficult?" — ask "How did that go?").
+- **No examples or suggestions**: Do NOT include examples, options, or categories in the question (do NOT say "such as X, Y, or Z", "like X or Y", "for example", or list possible answers — let the participant answer entirely in their own words).
 - The question should feel like a natural next step in the interview.
 
 ## Required Metadata per Question
