@@ -57,19 +57,20 @@ class RespondToUser(BaseTool):
         response: str,
         run_manager: Optional[CallbackManagerForToolRun] = None,
     ) -> Any:
-        quantified_response = await self.on_response(response, subtopic_id)
+        try:
+            quantified_response = await self.on_response(response, subtopic_id)
 
-        if self.tts_engine:
-            try:
-                await self._tts_and_play(
-                    quantified_response,
-                    f"{self.base_path}/audio_outputs/response_{int(time.time())}.mp3"
-                )
-            except Exception as e:
-                print(f"{RED}Failed to generate/play speech: {e}{RESET}")
-        
-        self.on_turn_complete()
-            
+            if self.tts_engine:
+                try:
+                    await self._tts_and_play(
+                        quantified_response,
+                        f"{self.base_path}/audio_outputs/response_{int(time.time())}.mp3"
+                    )
+                except Exception as e:
+                    print(f"{RED}Failed to generate/play speech: {e}{RESET}")
+        finally:
+            self.on_turn_complete()
+
         return "Response sent to the user."
 
 class EndConversationInput(BaseModel):

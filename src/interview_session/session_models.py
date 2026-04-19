@@ -8,9 +8,11 @@ if TYPE_CHECKING:
 
 class MessageType(str, Enum):
     CONVERSATION = "conversation"
-    FEEDBACK = "feedback" # for detailed feedback
-    LIKE = "like"         # for like action
-    SKIP = "skip"         # for skip action
+    FEEDBACK = "feedback"       # for detailed feedback
+    LIKE = "like"               # for like action
+    SKIP = "skip"               # for skip action
+    TIME_SPLIT_WIDGET = "time_split_widget"  # triggers time-allocation slider in UI
+    FEEDBACK_WIDGET = "feedback_widget"  # triggers end-of-session feedback form in UI
 
 class Message(BaseModel):
     id: str

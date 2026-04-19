@@ -127,8 +127,12 @@ class SessionScribe(BaseAgent, Participant):
 
         if message.role == "Interviewer":
             self._last_interviewer_message = message
-            # Add question to session agenda
-            self._add_question_to_session_agenda()
+            # Add question to session agenda. The embedding HTTP call inside
+            # this method is blocking, so run it as a background task instead
+            # of awaiting it here — that keeps the session event loop free to
+            # deliver the interviewer's message to the frontend immediately,
+            # rather than waiting for the embedding round-trip to complete.
+            asyncio.create_task(self._add_question_to_session_agenda_async())
         elif message.role == "User":
             if self._last_interviewer_message:
                 asyncio.create_task(self._process_qa_pair(
@@ -253,33 +257,87 @@ class SessionScribe(BaseAgent, Participant):
         )
 
     def _add_question_to_session_agenda(self):
+        """Synchronous variant. Kept for non-async callers and tests; calls a
+        blocking embedding HTTP request. Async callers (e.g. `on_message`)
+        should use `_add_question_to_session_agenda_async` instead."""
         if self._last_interviewer_message:
             subtopic_id = str(self._last_interviewer_message.metadata.get('subtopic_id', ""))
             question_text = self._last_interviewer_message.content.strip()
             rubric = self._last_interviewer_message.metadata.get('rubric', None)
-            
-            # Add question to QuestionBank if exists
+
             adding_status = False
             if self.interview_session.proposed_question_bank:
-                question = self.interview_session.proposed_question_bank.add_question(content=question_text, 
+                question = self.interview_session.proposed_question_bank.add_question(content=question_text,
                                                          subtopic_id=subtopic_id,
                                                          rubric=rubric)
-                
-                # Add question to SessionAgenda
+
                 adding_status = self.interview_session.session_agenda.add_interview_question(question=question)
             else:
-                # Add question to SessionAgenda
                 adding_status = self.interview_session.session_agenda.add_interview_question_raw(
                     subtopic_id=subtopic_id,
                     question=question_text,
-                    rubric=rubric  # Pass the generated rubric
+                    rubric=rubric
                 )
-                
+
             if not adding_status:
                 SessionLogger.log_to_file(
                     "execution_log",
                     f"[NOTIFY] SessionAgenda failed/skipped to add question to session agenda.",
                 )
+
+    async def _add_question_to_session_agenda_async(self):
+        """Async variant that offloads the blocking embedding API call to a
+        worker thread so the session event loop stays responsive while the
+        question is registered."""
+        if not self._last_interviewer_message:
+            return
+
+        subtopic_id = str(self._last_interviewer_message.metadata.get('subtopic_id', ""))
+        question_text = self._last_interviewer_message.content.strip()
+        rubric = self._last_interviewer_message.metadata.get('rubric', None)
+
+        try:
+            adding_status = False
+            if self.interview_session.proposed_question_bank:
+                bank = self.interview_session.proposed_question_bank
+                add_async = getattr(bank, 'add_question_async', None)
+                if add_async is not None:
+                    question = await add_async(
+                        content=question_text,
+                        subtopic_id=subtopic_id,
+                        rubric=rubric,
+                    )
+                else:
+                    # Fallback for question-bank implementations that don't
+                    # expose an async API: run the blocking add in a thread.
+                    question = await asyncio.to_thread(
+                        bank.add_question,
+                        content=question_text,
+                        subtopic_id=subtopic_id,
+                        rubric=rubric,
+                    )
+
+                adding_status = self.interview_session.session_agenda.add_interview_question(
+                    question=question
+                )
+            else:
+                adding_status = self.interview_session.session_agenda.add_interview_question_raw(
+                    subtopic_id=subtopic_id,
+                    question=question_text,
+                    rubric=rubric,
+                )
+
+            if not adding_status:
+                SessionLogger.log_to_file(
+                    "execution_log",
+                    f"[NOTIFY] SessionAgenda failed/skipped to add question to session agenda.",
+                )
+        except Exception as e:
+            SessionLogger.log_to_file(
+                "execution_log",
+                f"[NOTIFY] Error adding question to session agenda: {e}",
+                log_level="error",
+            )
 
     async def _process_qa_pair(self, interviewer_message: Message, user_message: Message):
         """Process a Q&A pair with task tracking"""
@@ -556,16 +614,36 @@ class SessionScribe(BaseAgent, Participant):
                     self._claim_core_topic_completion()
                     break
             else:
-                # Search for similar questions
+                # Search for similar questions. Each `search_questions` call
+                # makes a blocking embedding API request; offload to a worker
+                # thread (via the async variant when available) so the session
+                # event loop stays responsive while we look up similarity.
                 similar_questions: List[SimilarQuestionsGroup] = []
                 for question in proposed_questions:
-                    # Search in both question banks
-                    historical_results = \
-                        self.interview_session.historical_question_bank \
-                            .search_questions(query=question, k=3)
-                    proposed_results = \
-                        self.interview_session.proposed_question_bank \
-                            .search_questions(query=question, k=3)
+                    historical_bank = self.interview_session.historical_question_bank
+                    proposed_bank = self.interview_session.proposed_question_bank
+                    historical_search = getattr(
+                        historical_bank, 'search_questions_async', None
+                    )
+                    proposed_search = getattr(
+                        proposed_bank, 'search_questions_async', None
+                    )
+                    if historical_search is not None:
+                        historical_results = await historical_search(
+                            query=question, k=3
+                        )
+                    else:
+                        historical_results = await asyncio.to_thread(
+                            historical_bank.search_questions, query=question, k=3
+                        )
+                    if proposed_search is not None:
+                        proposed_results = await proposed_search(
+                            query=question, k=3
+                        )
+                    else:
+                        proposed_results = await asyncio.to_thread(
+                            proposed_bank.search_questions, query=question, k=3
+                        )
                     
                     # Combine results and remove duplicates
                     all_results: List[QuestionSearchResult] = []

@@ -10,7 +10,7 @@ from src.agents.interviewer.prompts import get_prompt
 from src.agents.interviewer.tools import EndConversation, RespondToUser
 from src.agents.shared.memory_tools import Recall
 from src.utils.llm.prompt_utils import format_prompt
-from src.interview_session.session_models import Participant, Message
+from src.interview_session.session_models import Participant, Message, MessageType
 from src.utils.llm.xml_formatter import parse_rubric_call
 from src.utils.logger.session_logger import SessionLogger
 from src.utils.constants.colors import GREEN, RESET
@@ -50,6 +50,8 @@ class Interviewer(BaseAgent, Participant):
         self.interview_description = config.get("interview_description")
         self._turn_to_respond = False
         self._message_sent_this_turn = False
+        self._time_split_widget_shown = False
+        self._response_lock = asyncio.Lock()
 
         self.tools = {
             "recall": Recall(memory_bank=self.interview_session.memory_bank),
@@ -65,7 +67,7 @@ class Interviewer(BaseAgent, Participant):
                 on_goodbye=self._guarded_send_goodbye,
                 on_end=lambda: (
                     setattr(self, '_turn_to_respond', False),
-                    self.interview_session.end_session()
+                    self.interview_session.trigger_feedback_widget()
                 )
             )
         }
@@ -133,6 +135,9 @@ class Interviewer(BaseAgent, Participant):
             )
             return
         self._message_sent_this_turn = True
+        # Mark session ending immediately so concurrent on_message tasks don't
+        # start new turns during the 1-second sleep in EndConversation._run.
+        self.interview_session._session_ending = True
         self.add_event(sender=self.name, tag="goodbye", content=goodbye)
         self.interview_session.add_message_to_chat_history(
             role=self.title, content=goodbye)
@@ -169,15 +174,105 @@ class Interviewer(BaseAgent, Participant):
         )
         self.add_event(sender=self.name, tag="message",
                        content=quantified_question)
-        
+
+        if (subtopic_id
+                and self._is_time_allocation_subtopic(subtopic_id)
+                and not self._time_split_widget_shown):
+            self._time_split_widget_shown = True
+            # Emit widget immediately so it appears alongside the question,
+            # then refresh the portrait in the background — the widget JS
+            # re-fetches the portrait when it opens, so it will get fresh data.
+            self.interview_session.add_message_to_chat_history(
+                role=self.title,
+                content="",
+                message_type=MessageType.TIME_SPLIT_WIDGET,
+            )
+            asyncio.create_task(self._refresh_portrait_before_widget())
+
+        # Fallback: schedule a delayed check so that if the LLM used respond_to_user
+        # for a closing message (instead of end_conversation), the feedback widget
+        # still fires once the scribe has had time to mark topics as covered.
+        asyncio.create_task(self._delayed_feedback_check(response))
+
         return quantified_question
+
+    async def _delayed_feedback_check(self, response: str) -> None:
+        """Wait for the scribe to finish processing, then trigger the feedback widget
+        if all core topics are covered or the response looks like a goodbye.
+        This is the fallback for when the LLM sends a farewell via respond_to_user
+        instead of end_conversation."""
+        await asyncio.sleep(8)
+        # Every real interviewer question contains '?' — no '?' means it's a closing message.
+        is_closing = '?' not in response
+        if (not getattr(self.interview_session, '_feedback_widget_sent', False)
+                and (self.interview_session.session_agenda.all_core_topics_completed()
+                     or is_closing)):
+            SessionLogger.log_to_file(
+                "execution_log",
+                "(Interviewer) Delayed fallback: triggering feedback widget "
+                f"(all_covered={self.interview_session.session_agenda.all_core_topics_completed()}, "
+                f"is_closing={is_closing})"
+            )
+            self.interview_session.trigger_feedback_widget()
+
+    async def _refresh_portrait_before_widget(self) -> None:
+        """Ensure the user portrait reflects the latest turn's memories before the
+        time-split widget reads it. Waits for in-flight scribe processing, then
+        runs a fresh portrait extraction synchronously."""
+        scribe = getattr(self.interview_session, 'session_scribe', None)
+        if scribe is not None:
+            start = asyncio.get_event_loop().time()
+            while getattr(scribe, 'processing_in_progress', False):
+                await asyncio.sleep(0.1)
+                if asyncio.get_event_loop().time() - start > 30:
+                    SessionLogger.log_to_file(
+                        "execution_log",
+                        "[WIDGET] Timed out waiting for scribe before portrait refresh"
+                    )
+                    break
+        try:
+            await self.interview_session._generate_and_save_user_portrait()
+        except Exception as e:
+            SessionLogger.log_to_file(
+                "execution_log",
+                f"[WIDGET] Portrait refresh before time-split widget failed: {e}"
+            )
+
+    def _is_time_allocation_subtopic(self, subtopic_id: str) -> bool:
+        agenda = self.interview_session.session_agenda
+        if not agenda or not agenda.interview_topic_manager:
+            return False
+        for topic in agenda.interview_topic_manager:
+            for st in topic.required_subtopics.values():
+                if str(st.subtopic_id) == str(subtopic_id) and 'time allocation' in st.description.lower():
+                    return True
+        return False
 
 
     async def on_message(self, message: Message):
 
+        if getattr(self.interview_session, '_session_ending', False):
+            return
+
+        if self._response_lock.locked():
+            SessionLogger.log_to_file(
+                "execution_log",
+                "(Interviewer) Dropping duplicate on_message — turn already in progress",
+                log_level="warning"
+            )
+            return
+
+        async with self._response_lock:
+            await self._on_message_body(message)
+
+    async def _on_message_body(self, message: Message):
+
         self._message_sent_this_turn = False
 
         if message:
+            # Ignore notifications about the Interviewer's own messages.
+            if message.role == self.title:
+                return
             SessionLogger.log_to_file(
                 "execution_log",
                 f"[NOTIFY] Interviewer received message from {message.role}"
@@ -272,13 +367,44 @@ class Interviewer(BaseAgent, Participant):
                             f"<response>{resp_text}</response>"
                             f"</respond_to_user></tool_calls>"
                         )
-                if "<tool_calls>" not in response and "<respond_to_user>" in response:
+                if "<tool_calls>" not in response and any(
+                    f"<{tool_name}>" in response for tool_name in self.tools
+                ):
                     response = f"<tool_calls>{response}</tool_calls>"
                 await self.handle_tool_calls_async(response)
             except Exception as e:
-                print(f"Error calling tool: {e}. Use the raw response as the output.")
-                if response.strip():
-                    await self._guarded_handle_response(response)
+                SessionLogger.log_to_file(
+                    "execution_log",
+                    f"(Interviewer) Error handling tool call: {e}",
+                    log_level="error"
+                )
+                print(f"Error calling tool: {e}. Attempting to extract response text.")
+                # If the LLM was trying to end but the XML was malformed, trigger
+                # the feedback widget directly rather than sending raw XML to the user.
+                if 'end_conversation' in response and not self._message_sent_this_turn:
+                    self._turn_to_respond = False
+                    if not getattr(self.interview_session, '_feedback_widget_sent', False):
+                        SessionLogger.log_to_file(
+                            "execution_log",
+                            "(Interviewer) Malformed end_conversation XML — triggering feedback widget directly.",
+                            log_level="warning"
+                        )
+                        self.interview_session.trigger_feedback_widget()
+                elif not self._message_sent_this_turn and response.strip():
+                    # Extract human-readable text rather than sending raw XML/JSON
+                    fallback = response
+                    if "<response>" in response:
+                        m = re.search(r'<response>(.*?)</response>', response, re.DOTALL)
+                        if m:
+                            fallback = m.group(1).strip()
+                    elif response.strip().startswith('{'):
+                        try:
+                            parsed = json.loads(response.strip())
+                            if isinstance(parsed, dict) and "response" in parsed:
+                                fallback = parsed["response"]
+                        except Exception:
+                            pass
+                    await self._guarded_handle_response(fallback)
 
             iterations += 1
             if iterations >= self._max_consideration_iterations:
@@ -428,6 +554,23 @@ class Interviewer(BaseAgent, Participant):
                 flags=re.DOTALL
             )
             main_prompt = main_prompt.replace("{strategic_questions}", "")
+
+        # Strip the emergent-insight probing block when no active topic opts
+        # into emergent exploration (e.g. structured intake where the agenda
+        # is intentionally fixed). Otherwise the interviewer would free-
+        # associate beyond the configured subtopics.
+        topic_manager = self.interview_session.session_agenda.interview_topic_manager
+        if not topic_manager.any_active_topic_allows_emergent():
+            main_prompt = re.sub(
+                r'[ \t]*<emergent_insights_block>.*?</emergent_insights_block>[ \t]*\n?',
+                '',
+                main_prompt,
+                flags=re.DOTALL,
+            )
+        else:
+            # Keep contents, just drop the marker tags.
+            main_prompt = main_prompt.replace('<emergent_insights_block>', '')
+            main_prompt = main_prompt.replace('</emergent_insights_block>', '')
 
         return format_prompt(main_prompt, format_params)
 

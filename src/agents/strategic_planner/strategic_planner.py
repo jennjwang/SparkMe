@@ -397,8 +397,8 @@ class StrategicPlanner(BaseAgent, Participant):
         """
         Judge predicted coverage impact for a rollout using LLM evaluation.
 
-        Uses SessionScribe's STAR framework to validate which subtopics would
-        actually be covered by the predicted Q&A exchanges.
+        Uses SessionScribe's coverage evaluation to validate which subtopics
+        would actually be covered by the predicted Q&A exchanges.
 
         Args:
             rollout_data: Dict containing rollout_id, predicted_turns, confidence_score

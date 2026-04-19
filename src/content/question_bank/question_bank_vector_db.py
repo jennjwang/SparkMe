@@ -31,6 +31,37 @@ class QuestionBankVectorDB(QuestionBankBase):
         """Generate embedding for the given text using configured backend."""
         return self.embedding_service.get_embedding(text)
 
+    async def _get_embedding_async(self, text: str) -> np.ndarray:
+        """Async variant of `_get_embedding` that doesn't block the event loop."""
+        return await self.embedding_service.get_embedding_async(text)
+
+    def _store_question_with_embedding(
+        self,
+        content: str,
+        embedding: np.ndarray,
+        memory_ids: List[str],
+        subtopic_id: Optional[str],
+        rubric: Optional[Rubric],
+    ) -> Question:
+        """Internal helper to attach a pre-computed embedding to a new question
+        and register it in the in-memory index. Shared by sync and async
+        `add_question` paths."""
+        question_id = Question.generate_question_id()
+        question = Question(
+            id=question_id,
+            content=content,
+            memory_ids=memory_ids,
+            timestamp=datetime.now(),
+            subtopic_id=subtopic_id,
+            rubric=rubric,
+        )
+
+        self.questions.append(question)
+        self.embeddings[question_id] = embedding
+        self.index.add(embedding.reshape(1, -1))
+
+        return question
+
     def add_question(
         self,
         content: str,
@@ -38,44 +69,74 @@ class QuestionBankVectorDB(QuestionBankBase):
         subtopic_id: Optional[str] = None,
         rubric: Optional[Rubric] = None,
     ) -> Question:
-        """Add a new question to the vector database."""
+        """Add a new question to the vector database (BLOCKING).
+
+        Performs a synchronous embedding API call. Use `add_question_async`
+        from coroutines to avoid blocking the event loop.
+        """
         if memory_ids is None:
             memory_ids = []
-            
-        question_id = Question.generate_question_id()
-        embedding = self._get_embedding(content)
-        
-        question = Question(
-            id=question_id,
-            content=content,
-            memory_ids=memory_ids,
-            timestamp=datetime.now(),
-            subtopic_id=subtopic_id,
-            rubric=rubric
-        )
-        
-        self.questions.append(question)
-        self.embeddings[question_id] = embedding
-        self.index.add(embedding.reshape(1, -1))
 
-        return question
+        embedding = self._get_embedding(content)
+        return self._store_question_with_embedding(
+            content=content,
+            embedding=embedding,
+            memory_ids=memory_ids,
+            subtopic_id=subtopic_id,
+            rubric=rubric,
+        )
+
+    async def add_question_async(
+        self,
+        content: str,
+        memory_ids: Optional[List[str]] = None,
+        subtopic_id: Optional[str] = None,
+        rubric: Optional[Rubric] = None,
+    ) -> Question:
+        """Async variant of `add_question`. The embedding API call is run in a
+        worker thread so the event loop remains free to service other tasks
+        (e.g. delivering messages to the frontend)."""
+        if memory_ids is None:
+            memory_ids = []
+
+        embedding = await self._get_embedding_async(content)
+        return self._store_question_with_embedding(
+            content=content,
+            embedding=embedding,
+            memory_ids=memory_ids,
+            subtopic_id=subtopic_id,
+            rubric=rubric,
+        )
 
     def search_questions(self, query: str, k: int = 5) -> List[QuestionSearchResult]:
-        """Search for similar questions using the query text."""
+        """Search for similar questions using the query text (BLOCKING)."""
         if not self.questions:
             return []
-        
+
         query_embedding = self._get_embedding(query)
-        
+        return self._search_with_embedding(query_embedding, k)
+
+    async def search_questions_async(
+        self, query: str, k: int = 5
+    ) -> List[QuestionSearchResult]:
+        """Async variant of `search_questions`."""
+        if not self.questions:
+            return []
+
+        query_embedding = await self._get_embedding_async(query)
+        return self._search_with_embedding(query_embedding, k)
+
+    def _search_with_embedding(
+        self, query_embedding: np.ndarray, k: int
+    ) -> List[QuestionSearchResult]:
         # Adjust k to not exceed the number of available questions
         k = min(k, len(self.questions))
-        
-        # Perform similarity search
+
         distances, indices = self.index.search(
             query_embedding.reshape(1, -1),
             k
         )
-        
+
         results = []
         for distance, idx in zip(distances[0], indices[0]):
             if idx >= 0 and idx < len(self.questions):
@@ -85,7 +146,7 @@ class QuestionBankVectorDB(QuestionBankBase):
                     question=question,
                     similarity_score=similarity_score
                 ))
-        
+
         return results
 
     def _save_implementation_specific(self, path: str) -> None:

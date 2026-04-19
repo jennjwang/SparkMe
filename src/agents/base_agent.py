@@ -258,11 +258,19 @@ class BaseAgent:
                         arguments = call['arguments']
                         tool = self.tools[tool_name]
                         
-                        # Handle both sync and async tools
+                        # Handle both sync and async tools. Sync tools are
+                        # offloaded to a worker thread so a blocking call
+                        # inside `_run` (e.g. an embedding HTTP request from
+                        # `add_question`/`add_memory`) doesn't stall the
+                        # session event loop and prevent other tasks (like
+                        # delivering messages to the API user buffer) from
+                        # running.
                         if asyncio.iscoroutinefunction(tool._run):
                             result = await tool._run(**arguments)
                         else:
-                            result = tool._run(**arguments)
+                            result = await asyncio.to_thread(
+                                tool._run, **arguments
+                            )
                         self.add_event(sender="system", 
                                        tag=tool_name, content=result)
 

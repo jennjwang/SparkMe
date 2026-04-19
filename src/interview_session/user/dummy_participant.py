@@ -18,10 +18,11 @@ class UserDummyParticipant(User):
         super().__init__(user_id=user_id, interview_session=interview_session)
         self._message_buffer: List[Dict[str, Any]] = []
         self._lock = threading.Lock()
-        
+
     async def on_message(self, message: Message):
-        # Wait until add_user_message is called
-        if message.role == "Interviewer":
+        if message.role == "Interviewer" or message.type in (
+            MessageType.TIME_SPLIT_WIDGET, MessageType.FEEDBACK_WIDGET
+        ):
             with self._lock:
                 self._message_buffer.append({
                     "id": message.id,
@@ -35,8 +36,6 @@ class UserDummyParticipant(User):
         with self._lock:
             if not self._message_buffer:
                 return []
-            
-            # Return a copy and clear the buffer
             messages = self._message_buffer[:]
             self._message_buffer.clear()
             return messages

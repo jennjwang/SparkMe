@@ -367,7 +367,7 @@ Each question must addresses at least one sub-topic and should primarily serve O
 For EACH question:
 
 - The question must be open-ended and conversational.
-- Prefer questions that elicit specific experiences or examples (STAR-style when applicable).
+- Prefer questions that elicit specific, concrete answers aligned with the subtopic's `coverage_criteria`.
 - Avoid yes/no questions.
 - Avoid introducing assumptions or facts not stated by the user.
 - **Non-leading**: Do NOT presuppose an answer, imply a preferred response, or embed assumptions (e.g., do NOT ask "Was that difficult?" — ask "How did that go?").
@@ -614,8 +614,8 @@ You are a coverage evaluation agent for interview rollouts.
 You will be given a predicted conversation between an interviewer and a candidate. Your task is to assess each subtopic mentioned in the conversation and determine whether it has achieved full coverage.
 
 For each subtopic, consider:
-- The appropriate evaluation method (STAR framework for experience-based subtopics, or general descriptive evaluation for conceptual or knowledge-based subtopics).
-- Whether the candidate's responses provide sufficient depth and completeness to mark the subtopic as covered.
+- The subtopic's `coverage_criteria` (or, if absent, its description) as the definition of "covered."
+- Whether the candidate's responses provide sufficient depth and completeness to satisfy those criteria.
 
 Your role is to identify coverage, including incremental contributions from repeated or extended discussion.
 </coverage_judge_persona>
@@ -643,21 +643,17 @@ Step-by-step for each predicted turn in the rollout:
 1. Identify which subtopics (if any) are actually addressed by this Q&A exchange.
 2. For each subtopic, check whether it has **Coverage Criteria** listed in `topics_list`:
    - If **Coverage Criteria are listed**: evaluate each criterion individually. The subtopic is covered only if ALL listed criteria are satisfied by the predicted response(s).
-   - If **no Coverage Criteria are listed**: use the appropriate fallback method:
-     - STAR framework (Situation, Task, Action, Result) for behavioral/experiential subtopics.
-     - General descriptive evaluation for conceptual, factual, or reflective subtopics.
+   - If **no Coverage Criteria are listed**: evaluate against the subtopic's description — covered when the facts/content it requests are clearly present in the responses.
 3. Assess whether the predicted response provides sufficient detail and depth to satisfy coverage:
    - For criteria-based subtopics: each criterion must be meaningfully addressed.
-   - For STAR subtopics: all four elements must be meaningfully present.
-   - For Descriptive subtopics: responses must include comprehensive factual or reflective detail with specificity.
+   - For description-only subtopics: the requested content must be clearly present.
 4. Consider coverage contributions from earlier turns in the same rollout.
 5. Be strict: only mark subtopics as covered if the exchange truly meets all applicable coverage criteria.
 
 Do NOT mark subtopics as covered if:
 - Only surface-level mentions occur.
 - Any required criterion is missing or only vaguely addressed.
-- STAR elements are incomplete (for STAR subtopics).
-- Responses are vague, generic, or lacking depth.
+- Responses are vague, generic, or lacking depth relative to what the criteria ask for.
 
 </instructions>
 """
@@ -670,7 +666,7 @@ JUDGE_COVERAGE_OUTPUT_FORMAT = """
 - Return a JSON array listing only the subtopics that are now considered fully covered based on the predicted rollout conversation.
 - Each entry must include:
   - `"subtopic_id"`: the ID of the subtopic.
-  - `"coverage_rationale"`: a concise explanation of why the subtopic is considered covered (e.g., STAR elements or descriptive depth).
+  - `"coverage_rationale"`: a concise explanation of why the subtopic is considered covered (referencing which coverage_criteria were satisfied).
 - Include only subtopics that meet the coverage criteria as outlined in the instructions.
 - Output JSON only. Do not include explanations, comments, or any text outside the JSON array.
 

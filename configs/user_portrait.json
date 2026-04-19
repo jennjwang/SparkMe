@@ -1,13 +1,7 @@
 {
-  "Functional Role": "",
-  "Team Structure": "",
-  "Seniority": "",
-  "Work Rhythm": "",
-  "Collaboration and Delegation": "",
-  "Tools and Methods": [],
-  "AI Tools": [],
+  "Role": "",
+  "Tenure": "",
   "Task Inventory": [],
-  "Motivations and Goals": [],
-  "Known Pain Points": [],
-  "Known Bright Spots": []
+  "Time Allocation": {},
+  "Priority Tasks": []
 }

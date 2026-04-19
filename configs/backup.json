@@ -1,5 +1,75 @@
 [
   {
+    "topic": "Role and Context",
+    "allow_emergent": false,
+    "allow_strategic_planner": false,
+    "subtopics": [
+      {
+        "description": "Their role or title",
+        "coverage_criteria": [
+          "Provides their current role or title, such as job title, academic position, or equivalent."
+        ]
+      },
+      {
+        "description": "Their tenure in the role",
+        "coverage_criteria": [
+          "States how long they have been in their current role or position (in years, months, etc.)."
+        ]
+      },
+      {
+        "description": "Their domain or industry",
+        "coverage_criteria": [
+          "Names a field, industry, or area (e.g., AI, healthcare, finance). A broad field name is sufficient — do NOT probe for sub-specialties, research focus, or sub-areas within the field."
+        ]
+      }
+    ]
+  },
+  {
+    "description": "Priority tasks: the task(s) the participant considers most important in their work.",
+    "coverage_criteria": [
+      "STEP 1 (open ask): Ask once, open-ended, which task is most important — e.g., 'Which of those feels most important to you?' or 'Which one matters most?'. Do not frame as 'one or two'; let the participant name whatever count they volunteer.",
+      "STEP 2 (single confirmation): After the participant names their priority task(s), ask ONE confirmation probe — e.g., 'Anything else on the same level, or is that the main one?'. Accept whatever answer they give and move on. Do NOT probe a second time, do NOT re-ask in different wording, do NOT push for more.",
+      "Once STEP 1 and STEP 2 have each been asked once, mark this subtopic covered and advance — regardless of how many priorities were named.",
+      "Distinguishes priority from time-spent — a task can be low-frequency but high-stakes.",
+      "Do NOT plant reasons or offer multiple-choice framings when asking about priority (e.g., avoid 'is that because of X, or because of Y?'). Use open probes: 'What makes it the most important?' or 'Why that one?'.",
+      "Questions in this subtopic must NOT include examples, suggestions, or option lists (no 'like reading, coding, writing, meetings', 'such as X', 'for example'). Ask open-endedly — let the participant name the task in their own words."
+    ],
+    "priority_weight": 0.5
+  },
+  {
+    "description": "Tasks they do with AI tools and how it changes their workflow",
+    "coverage_criteria": [
+      "Distinguishes between tasks performed manually and those performed with AI tools.",
+      "If the user uses AI tools for a task, capture the frequency of AI tool usage for that task.",
+      "If the user uses AI tools for a task, capture how the use of AI tools changes their workflow for that task."
+    ],
+    "priority_weight": 0.5
+  },
+  {
+    "topic": "Skills",
+    "allow_emergent": false,
+    "allow_strategic_planner": false,
+    "subtopics": [
+      {
+        "description": "Skills required for their priority tasks",
+        "coverage_criteria": [
+          "For each priority task they named, identifies at least one key skill required to perform it.",
+          "Skills are specific capabilities (e.g., 'statistical modeling', 'stakeholder negotiation'), NOT broad traits (e.g., 'analytical thinking', 'communication').",
+          "Do NOT ask about skills for every task — focus only on their priority tasks."
+        ],
+        "priority_weight": 0.5
+      },
+      {
+        "description": "Skills that differentiate them from others in their profession",
+        "coverage_criteria": [
+          "Names skills they have that are rare or unusual for someone in their role or field.",
+          "Distinguishes from general competencies that everyone in their profession has."
+        ],
+        "priority_weight": 0.5
+      }
+    ]
+  },
+  {
     "topic": "Task Components",
     "subtopics": [
       {

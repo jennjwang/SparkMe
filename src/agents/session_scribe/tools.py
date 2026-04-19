@@ -310,12 +310,16 @@ class UpdateCriteriaCoverage(BaseTool):
         run_manager: Optional[CallbackManagerForToolRun] = None,
     ) -> str:
         try:
+            coerced = [
+                s if isinstance(s, bool) else str(s).lower() in ('true', '1', 'yes')
+                for s in criteria_statuses
+            ]
             self.session_agenda.update_subtopic_criteria_coverage(
                 subtopic_id=str(subtopic_id),
-                statuses=criteria_statuses,
+                statuses=coerced,
             )
-            met = sum(criteria_statuses)
-            total = len(criteria_statuses)
+            met = sum(coerced)
+            total = len(coerced)
             return f"Updated criteria coverage for subtopic {subtopic_id}: {met}/{total} criteria met."
         except Exception as e:
             raise ToolException(f"Error updating criteria coverage: {e}")

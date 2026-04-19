@@ -12,12 +12,21 @@ from src.utils.data_process import safe_parse_json
 
 LOGS_DIR = os.getenv("LOGS_DIR")
 
+
+def normalize_user_portrait(portrait: Any) -> dict:
+    """Remove portrait keys dropped from the template (e.g. legacy ``Skills``)."""
+    if not isinstance(portrait, dict):
+        return {}
+    if "Skills" not in portrait:
+        return dict(portrait)
+    return {k: v for k, v in portrait.items() if k != "Skills"}
+
 class SessionAgenda:
     
     def __init__(self, user_id, session_id, data: dict=None):
         self.user_id = user_id
         self.session_id = int(session_id)
-        self.user_portrait: dict = data.get("user_portrait", {})
+        self.user_portrait: dict = normalize_user_portrait(data.get("user_portrait", {}))
         self.last_meeting_summary: str = data.get("last_meeting_summary", "")
         self.interview_description: str = data.get("interview_description", "")
         self.additional_notes: list[str] = data.get("additional_notes", [])
@@ -63,7 +72,7 @@ class SessionAgenda:
         user_portrait = {}
         if initial_user_portrait_path and os.path.exists(initial_user_portrait_path):
             with open(initial_user_portrait_path, 'r', encoding='utf-8') as f:
-                user_portrait = json.load(f)
+                user_portrait = normalize_user_portrait(json.load(f))
         
         session_id = 0
         data = {
@@ -129,7 +138,7 @@ class SessionAgenda:
                                                   interview_plan_path=interview_plan_path,
                                                   interview_description=interview_description,
                                                   interview_evaluation=interview_evaluation)
-            fresh.user_portrait = prior.user_portrait
+            fresh.user_portrait = normalize_user_portrait(prior.user_portrait)
             fresh.last_meeting_summary = prior.last_meeting_summary
             fresh.session_id = prior.session_id
             return fresh
@@ -376,7 +385,7 @@ class SessionAgenda:
         parsed_user_portrait = safe_parse_json(new_user_portrait)
         if parsed_user_portrait:
             # Only update if it's successful parsing it
-            self.user_portrait = parsed_user_portrait
+            self.user_portrait = normalize_user_portrait(parsed_user_portrait)
         
     def update_last_meeting_summary_str(self, new_last_meeting_summary: str):
         self.last_meeting_summary = new_last_meeting_summary

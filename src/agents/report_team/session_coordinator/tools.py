@@ -58,6 +58,8 @@ class UpdateUserPortrait(BaseTool):
     ) -> str:
         try:
             formatted_field_name = " ".join(word.capitalize() for word in field_name.replace("_", " ").split())
+            if formatted_field_name == "Skills":
+                return "Skipped: Skills is not part of the user portrait schema."
 
             # Try to parse as JSON for structured fields (dict or list)
             parsed_value: Any = value

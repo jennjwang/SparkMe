@@ -16,7 +16,7 @@ from src.agents.interviewer.interviewer import Interviewer, InterviewerConfig, T
 from src.agents.session_scribe.session_scribe import SessionScribe, SessionScribeConfig
 from src.agents.strategic_planner.strategic_planner import StrategicPlanner, StrategicPlannerConfig
 from src.agents.user.user_agent import UserAgent
-from src.content.session_agenda.session_agenda import SessionAgenda
+from src.content.session_agenda.session_agenda import SessionAgenda, normalize_user_portrait
 from src.utils.data_process import save_feedback_to_csv
 from src.utils.logger.session_logger import SessionLogger, setup_logger
 from src.utils.logger.evaluation_logger import EvaluationLogger
@@ -155,6 +155,10 @@ class InterviewSession:
         self.step_requested = False   # single-step control
         self.max_turns = max_turns
 
+        # End-of-session feedback collection state
+        self._feedback_widget_sent = False
+        self._feedback_submitted = False
+
         # Report auto-update states
         self.auto_report_update_in_progress = False
         self.memory_threshold = int(
@@ -263,9 +267,16 @@ class InterviewSession:
             "User": [self._interviewer, self.session_scribe, self.strategic_planner]
         }
 
-        # User participant for terminal interaction
+        # User participant for terminal interaction.
+        # IMPORTANT: insert at the front so the user (which only buffers the
+        # message for the frontend in API mode) is notified BEFORE the heavier
+        # subscribers (e.g. SessionScribe, which performs synchronous OpenAI
+        # embedding calls inside `_add_question_to_session_agenda` and can
+        # block the session's event loop for hundreds of ms). Putting the user
+        # first guarantees the typing bubble clears as soon as the message is
+        # available, instead of waiting for scribe-side work to finish.
         if self.user:
-            self._subscriptions["Interviewer"].append(self.user)
+            self._subscriptions["Interviewer"].insert(0, self.user)
 
         # User API participant for backend API interaction
         # self.api_participant = None
@@ -370,16 +381,7 @@ class InterviewSession:
                 not self.auto_report_update_in_progress):
                 asyncio.create_task(self._check_and_trigger_report_update())
 
-            if self.session_agenda.all_core_topics_completed() and not self._session_ending:
-                SessionLogger.log_to_file(
-                    "execution_log",
-                    f"[TOPICS] All topics for this session have been completed. "
-                    f"Sending graceful goodbye."
-                )
-                self._session_ending = True
-                asyncio.create_task(self._graceful_session_end())
-
-            elif time_extension_intercept:
+            if time_extension_intercept:
                 asyncio.create_task(self._handle_time_extension_response(message.content))
 
             elif self.paused and self._awaiting_time_extension:
@@ -415,20 +417,20 @@ class InterviewSession:
         elif role == "Interviewer" and self._last_user_message is not None:
             self._last_user_message = None
         
-        # Log feedback
-        if message_type != MessageType.CONVERSATION:
+        # Log feedback (not for widget trigger messages)
+        if message_type not in (MessageType.CONVERSATION, MessageType.TIME_SPLIT_WIDGET, MessageType.FEEDBACK_WIDGET):
             save_feedback_to_csv(
                 self.chat_history[-1], message, self.user_id, self.session_id)
 
-        # Notify participants if message is a skip or conversation
-        if message_type == MessageType.SKIP or \
-              message_type == MessageType.CONVERSATION:
-            
+        # Notify participants if message is a skip, conversation, or UI widget trigger
+        if message_type in (MessageType.SKIP, MessageType.CONVERSATION, MessageType.TIME_SPLIT_WIDGET, MessageType.FEEDBACK_WIDGET):
+
             # Add message to chat history
             self.chat_history.append(message)
-            SessionLogger.log_to_file(
-                "chat_history", f"{message.role}: {message.content}")
-            
+            if message_type not in (MessageType.TIME_SPLIT_WIDGET, MessageType.FEEDBACK_WIDGET):
+                SessionLogger.log_to_file(
+                    "chat_history", f"{message.role}: {message.content}")
+
             # Notify participants
             asyncio.create_task(self._notify_participants(message))
 
@@ -443,7 +445,13 @@ class InterviewSession:
 
     async def run(self):
         """Run the interview session"""
-        # Augment session agenda with existing profile if applicable
+        # Start the opening question LLM call concurrently with agenda augmentation so
+        # the first question is ready as soon as possible after the session is created.
+        # For fresh sessions augmentation is a no-op, so there is no trade-off.
+        # For sessions with prior context the opening question uses pre-augmentation
+        # state (generic introduction), which is acceptable to avoid added latency.
+        opening_task = asyncio.ensure_future(self._interviewer.on_message(None))
+
         await self.session_scribe.augment_session_agenda(additional_context_path=self._initial_additional_context_path)
 
         SessionLogger.log_to_file(
@@ -452,9 +460,7 @@ class InterviewSession:
 
         # In-interview Processing
         try:
-            # Interviewer initiate the conversation (if not in API mode)
-            if self.user is not None:
-                await self._interviewer.on_message(None)
+            await opening_task
 
             # Monitor the session for completion and timeout
             while self.session_in_progress or \
@@ -665,6 +671,8 @@ class InterviewSession:
             )
             return
 
+        portrait_data = normalize_user_portrait(portrait_data)
+
         # Update the in-memory portrait
         self.session_agenda.user_portrait = portrait_data
 
@@ -794,9 +802,31 @@ class InterviewSession:
             )
 
     async def _offer_time_extension(self):
-        """Ask the participant if they want to continue for 5 more minutes."""
+        """Ask the participant if they want to continue for 5 more minutes.
+
+        If the configured agenda is already fully covered and no active topic
+        allows emergent exploration, skip the offer entirely and end the
+        session gracefully — there are no more questions to ask, so soliciting
+        extra time would only invite the interviewer to free-associate.
+        """
         # Pause the interviewer so it doesn't generate a question while waiting
         self.paused = True
+
+        topic_manager = self.session_agenda.interview_topic_manager
+        incomplete_topics = topic_manager.get_all_incomplete_core_topic()
+        allows_emergent = topic_manager.any_active_topic_allows_emergent()
+        if not incomplete_topics and not allows_emergent:
+            SessionLogger.log_to_file(
+                "execution_log",
+                "[TIME] Time limit reached but agenda is fully covered and no "
+                "active topic allows emergent exploration — ending without "
+                "offering an extension."
+            )
+            self._awaiting_time_extension = False
+            self._session_ending = True
+            await self._graceful_session_end()
+            return
+
         available = self.session_agenda.available_time_minutes
         msg = (
             f"We've reached the {available}-minute mark — thank you for your time so far! "
@@ -824,6 +854,25 @@ class InterviewSession:
             verdict = "NO"
 
         if "YES" in verdict:
+            # Even if the participant wants to continue, only extend when there
+            # is still uncovered ground in the configured agenda. Otherwise the
+            # interviewer would free-associate beyond its script (e.g. drilling
+            # into emergent threads that the topic config explicitly opted out
+            # of). Wrap up gracefully instead.
+            topic_manager = self.session_agenda.interview_topic_manager
+            incomplete_topics = topic_manager.get_all_incomplete_core_topic()
+            allows_emergent = topic_manager.any_active_topic_allows_emergent()
+            if not incomplete_topics and not allows_emergent:
+                SessionLogger.log_to_file(
+                    "execution_log",
+                    "[TIME] Participant said yes, but agenda is fully covered "
+                    "and no active topic allows emergent exploration — ending gracefully."
+                )
+                self._awaiting_time_extension = False
+                self._session_ending = True
+                await self._graceful_session_end()
+                return
+
             # Extend by 5 minutes and let the interview continue
             self.session_agenda.available_time_minutes += 5
             self._time_limit_triggered = False  # allow another check in 5 min
@@ -875,22 +924,79 @@ class InterviewSession:
             )
 
         # Yield to the event loop so _notify_participants can run and populate
-        # the user's message buffer before we signal the frontend to stop polling.
+        # the user's message buffer before we emit the feedback widget.
         await asyncio.sleep(1)
 
+        # Show the feedback widget instead of ending immediately — the session
+        # will truly end once the participant submits the form.
+        self.trigger_feedback_widget()
+
+    def trigger_feedback_widget(self):
+        """Send the end-of-session feedback widget and defer true session end
+        until the user submits feedback (via /api/submit-feedback) or
+        `complete_session_after_feedback` is called.
+
+        Safe to call multiple times — only the first call emits the widget.
+        """
+        if self._feedback_widget_sent:
+            return
+        self._feedback_widget_sent = True
+        # Mark as ending so the interviewer stops producing new messages,
+        # but keep session_in_progress True so the frontend can still poll
+        # and submit feedback.
+        self._session_ending = True
+        # Reset the inactivity clock so the idle-timeout doesn't kill the
+        # session while the participant is filling in the widget.
+        self._last_message_time = datetime.now()
+        self.add_message_to_chat_history(
+            role="Interviewer",
+            content="",
+            message_type=MessageType.FEEDBACK_WIDGET,
+        )
+        SessionLogger.log_to_file(
+            "execution_log",
+            "[FEEDBACK] Feedback widget emitted; awaiting submission."
+        )
+
+    def submit_feedback(self, feedback: dict):
+        """Persist end-of-session feedback and finalize session completion.
+
+        Called by the /api/submit-feedback endpoint after the participant
+        fills the feedback widget.
+        """
+        self._feedback_submitted = True
+        try:
+            logs_dir = os.getenv("LOGS_DIR", "logs")
+            feedback_dir = os.path.join(
+                logs_dir, self.user_id, "execution_logs", f"session_{self.session_id}"
+            )
+            os.makedirs(feedback_dir, exist_ok=True)
+            feedback_path = os.path.join(feedback_dir, "feedback.json")
+            with open(feedback_path, "w") as f:
+                json.dump(feedback, f, indent=2)
+            SessionLogger.log_to_file(
+                "execution_log", f"[FEEDBACK] Saved feedback to {feedback_path}"
+            )
+        except Exception as e:
+            SessionLogger.log_to_file(
+                "execution_log", f"[FEEDBACK] Error saving feedback: {e}"
+            )
+
+        # Now truly end the session — run()'s finally block will handle
+        # the report/portrait/snapshot finalization.
         self.session_in_progress = False
         try:
             final_summary_path = self.token_tracker.save_final_summary()
             SessionLogger.log_to_file(
                 "execution_log",
                 f"[TOKEN_TRACKING] Saved final token usage summary to {final_summary_path}",
-                log_level="info"
+                log_level="info",
             )
         except Exception as e:
             SessionLogger.log_to_file(
                 "execution_log",
                 f"[TOKEN_TRACKING] Error saving final summary: {e}",
-                log_level="warning"
+                log_level="warning",
             )
 
     def end_session(self):

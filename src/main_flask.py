@@ -10,6 +10,7 @@ from functools import wraps
 import traceback
 import asyncio
 import threading
+from collections import OrderedDict
 import os
 import sys
 import uuid
@@ -35,6 +36,7 @@ from src.utils.speech.text_to_speech import TextToSpeechBase, create_tts_engine
 from src.utils.speech.audio_player import AudioPlayerBase, create_audio_player
 from src.utils.speech.speech_to_text import create_stt_engine
 from src.interview_session.interview_session import InterviewSession
+from src.content.session_agenda.session_agenda import normalize_user_portrait
 
 # =============================================================================
 # CONFIGURATION
@@ -416,6 +418,82 @@ def visualizer():
     username = get_current_user().username if current_user.is_authenticated else 'agent'
     return render_template('visualizer.html', username=username)
 
+@app.route('/pilot')
+@login_required
+def pilot_viewer():
+    """Pilot conversation replay viewer"""
+    return render_template('pilot.html', username=get_current_user().username)
+
+PILOT_DIR = os.path.join(_root, 'pilot')
+
+@app.route('/api/pilot-data', methods=['GET'])
+@login_required
+def pilot_data():
+    """List pilot sessions or return messages + portrait for a specific session."""
+    import re
+    user_id = request.args.get('user_id')
+    session_idx = request.args.get('session')
+
+    if not user_id or session_idx is None:
+        # List available sessions
+        sessions = {}
+        if os.path.isdir(PILOT_DIR):
+            for uid in sorted(os.listdir(PILOT_DIR)):
+                logs_dir = os.path.join(PILOT_DIR, uid, 'execution_logs')
+                if not os.path.isdir(logs_dir):
+                    continue
+                sess_names = sorted(
+                    d for d in os.listdir(logs_dir)
+                    if os.path.isdir(os.path.join(logs_dir, d)) and d.startswith('session_')
+                    and os.path.exists(os.path.join(logs_dir, d, 'chat_history.log'))
+                )
+                if sess_names:
+                    sessions[uid] = sess_names
+        return jsonify({'success': True, 'sessions': sessions})
+
+    # Return a specific session
+    log_path = os.path.join(PILOT_DIR, user_id, 'execution_logs', session_idx, 'chat_history.log')
+    agenda_path = os.path.join(PILOT_DIR, user_id, 'execution_logs', session_idx, 'session_agenda.json')
+    portrait_path = os.path.join(PILOT_DIR, user_id, 'user_portrait.json')
+
+    if not os.path.exists(log_path):
+        return jsonify({'success': False, 'error': 'Session not found'}), 404
+
+    # Parse chat_history.log
+    line_re = re.compile(r'^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d+ - INFO - (Interviewer|User): (.*)')
+    messages = []
+    current = None
+    with open(log_path, 'r') as f:
+        for line in f:
+            m = line_re.match(line)
+            if m:
+                if current:
+                    messages.append(current)
+                role = 'bot' if m.group(1) == 'Interviewer' else 'user'
+                current = {'id': str(len(messages)), 'role': role, 'content': m.group(2).rstrip()}
+            elif current:
+                current['content'] += '\n' + line.rstrip()
+    if current:
+        messages.append(current)
+
+    # Load portrait
+    portrait = {}
+    if os.path.exists(agenda_path):
+        try:
+            with open(agenda_path) as f:
+                agenda = json.load(f)
+            portrait = agenda.get('user_portrait', {})
+        except Exception:
+            pass
+    if not portrait and os.path.exists(portrait_path):
+        try:
+            with open(portrait_path) as f:
+                portrait = json.load(f)
+        except Exception:
+            pass
+
+    return jsonify({'success': True, 'messages': messages, 'user_portrait': portrait})
+
 # =============================================================================
 # API ENDPOINTS - PROTECTED (REQUIRE LOGIN)
 # All endpoints that handle interview data need @login_required
@@ -438,14 +516,17 @@ def start_session():
             # Return existing session instead of creating duplicate
             app.logger.info(f"Returning existing session {token} for user {get_current_user().username}")
             print(f"[Session] Reusing existing session {token} for {get_current_user().username}")
+            existing = wrapper.interview_session
             return jsonify({
                 'success': True,
                 'session_token': token,
-                'session_id': wrapper.interview_session.session_id,
+                'session_id': existing.session_id,
                 'user_id': user_id,
                 'username': get_current_user().username,
                 'message': 'Using existing session',
-                'was_existing': True
+                'was_existing': True,
+                'available_time': getattr(existing, '_available_time', None),
+                'session_started_at': getattr(existing, '_session_start_time', None).isoformat() if getattr(existing, '_session_start_time', None) else None
             })
     
     # Create new session only if none exists
@@ -465,7 +546,9 @@ def start_session():
         'user_id': user_id,
         'username': get_current_user().username,
         'message': 'Session started successfully',
-        'was_existing': False
+        'was_existing': False,
+        'available_time': available_time,
+        'session_started_at': getattr(interview_session, '_session_start_time', None).isoformat() if getattr(interview_session, '_session_start_time', None) else None
     })
 
 @app.route('/api/start-agent-session', methods=['POST'])
@@ -673,8 +756,10 @@ def get_messages():
         hasattr(session.user, '_message_buffer') or
         hasattr(session.user, 'get_and_clear_messages')
     )
+    _deliverable_types = {'conversation', 'time_split_widget', 'feedback_widget'}
     if has_user_buffer and full_history:
         # Reconnect: replay full chat_history so the client can re-render everything
+        # Skip time_split_widget on reconnect — the widget was already submitted
         messages = [
             {
                 'id': m.id,
@@ -689,15 +774,17 @@ def get_messages():
     elif has_user_buffer:
         if hasattr(session.user, 'get_new_messages'):
             messages = session.user.get_new_messages() or []
+        elif hasattr(session.user, 'get_and_clear_messages'):
+            messages = session.user.get_and_clear_messages() or []
         elif hasattr(session.user, '_message_buffer'):
             lock = getattr(session.user, '_lock', None)
             if lock:
                 with lock:
                     messages = list(getattr(session.user, '_message_buffer', []))
+                    session.user._message_buffer.clear()
             else:
                 messages = list(getattr(session.user, '_message_buffer', []))
-        elif hasattr(session.user, 'get_and_clear_messages'):
-            messages = session.user.get_and_clear_messages() or []
+                session.user._message_buffer.clear()
     else:
         # Agent mode: UserAgent has no buffer — serve new messages directly from chat_history
         if full_history:
@@ -714,7 +801,7 @@ def get_messages():
                 'timestamp': m.timestamp.isoformat(),
             }
             for m in new_msgs
-            if m.type == 'conversation'
+            if m.type in _deliverable_types
         ]
 
     is_session_done = session.session_completed
@@ -919,7 +1006,8 @@ def stream_voice_response():
 @app.route('/api/end-session', methods=['POST'])
 @agent_or_login_required
 def end_session():
-    """End the interview session - background tasks will complete gracefully"""
+    """Begin ending the session by emitting the feedback widget. The session
+    truly ends once /api/submit-feedback is called."""
     data = request.json
     session_token = data.get('session_token')
 
@@ -932,19 +1020,53 @@ def end_session():
 
     session = wrapper.interview_session
 
-    # End the session (marks as not in progress, stops new tasks)
-    session.end_session()
+    # Emit feedback widget on the session's event loop (widget sending
+    # touches asyncio state inside add_message_to_chat_history).
+    if hasattr(wrapper, 'loop'):
+        wrapper.loop.call_soon_threadsafe(session.trigger_feedback_widget)
+    else:
+        session.trigger_feedback_widget()
 
-    app.logger.info(f"Session {session_token} ended by user, background tasks will complete")
-
-    # Don't remove from active_sessions yet - let background tasks complete
-    # They'll be cleaned up when session.run() completes or by timeout cleanup
+    app.logger.info(f"Session {session_token}: feedback widget emitted by user end-session request")
 
     return jsonify({
         'success': True,
-        'message': 'Session ending, background tasks will complete shortly',
+        'message': 'Feedback widget emitted; session will end after feedback is submitted',
         'session_id': session.session_id,
-        'user_id': session.user_id
+        'user_id': session.user_id,
+        'awaiting_feedback': True,
+    })
+
+
+@app.route('/api/submit-feedback', methods=['POST'])
+@agent_or_login_required
+def submit_feedback():
+    """Persist end-of-session feedback and finalize session completion."""
+    data = request.get_json(silent=True) or {}
+    session_token = data.get('session_token')
+    feedback = data.get('feedback')
+
+    if not session_token or not isinstance(feedback, dict):
+        return jsonify({'success': False, 'error': 'session_token and feedback required'}), 400
+
+    wrapper = get_session_wrapper(session_token)
+    if not wrapper:
+        return jsonify({'success': False, 'error': 'Invalid or expired session'}), 400
+
+    session = wrapper.interview_session
+
+    if hasattr(wrapper, 'loop'):
+        wrapper.loop.call_soon_threadsafe(session.submit_feedback, feedback)
+    else:
+        session.submit_feedback(feedback)
+
+    app.logger.info(f"Session {session_token}: feedback submitted, finalizing session")
+
+    return jsonify({
+        'success': True,
+        'message': 'Feedback received; session finalizing',
+        'session_id': session.session_id,
+        'user_id': session.user_id,
     })
 
 @app.route('/api/session-status', methods=['GET'])
@@ -1123,6 +1245,81 @@ def session_state():
         'session_in_progress': getattr(iv, 'session_in_progress', False),
         'timestamp': __import__('datetime').datetime.now().isoformat(),
     })
+
+_TASK_TREE_CACHE: "OrderedDict[tuple, list]" = OrderedDict()
+_TASK_TREE_CACHE_MAX = 256
+_TASK_TREE_CACHE_LOCK = threading.Lock()
+
+
+def _task_tree_signature(tasks):
+    """Canonicalize task list → tuple key (case/whitespace/order-insensitive)."""
+    seen = set()
+    norm = []
+    for t in tasks:
+        s = ' '.join(str(t or '').strip().lower().split())
+        if s and s not in seen:
+            seen.add(s)
+            norm.append(s)
+    norm.sort()
+    return tuple(norm)
+
+
+@app.route('/api/organize-tasks', methods=['POST'])
+@agent_or_login_required
+def organize_tasks_route():
+    """Group a flat task list into a hierarchy (parent / subtask tree) via LLM.
+
+    Results are cached process-wide by the canonical signature of the input
+    list so that the time-split widget, feedback widget, and profile panel all
+    see the same tree for the same set of tasks.
+    """
+    from src.utils.task_hierarchy import organize_tasks
+    data = request.get_json(silent=True) or {}
+    tasks = data.get('tasks') or []
+    if not isinstance(tasks, list):
+        return jsonify({'success': False, 'error': 'tasks must be a list'}), 400
+
+    sig = _task_tree_signature(tasks)
+    if sig:
+        with _TASK_TREE_CACHE_LOCK:
+            cached = _TASK_TREE_CACHE.get(sig)
+            if cached is not None:
+                _TASK_TREE_CACHE.move_to_end(sig)
+                return jsonify({'success': True, 'tree': cached, 'cached': True})
+
+    tree = organize_tasks([str(t) for t in tasks])
+
+    if sig:
+        with _TASK_TREE_CACHE_LOCK:
+            _TASK_TREE_CACHE[sig] = tree
+            _TASK_TREE_CACHE.move_to_end(sig)
+            while len(_TASK_TREE_CACHE) > _TASK_TREE_CACHE_MAX:
+                _TASK_TREE_CACHE.popitem(last=False)
+
+    return jsonify({'success': True, 'tree': tree})
+
+
+@app.route('/api/update-portrait', methods=['POST'])
+@agent_or_login_required
+def update_portrait():
+    data = request.get_json()
+    session_token = data.get('session_token')
+    portrait = data.get('portrait')
+    if not session_token or portrait is None:
+        return jsonify({'success': False, 'error': 'session_token and portrait required'}), 400
+    wrapper = get_session_wrapper(session_token)
+    if not wrapper:
+        return jsonify({'success': False, 'error': 'Invalid or expired session'}), 400
+    iv = wrapper.interview_session
+    agenda = getattr(iv, 'session_agenda', None)
+    if agenda:
+        portrait = normalize_user_portrait(portrait)
+        agenda.user_portrait = portrait
+        portrait_path = os.path.join(os.getenv('LOGS_DIR', 'logs'), iv.user_id, 'user_portrait.json')
+        os.makedirs(os.path.dirname(portrait_path), exist_ok=True)
+        with open(portrait_path, 'w') as f:
+            json.dump(portrait, f, indent=2)
+    return jsonify({'success': True})
 
 @app.route('/api/debug-session', methods=['GET'])
 @login_required  # PROTECTED

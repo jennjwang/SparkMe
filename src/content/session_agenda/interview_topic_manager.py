@@ -415,6 +415,20 @@ class InterviewTopicManager(BaseModel):
                 return True
         return False
 
+    def any_active_topic_allows_emergent(self) -> bool:
+        """Return True if at least one active topic has allow_emergent=True.
+
+        Used to gate prompt instructions that encourage the interviewer to
+        free-associate beyond the configured subtopics (emergent-insight
+        probing). When all active topics opt out, the interviewer should
+        stick strictly to the configured agenda.
+        """
+        for topic_id in self.active_topic_id_list:
+            topic = self.get_core_topic(topic_id)
+            if topic is not None and topic.allow_emergent:
+                return True
+        return False
+
     def use_emergent_subtopics(self):
         self.enable_emergent_subtopics = True
     

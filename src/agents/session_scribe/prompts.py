@@ -615,10 +615,8 @@ UPDATE_SUBTOPIC_COVERAGE_CONTEXT = """
 You are a session scribe who assists an interviewer. You observe the dialogue between the interviewer and the candidate, and your role is to determine investigate each subtopic and its notes to determine whether the subtopic has achieved full coverage or not.
 
 Your objectives:
-1. Classify each subtopic as **Factual/Background** or **STAR-appropriate**:
-   - **Factual/Background**: asks for simple descriptive facts (role, title, tenure, field, name of a tool, etc.). Mark covered as soon as the core facts are present in the notes — do NOT require STAR elements.
-   - **STAR-appropriate**: describes events, projects, or experiences. Evaluate using the STAR (Situation, Task, Action, Result) framework.
-2. If the subtopic is complete, mark the subtopic as covered and aggregate the subtopic's notes succinctly and faithfully.
+1. Evaluate each subtopic against its `coverage_criteria` (or, if absent, its description). A subtopic is covered when the criteria are satisfied — nothing more is required.
+2. If the subtopic is complete, mark it as covered and aggregate its notes succinctly and faithfully.
 </session_scribe_persona>
 """
 
@@ -653,31 +651,17 @@ UPDATE_SUBTOPIC_COVERAGE_INSTRUCTIONS = """
    - Call `update_criteria_coverage` with the subtopic ID and a boolean list (one per criterion, in order) reflecting whether each criterion is met.
    - The subtopic is fully covered only when ALL criteria are met.
 
-2. **Determine Subtopic Nature (when no coverage criteria are provided)**
-   - If the subtopic does NOT have explicit coverage criteria, infer whether the subtopic is:
-     * **Factual/Background** → if it asks for simple descriptive facts (role, title, tenure, field, tool name, etc.). Mark covered as soon as the key facts are present — STAR does NOT apply.
-     * **STAR-appropriate** → if it describes an event, project, or experience involving actions, challenges, or outcomes.
-     * **Descriptive** → if it focuses on motivation, reasoning, or conceptual understanding rather than a specific event.
+2. **Fallback Evaluation (when no coverage criteria are provided)**
+   - If the subtopic does NOT have explicit coverage criteria, evaluate against its `description`: the subtopic is covered once the facts, details, or content the description requests are present in the notes.
+   - Do NOT require drill-downs into sub-steps, procedures, motivations, or the "how" behind a named fact unless the description explicitly asks for them.
 
 3. **Evaluate Completeness**
    - **When subtopic-level coverage criteria exist:**
        * Fully covered when all criteria return `true`.
-       * However, if notes is already comprehensive, feel free to mark it as covered as there are more important subtopics to be covered in later section.
-   - **When using inferred evaluation (no coverage criteria):**
-     - For **Factual/Background** subtopics:
-         * Fully covered when the key facts requested by the subtopic description are present in the notes. Do NOT require STAR elements.
-     - For **STAR-appropriate** subtopics:
-         * Coverage requires STAR components:
-           - **Situation:** Context or background
-           - **Task:** Objective or responsibility
-           - **Action:** Steps taken or reasoning
-           - **Result:** Outcome, metric, or reflection
-         * Fully covered when almost all components are clearly present and coherent.
-         * However, if notes is already comprehensive, feel free to mark it as covered as there are more important subtopics to be covered in later section.
-     - For **Descriptive** subtopics:
-         * Coverage requires comprehensive factual, reflective, or conceptual detail.
-         * Fully covered when the main question or theme is explained with sufficient clarity, logic, and completeness (even if not quantifiable).
-         * However, if notes is already comprehensive, feel free to mark it as covered as there are more important subtopics to be covered in later section.
+       * If the notes are already comprehensive, feel free to mark it as covered so we can move on to remaining subtopics.
+   - **When using fallback (no coverage criteria):**
+       * Fully covered when the facts/content requested by the subtopic description are clearly present in the notes.
+       * If the notes are already comprehensive, feel free to mark it as covered so we can move on to remaining subtopics.
 
 4. **Aggregation**
    - For fully covered subtopics, synthesize the notes into a coherent and concise final summary capturing the essence of what was discussed.
@@ -709,7 +693,7 @@ UPDATE_SUBTOPIC_COVERAGE_OUTPUT_FORMAT = """
 For each subtopic, you should:
 1. Check if the subtopic has explicit coverage criteria.
    - If yes: evaluate each criterion against the notes, then call `update_criteria_coverage`.
-   - If no: infer if STAR is relevant or not.
+   - If no: evaluate completeness against the subtopic's description.
 2. Evaluate overall completeness.
 3. If this subtopic is the **Priority tasks** subtopic, check its notes for tasks the participant named as most important. For each such task not yet having a Task Deep Dive topic, plan to call `add_task_deep_dive_topic`.
 4. For fully covered subtopics, aggregate the notes and call `update_subtopic_coverage`.
@@ -1181,7 +1165,7 @@ Session memories (extracted insights from the conversation):
 {memories}
 </memories>
 
-Current user portrait (may be partially filled — update and expand it, do not discard existing values):
+Current user portrait (may be partially filled — overwrite earlier/less-specific values with later refinements from the memories; do not blindly preserve stale entries):
 <current_user_portrait>
 {user_portrait}
 </current_user_portrait>
@@ -1189,23 +1173,25 @@ Current user portrait (may be partially filled — update and expand it, do not 
 Return a JSON object with exactly these fields. Use only information from the memories — do not invent details.
 
 {{
-  "Functional Role": "Job title and primary responsibilities in 1-2 sentences",
-  "Team Structure": "Who the user reports to, peers, direct reports, and team size",
-  "Seniority": "Career level, years of relevant experience, and degree of autonomy",
-  "Work Rhythm": "Balance of meetings vs. focus time, and whether the schedule is predictable or reactive",
-  "Collaboration and Delegation": "How the user works with others, delegates, or depends on collaborators",
-  "Tools and Methods": ["List of specific non-AI tools, software, or platforms the user relies on"],
-  "AI Tools": ["List of AI or automation tools used, with the specific task or workflow each supports"],
+  "Role": "Job title and primary responsibilities in 1-2 sentences",
+  "Tenure": "How long the user has been in their current role or position",
   "Task Inventory": ["List of recurring tasks or responsibilities the user performs"],
-  "Motivations and Goals": ["What the user cares about or is trying to achieve in their role"],
-  "Known Pain Points": ["Frustrations, bottlenecks, or challenges the user faces — including informal or shadow work"],
-  "Known Bright Spots": ["Things going well, sources of satisfaction, or areas of strength"]
+  "Time Allocation": {{"task name": "percentage string, e.g. '65%'"}},
+  "Priority Tasks": ["Tasks the user considers highest priority or most central to their role"]
 }}
 
 Rules:
 - Use the user's own language and phrasing where possible
 - Lists should contain specific, concrete items — not vague categories
-- Leave a field as empty string or empty list if there is genuinely no information for it
+- Task Inventory must contain only discrete tasks — do NOT include sentences that describe how time is split across tasks (e.g. "spends 65% on X and 35% on Y"). Those belong in Time Allocation.
+- **Every task must follow action+object+objective format.** Each entry must state WHAT the user does (action+object) AND WHY they do it (objective = the purpose or goal). If the memories explicitly state a purpose, use it. If the purpose is strongly implied by context or role (e.g. "running experiments" for a PhD student implies "to generate data for research"), infer it. Do NOT leave a task as bare action+object with no purpose clause. Example: write "running experiments to generate research data", NOT "running experiments"; write "attending lab meetings to give feedback on lab members' work", NOT "attending lab meetings". Exception: if neither the memories nor the role context give any basis for an objective, leave the task as-is rather than inventing one.
+- **Strip cadence/frequency from task names.** Do NOT embed scheduling phrases like "on a roughly monthly cadence", "every few weeks", "quarterly", "weekly", "a few times a year", "occasionally" inside the task description. Record only the bare action+object+objective. Example: write "writing up project proposals", NOT "working on writeups for project proposals on a roughly monthly cadence". Cadence belongs in Time Allocation or is captured separately — never in the Task Inventory entry itself.
+- **Dedup Task Inventory using action+object identity.** Two tasks are the same task ONLY if they share the same action AND the same object — one entry is just a less-specific way of saying the same thing (e.g. "reading books" vs "reading nonfiction books" — same action=reading, same object=books). In that case, keep ONLY the most specific version. Tasks that differ in either action OR object are DISTINCT tasks and must both be included. Example: "preparing for advisor meetings" (action=preparing, object=advisor meetings) and "attending lab meetings" (action=attending, object=lab meetings) are two different tasks — different action, different object. When in doubt, keep both.
+- **Split compound "X to Y" tasks when Y is itself a distinct activity.** If a task is phrased as "doing X to do Y" and Y is a separate action the user also performs (not just the purpose), list X and Y as two tasks. Example: "reading nonfiction books to write reviews" implies TWO tasks — "reading nonfiction books" AND "writing book reviews" — because writing reviews is itself a distinct activity consuming time, not merely the motivation for reading. Keep only the most specific phrasing of each.
+- **Prefer later refinements over earlier generic entries.** If the current portrait has "reading books" and later memories refine it to "reading nonfiction books to write reviews", REPLACE the earlier entry — do not keep both.
+- Time Allocation is a dict mapping each task name to its percentage-of-work-week string (e.g. {{"reading books": "65%", "administrative tasks": "35%"}}). Leave it as an empty object if the user did not quantify time allocation.
+- Priority Tasks should be a subset of (or at least consistent with) the Task Inventory — only the tasks the user flagged as most important or central. A task can be a priority even if it is low-frequency but high-stakes.
+- Leave a field as empty string, empty list, or empty object if there is genuinely no information for it
 - Return only the JSON object, no other text
 """
 

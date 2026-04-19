@@ -7,6 +7,7 @@ Embedding service with multiple backend options:
 Configure via EMBEDDING_BACKEND environment variable.
 """
 
+import asyncio
 from abc import ABC, abstractmethod
 from typing import List
 import numpy as np
@@ -172,12 +173,34 @@ class EmbeddingService:
         return self._backend.get_embedding_dimension()
 
     def get_embedding(self, text: str) -> np.ndarray:
-        """Generate embedding for a single text."""
+        """Generate embedding for a single text (BLOCKING).
+
+        Avoid calling this directly from coroutines on the session event loop —
+        the underlying OpenAI/vLLM client uses synchronous HTTP and will stall
+        the loop. Prefer `get_embedding_async` from async contexts.
+        """
         return self._backend.get_embedding(text)
 
     def get_embeddings_batch(self, texts: List[str]) -> List[np.ndarray]:
-        """Generate embeddings for multiple texts."""
+        """Generate embeddings for multiple texts (BLOCKING).
+
+        Prefer `get_embeddings_batch_async` from async contexts.
+        """
         return self._backend.get_embeddings_batch(texts)
+
+    async def get_embedding_async(self, text: str) -> np.ndarray:
+        """Async wrapper around `get_embedding` that offloads the blocking
+        HTTP call to a worker thread, so the asyncio event loop stays
+        responsive (e.g. so the API user-message buffer can still be served
+        to the frontend while embeddings are computed)."""
+        return await asyncio.to_thread(self._backend.get_embedding, text)
+
+    async def get_embeddings_batch_async(
+        self, texts: List[str]
+    ) -> List[np.ndarray]:
+        """Async wrapper around `get_embeddings_batch`. See
+        `get_embedding_async` for rationale."""
+        return await asyncio.to_thread(self._backend.get_embeddings_batch, texts)
 
     def is_noop(self) -> bool:
         """Check if embeddings are disabled (noop backend)."""
