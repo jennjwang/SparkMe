@@ -16,6 +16,7 @@ engine_constructor = {
     "gpt-4.1-mini": ChatOpenAI,
     "gpt-4.1-nano": ChatOpenAI,
     "gpt-5.1": ChatOpenAI,
+    "gpt-5.4": ChatOpenAI,
     "gpt-5-mini": ChatOpenAI,
     "gpt-5.4-mini": ChatOpenAI,
     "gpt-4o-mini-2024-07-18": ChatOpenAI,

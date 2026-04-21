@@ -395,6 +395,7 @@ def derive_tasks_from_messages(
         raw_tasks,
         model_name=organizer_model or derivation_model,
         screen=True,
+        append_uncovered_tasks=False,
     )
     derived_tasks = flatten_leaf_tasks(tree)
 

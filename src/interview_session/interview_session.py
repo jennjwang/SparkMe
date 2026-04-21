@@ -1,4 +1,5 @@
 import asyncio
+import copy
 import json
 import os
 import uuid
@@ -836,6 +837,42 @@ class InterviewSession:
         """Synthesize all session memories into the user portrait schema and save to file."""
         await self.ensure_user_portrait_fresh(wait_for_inflight=False)
 
+    def _task_inventory_stage_started(self) -> bool:
+        """Return True once interviewer turns have reached the Task Inventory topic."""
+        if getattr(self, "session_type", "intake") != "intake":
+            return True
+
+        agenda = getattr(self, "session_agenda", None)
+        topic_manager = getattr(agenda, "interview_topic_manager", None) if agenda else None
+        if topic_manager is None:
+            return True
+
+        task_topic_id = ""
+        for topic in topic_manager:
+            desc = str(getattr(topic, "description", "") or "").strip().lower()
+            if "task inventory" in desc:
+                task_topic_id = str(getattr(topic, "topic_id", "") or "").strip()
+                break
+
+        # Fail open when the configured interview plan has no Task Inventory topic.
+        if not task_topic_id:
+            return True
+
+        subtopic_prefix = f"{task_topic_id}."
+        for msg in self.chat_history:
+            if getattr(msg, "type", None) != MessageType.CONVERSATION:
+                continue
+            if str(getattr(msg, "role", "")).strip().lower() != "interviewer":
+                continue
+            metadata = getattr(msg, "metadata", {}) or {}
+            if not isinstance(metadata, dict):
+                continue
+            subtopic_id = str(metadata.get("subtopic_id", "")).strip()
+            if subtopic_id.startswith(subtopic_prefix):
+                return True
+
+        return False
+
     async def _generate_and_save_user_portrait_inner(self):
         from src.agents.session_scribe.prompts import get_prompt as scribe_get_prompt
         from src.utils.llm.engines import get_engine, invoke_engine
@@ -907,6 +944,28 @@ class InterviewSession:
             return
 
         portrait_data = normalize_user_portrait(portrait_data)
+
+        freeze_task_fields = (
+            getattr(self, "session_type", "intake") == "intake"
+            and not self._task_inventory_stage_started()
+        )
+        if freeze_task_fields and isinstance(portrait_data, dict):
+            task_fields = (
+                "Task Inventory",
+                "Priority Tasks",
+                "Time Allocation",
+                "Task Grouping Tree",
+                "Task Grouping Feedback",
+            )
+            for field in task_fields:
+                if isinstance(current_portrait, dict) and field in current_portrait:
+                    portrait_data[field] = copy.deepcopy(current_portrait[field])
+                else:
+                    portrait_data.pop(field, None)
+            SessionLogger.log_to_file(
+                "execution_log",
+                "[PORTRAIT] Frozen task fields before Task Inventory stage starts."
+            )
 
         # Enforce deterministic Task Inventory merge semantics:
         # same action+object => one task (objective does not distinguish tasks).

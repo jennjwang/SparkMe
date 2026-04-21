@@ -390,8 +390,8 @@ def login():
         login_user(user)
         app.logger.info(f"User logged in: {username} ({user_id})")
 
-        next_page = request.args.get('next') or request.form.get('next')
-        return redirect(next_page if next_page else url_for('index'))
+        # Always route through the interviewer-info page first.
+        return redirect(url_for('index', show_intro='1'))
 
         # --- password-based login (commented out) ---
         # password = request.form.get('password', '')
@@ -468,10 +468,12 @@ def logout():
 @login_required  # MUST BE LOGGED IN TO SEE INSTRUCTIONS
 def index():
     """Landing page with instructions - shown after login.
-    If the user already has a prior session (intake completed), skip to chat."""
+    If the user already has a prior session (intake completed), skip to chat
+    unless `show_intro=1` is provided."""
+    show_intro = request.args.get('show_intro', '').lower() in {'1', 'true', 'yes'}
     logs_dir = os.getenv("LOGS_DIR", "logs")
     user_logs = os.path.join(logs_dir, get_current_user().id, "execution_logs")
-    if REQUIRE_LOGIN and os.path.isdir(user_logs):
+    if REQUIRE_LOGIN and not show_intro and os.path.isdir(user_logs):
         session_dirs = [d for d in os.listdir(user_logs)
                         if d.startswith('session_') and
                         os.path.isdir(os.path.join(user_logs, d))]
@@ -1576,6 +1578,7 @@ def _organize_tasks_cached(tasks, grouping_feedback: str = ""):
             model_name=model_name,
             screen=True,
             grouping_feedback=feedback,
+            append_uncovered_tasks=False,
         )
     except Exception as e:
         if sig and leader and inflight is not None and not inflight.done():

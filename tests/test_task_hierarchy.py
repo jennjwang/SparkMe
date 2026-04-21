@@ -10,6 +10,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from src.utils.task_hierarchy import (
+    _build_screen_prompt,
     _collapse_core_duplicates,
     _collect_covered,
     _compose_merge_maps,
@@ -575,6 +576,29 @@ class TestOrganizeTasks:
         names = [n["name"] for n in result]
         assert "reading papers" in names
 
+    def test_can_disable_safety_net_task_append(self):
+        tasks = ["running experiments", "reading papers"]
+        dedup_resp = MagicMock()
+        dedup_resp.content = (
+            "<duplicates>"
+            + json.dumps(
+                [
+                    {"indices": [0]},
+                    {"indices": [1]},
+                ]
+            )
+            + "</duplicates>"
+        )
+        group_resp = _make_engine_response([{"name": "running experiments", "children": []}])
+        with patch("src.utils.task_hierarchy.get_engine") as mock_get_engine, \
+             patch("src.utils.task_hierarchy.invoke_engine", side_effect=[dedup_resp, group_resp]):
+            mock_get_engine.return_value = MagicMock()
+            result = organize_tasks(tasks, screen=False, append_uncovered_tasks=False)
+
+        names = [n["name"] for n in result]
+        assert "running experiments" in names
+        assert "reading papers" not in names
+
     def test_dedup_via_merged_from(self):
         # LLM merges two tasks — the merged_from list covers the dropped original
         tasks = ["running experiments to test", "running experiments to publish"]
@@ -699,6 +723,123 @@ class TestOrganizeTasks:
         assert len(result) == 1
         assert result[0]["name"] == "writing grant applications to secure funding"
         assert "writing grant applications" in (result[0].get("merged_from") or [])
+
+    def test_feedback_regroup_still_dedups_top_level_variants_against_group_children(self):
+        tasks = [
+            "Writing grants to secure research funding",
+            "Writing research papers to disseminate research findings",
+            "Writing grants",
+            "Writing research papers",
+        ]
+        dedup_resp = MagicMock()
+        dedup_resp.content = (
+            "<duplicates>"
+            + json.dumps([{"indices": [i]} for i in range(len(tasks))])
+            + "</duplicates>"
+        )
+        group_resp = _make_engine_response(
+            [
+                {
+                    "name": "writing research documents to secure funding and disseminate research findings",
+                    "is_group": True,
+                    "children": [
+                        {"name": "Writing grants to secure research funding", "children": []},
+                        {
+                            "name": "Writing research papers to disseminate research findings",
+                            "children": [],
+                        },
+                    ],
+                },
+                {"name": "Writing grants", "children": []},
+                {"name": "Writing research papers", "children": []},
+            ]
+        )
+        with patch("src.utils.task_hierarchy.get_engine") as mock_get_engine, \
+             patch("src.utils.task_hierarchy.invoke_engine", side_effect=[dedup_resp, group_resp]):
+            mock_get_engine.return_value = MagicMock()
+            result = organize_tasks(
+                tasks,
+                screen=False,
+                grouping_feedback="group writing tasks together",
+            )
+
+        top_names = [n["name"] for n in result]
+        assert "Writing grants" not in top_names
+        assert "Writing research papers" not in top_names
+
+        group = next(
+            n
+            for n in result
+            if n.get("is_group")
+            and n.get("name")
+            == "writing research documents to secure funding and disseminate research findings"
+        )
+        by_child_name = {c["name"]: c for c in (group.get("children") or [])}
+        assert "Writing grants" in (
+            by_child_name["Writing grants to secure research funding"].get("merged_from") or []
+        )
+        assert "Writing research papers" in (
+            by_child_name["Writing research papers to disseminate research findings"].get("merged_from")
+            or []
+        )
+
+    def test_screenshot_slack_variants_are_deduped(self):
+        tasks = [
+            "Attending meetings to coordinate work and collaborate with colleagues",
+            "Having meetings with post docs",
+            "Having meetings with ph. d students",
+            "Having meetings with research coordinators",
+            "Meeting co-authors",
+            "Writing research documents",
+            "Writing grants",
+            "Writing research papers",
+            "Communicating with colleagues via Slack messages",
+            "Preparing presentation materials",
+            "Providing career development guidance for trainees",
+            "Developing new research ideas",
+            "Slack messaging with colleagues",
+        ]
+        dedup_resp = MagicMock()
+        dedup_resp.content = (
+            "<duplicates>"
+            + json.dumps([{"indices": [i]} for i in range(len(tasks))])
+            + "</duplicates>"
+        )
+        group_resp = _make_engine_response(
+            [
+                {
+                    "name": "Attending meetings to coordinate work and collaborate with colleagues",
+                    "children": [
+                        {"name": "Having meetings with post docs", "children": []},
+                        {"name": "Having meetings with ph. d students", "children": []},
+                        {"name": "Having meetings with research coordinators", "children": []},
+                        {"name": "Meeting co-authors", "children": []},
+                    ],
+                },
+                {
+                    "name": "Writing research documents",
+                    "children": [
+                        {"name": "Writing grants", "children": []},
+                        {"name": "Writing research papers", "children": []},
+                    ],
+                },
+                {"name": "Communicating with colleagues via Slack messages", "children": []},
+                {"name": "Preparing presentation materials", "children": []},
+                {"name": "Providing career development guidance for trainees", "children": []},
+                {"name": "Developing new research ideas", "children": []},
+                {"name": "Slack messaging with colleagues", "children": []},
+            ]
+        )
+        with patch("src.utils.task_hierarchy.get_engine") as mock_get_engine, \
+             patch("src.utils.task_hierarchy.invoke_engine", side_effect=[dedup_resp, group_resp]):
+            mock_get_engine.return_value = MagicMock()
+            result = organize_tasks(tasks, screen=False)
+
+        top_level_names = [n["name"] for n in result]
+        assert "Communicating with colleagues via Slack messages" in top_level_names
+        # Regression: this duplicate variant should be absorbed instead of
+        # surviving as a separate top-level leaf.
+        assert "Slack messaging with colleagues" not in top_level_names
 
     def test_organize_tasks_latest_screenshot_regression_with_singleton_llm_dedup(self):
         tasks = [
@@ -842,6 +983,12 @@ class TestOrganizeTasks:
 # ---------------------------------------------------------------------------
 
 class TestScreening:
+    def test_screen_prompt_requires_work_only_tasks(self):
+        prompt = _build_screen_prompt(["doing taxes", "reviewing project proposals"])
+        assert "Work-related (not personal-life admin)?" in prompt
+        assert '"doing taxes"' in prompt
+        assert '"filing personal taxes"' in prompt
+
     def test_context_only_work_mode_detector(self):
         assert _is_context_only_work_mode_task("working from home")
         assert _is_context_only_work_mode_task("working from home to perform work remotely")
@@ -916,7 +1063,7 @@ class TestScreening:
 # Post-cluster duplicate collapse (near-duplicate aware)
 # ---------------------------------------------------------------------------
 
-class TestCollapseCoreDuplicates:
+class TestCollapseCoreDuplicatesNearDuplicates:
     def test_merges_near_duplicate_siblings(self):
         tree = [
             {
@@ -946,6 +1093,44 @@ class TestCollapseCoreDuplicates:
         assert result[0]["name"] == "writing grants to secure research funding"
         assert result[0]["children"] == []
         assert "writing grants" in (result[0].get("merged_from") or [])
+
+    def test_merges_top_level_leaf_with_group_child(self):
+        tree = [
+            {
+                "name": "writing research documents to secure funding and disseminate research findings",
+                "is_group": True,
+                "children": [
+                    {"name": "Writing grants to secure research funding", "children": []},
+                    {
+                        "name": "Writing research papers to disseminate research findings",
+                        "children": [],
+                    },
+                ],
+            },
+            {"name": "Writing grants", "children": []},
+            {"name": "Writing research papers", "children": []},
+        ]
+
+        result = _collapse_core_duplicates(tree)
+        top_level_names = [str(n.get("name") or "") for n in result]
+        assert "Writing grants" not in top_level_names
+        assert "Writing research papers" not in top_level_names
+
+        by_name = {str(n.get("name") or ""): n for n in result}
+        grants_leaf = None
+        papers_leaf = None
+        for child in by_name[
+            "writing research documents to secure funding and disseminate research findings"
+        ].get("children") or []:
+            if child.get("name") == "Writing grants to secure research funding":
+                grants_leaf = child
+            if child.get("name") == "Writing research papers to disseminate research findings":
+                papers_leaf = child
+
+        assert grants_leaf is not None
+        assert papers_leaf is not None
+        assert "Writing grants" in (grants_leaf.get("merged_from") or [])
+        assert "Writing research papers" in (papers_leaf.get("merged_from") or [])
 
 
 # ---------------------------------------------------------------------------

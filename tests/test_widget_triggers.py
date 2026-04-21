@@ -457,6 +457,24 @@ class TestTimeSplitWidget:
         assert MessageType.TIME_SPLIT_WIDGET in widget_types(fake_session)
 
     @pytest.mark.asyncio
+    async def test_first_time_allocation_question_explicitly_mentions_widget(
+        self, interviewer, fake_session, topic_manager
+    ):
+        subtopic_id = find_time_allocation_subtopic_id(topic_manager)
+        await interviewer._handle_response(
+            "Since your job market paper is the main thing right now, how would you roughly "
+            "break down your work time across everything you listed as percentages that add "
+            "up to about 100%?",
+            subtopic_id=subtopic_id,
+        )
+        interviewer_msgs = [
+            m for m in fake_session.chat_history
+            if m["message_type"] == MessageType.CONVERSATION and m["role"] == "Interviewer"
+        ]
+        assert interviewer_msgs, "expected an interviewer conversation message"
+        assert "widget" in interviewer_msgs[-1]["content"].lower()
+
+    @pytest.mark.asyncio
     async def test_fires_only_once(self, interviewer, fake_session, topic_manager):
         subtopic_id = find_time_allocation_subtopic_id(topic_manager)
         await interviewer._handle_response("Time widget.", subtopic_id=subtopic_id)

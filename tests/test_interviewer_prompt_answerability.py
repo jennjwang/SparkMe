@@ -62,64 +62,38 @@ def test_prompt_includes_no_domain_reask_and_no_repeat_probe_rules(interviewer, 
     assert "you keep asking this" in prompt
 
 
-def test_repetitive_breadth_probe_is_rewritten_to_specific_followup(interviewer, fake_session):
-    _prime_prompt_methods(fake_session)
-    interviewer.add_event(
-        sender="Interviewer",
-        tag="message",
-        content="Outside of teaching and research, what else do you do now and then?",
-    )
-    interviewer.add_event(
-        sender="User",
-        tag="message",
-        content="I'm in meetings a lot to direct students on research tasks.",
-    )
-
-    rewritten = interviewer._rewrite_repetitive_breadth_probe(
-        "Besides that, what else is on your plate?",
-    )
-
-    assert "what else" not in rewritten.lower()
-    assert "anything else" not in rewritten.lower()
-    assert rewritten.startswith("You mentioned ")
-    assert "What's the main outcome you're aiming for there?" in rewritten
-
-
-def test_first_breadth_probe_is_not_rewritten(interviewer, fake_session):
-    _prime_prompt_methods(fake_session)
-    rewritten = interviewer._rewrite_repetitive_breadth_probe(
-        "Besides teaching and research, what else is on your plate?",
-    )
-    assert rewritten == "Besides teaching and research, what else is on your plate?"
-
-
-def test_multi_quant_question_is_rewritten_to_single_qualitative_followup(interviewer, fake_session):
+@pytest.mark.asyncio
+async def test_llm_rewrite_applies_when_model_requests_rewrite(interviewer, fake_session):
     _prime_prompt_methods(fake_session)
     interviewer.add_event(
         sender="User",
         tag="message",
-        content="I met with trainees and coordinators to align priorities for experiments and paperwork.",
+        content="I met with trainees and coordinators to align priorities.",
+    )
+    interviewer.call_engine_async = AsyncMock(
+        return_value=(
+            '{"rewrite": true, '
+            '"question": "You mentioned trainee coordination. What do those meetings usually focus on?", '
+            '"reason": "single-focus follow-up"}'
+        )
     )
 
-    rewritten = interviewer._rewrite_multi_quant_question(
+    rewritten = await interviewer._rewrite_question_with_llm(
         "On a recent Tuesday, roughly how many separate meetings did you have with postdocs, "
         "PhD students, and coordinators, and about how long do they usually run?",
         subtopic_id="2.2",
     )
 
-    assert "how many" not in rewritten.lower()
-    assert "how long" not in rewritten.lower()
-    assert rewritten.count("?") == 1
-    assert "focus on" in rewritten.lower()
+    assert rewritten == "You mentioned trainee coordination. What do those meetings usually focus on?"
 
 
-def test_multi_quant_question_in_time_allocation_subtopic_rewrites_to_single_split(interviewer, fake_session):
+@pytest.mark.asyncio
+async def test_llm_rewrite_keeps_original_on_invalid_payload(interviewer, fake_session):
     _prime_prompt_methods(fake_session)
-    rewritten = interviewer._rewrite_multi_quant_question(
-        "Roughly how many blocks do you have and how long is each one?",
-        subtopic_id="2.4",
-    )
-    assert rewritten == "Roughly how is your time split across the main tasks you mentioned this week?"
+    interviewer.call_engine_async = AsyncMock(return_value="not-json")
+    question = "Besides that, what else is on your plate?"
+    rewritten = await interviewer._rewrite_question_with_llm(question, subtopic_id="2.2")
+    assert rewritten == question
 
 
 def test_semantic_duplicate_gate_skips_low_risk_question(interviewer, fake_session, monkeypatch):
@@ -145,13 +119,42 @@ def test_semantic_duplicate_gate_runs_for_breadth_probe(interviewer, fake_sessio
     assert should_run is True
 
 
-def test_semantic_duplicate_gate_runs_for_task_list_collection_subtopic(
+def test_semantic_duplicate_gate_skips_low_risk_task_list_collection_subtopic(
     interviewer, fake_session, monkeypatch
 ):
     _prime_prompt_methods(fake_session)
     monkeypatch.setenv("INTERVIEWER_SEMANTIC_DUP_MODE", "auto")
     should_run = interviewer._should_run_semantic_duplicate_llm(
         "How long have you been in this postdoc role?",
+        subtopic_id="2.2",
+    )
+    assert should_run is False
+
+
+def test_llm_rewrite_gate_skips_low_risk_question(interviewer, fake_session, monkeypatch):
+    _prime_prompt_methods(fake_session)
+    monkeypatch.setenv("INTERVIEWER_LLM_REWRITE_MODE", "auto")
+    interviewer._rewrite_mode = "auto"
+    interviewer.add_event(
+        sender="Interviewer",
+        tag="message",
+        content="What does your week look like?",
+    )
+    should_run = interviewer._should_run_llm_rewrite(
+        "How long have you been in this postdoc role?",
+        subtopic_id="1.2",
+    )
+    assert should_run is False
+
+
+def test_llm_rewrite_gate_runs_for_multi_quant_task_list_question(
+    interviewer, fake_session, monkeypatch
+):
+    _prime_prompt_methods(fake_session)
+    monkeypatch.setenv("INTERVIEWER_LLM_REWRITE_MODE", "auto")
+    interviewer._rewrite_mode = "auto"
+    should_run = interviewer._should_run_llm_rewrite(
+        "On a recent Tuesday, roughly how many separate meetings did you have, and about how long do they usually run?",
         subtopic_id="2.2",
     )
     assert should_run is True
@@ -222,15 +225,76 @@ async def test_handle_response_runs_semantic_duplicate_llm_for_task_list_collect
     interviewer.add_event(
         sender="Interviewer",
         tag="message",
-        content="What does your week look like?",
+        content="Over a typical month or quarter, are there any other types of work you spend significant time on?",
+    )
+    interviewer.add_event(
+        sender="Interviewer",
+        tag="message",
+        content="Beyond your weekly work, what kinds of tasks come up monthly or quarterly?",
     )
 
     await interviewer._handle_response(
-        "How long have you been in this postdoc role?",
+        "Over a typical month or quarter, are there any other types of work you spend meaningful time on?",
         subtopic_id="2.2",
     )
 
     interviewer._check_semantic_duplicate.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_semantic_duplicate_judge_prompt_blocks_numeric_for_task_list_completion(
+    interviewer, fake_session, monkeypatch
+):
+    _prime_prompt_methods(fake_session)
+    monkeypatch.setenv("INTERVIEWER_SEMANTIC_DUP_MODE", "auto")
+    interviewer.add_event(
+        sender="Interviewer",
+        tag="message",
+        content="Beyond your weekly tasks, what work comes up monthly or quarterly?",
+    )
+    interviewer.add_event(
+        sender="User",
+        tag="message",
+        content="I provide career development guidance for trainees.",
+    )
+    interviewer.call_engine_async = AsyncMock(
+        return_value='{"is_duplicate": false, "matches": "", "reason": "", "replacement": ""}'
+    )
+
+    await interviewer._check_semantic_duplicate(
+        "When you provide career development guidance for your trainees, about how many trainees are you actively mentoring right now?",
+        subtopic_id="2.2",
+    )
+
+    prompt = interviewer.call_engine_async.await_args.args[0]
+    assert "Numeric policy:" in prompt
+    assert "avoid count/duration questions" in prompt
+    assert "a number, a frequency" not in prompt
+
+
+@pytest.mark.asyncio
+async def test_llm_rewrite_prompt_preserves_coverage_and_discourages_numeric_for_task_list_completion(
+    interviewer, fake_session
+):
+    _prime_prompt_methods(fake_session)
+    interviewer.add_event(
+        sender="User",
+        tag="message",
+        content="I provide career development guidance for trainees.",
+    )
+    interviewer.call_engine_async = AsyncMock(
+        return_value='{"rewrite": false, "question": "When you provide career development guidance for your trainees, about how many trainees are you actively mentoring right now?", "reason": ""}'
+    )
+
+    await interviewer._rewrite_question_with_llm(
+        "When you provide career development guidance for your trainees, about how many trainees are you actively mentoring right now?",
+        subtopic_id="2.2",
+    )
+
+    prompt = interviewer.call_engine_async.await_args.args[0]
+    assert "Preserve the same coverage target" in prompt
+    assert "do NOT ask headcount/count/duration questions" in prompt
+    assert "criteria do NOT explicitly require numbers" in prompt
 
 
 @pytest.mark.asyncio
@@ -271,7 +335,12 @@ async def test_handle_response_rewrites_multi_quant_question_before_sending(
     _prime_prompt_methods(fake_session)
     monkeypatch.setenv("INTERVIEWER_SEMANTIC_DUP_MODE", "off")
     monkeypatch.setenv("INTERVIEWER_INFERABILITY_MODE", "off")
+    monkeypatch.setenv("INTERVIEWER_LLM_REWRITE_MODE", "always")
+    interviewer._rewrite_mode = "always"
     interviewer._inferability_mode = "off"
+    interviewer._rewrite_question_with_llm = AsyncMock(
+        return_value="You mentioned meetings with postdocs and coordinators. What do those meetings usually focus on?"
+    )
     interviewer.add_event(
         sender="User",
         tag="message",
@@ -285,6 +354,7 @@ async def test_handle_response_rewrites_multi_quant_question_before_sending(
     )
 
     sent = fake_session.chat_history[-1]["content"]
-    assert "how many" not in sent.lower()
-    assert "how long" not in sent.lower()
-    assert sent.count("?") == 1
+    interviewer._rewrite_question_with_llm.assert_awaited_once()
+    assert sent == (
+        "You mentioned meetings with postdocs and coordinators. What do those meetings usually focus on?"
+    )

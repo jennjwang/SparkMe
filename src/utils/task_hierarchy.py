@@ -21,6 +21,7 @@ appended as a top-level leaf so we never silently drop a screened task.
 import json
 import os
 import re
+import time
 from difflib import SequenceMatcher
 from functools import lru_cache
 from typing import List, Dict, Any, Set
@@ -38,12 +39,7 @@ _DEFAULT_CRITERIA: List[str] = [
     "Tasks represent the same type of work even if phrased differently by different people",
 ]
 
-_RUN_REFINE_PASS = os.getenv("TASK_HIERARCHY_ENABLE_PASS3", "").strip().lower() in {
-    "1",
-    "true",
-    "yes",
-    "on",
-}
+_RUN_REFINE_PASS = False
 _FIRST_PERSON_CONTRACTIONS_RE = re.compile(
     r"\b(i['’](?:m|ve|d|ll)|we['’](?:re|ve|d|ll))\b",
     re.IGNORECASE,
@@ -92,6 +88,7 @@ def _build_prompt(
 - Rewrite vague verbs ("working on", "handling") to the specific action implied.
 - Split if it bundles 2+ unrelated activities.
 - Reject aspirations, goals, and role descriptions with no specific action.
+- Reject personal/non-work activities (e.g., doing personal taxes, personal errands).
 
 """ if screen else ""
     rejected_note = "- Rejected tasks are omitted entirely.\n" if screen else ""
@@ -112,18 +109,22 @@ Show your reasoning in <thinking>...</thinking>, then output JSON in <hierarchy>
 
 ## In <thinking>: {("Screen, " if screen else "")}Cluster, then Deduplicate
 
-{screen_section}**Cluster** — for each task, extract (a) action verb, (b) object domain, and (c) objective (the purpose or outcome). Then group by shared action + object domain:
-- Tasks sharing the same specific object belong together regardless of verb.
+{screen_section}**Cluster** — for each task, extract (a) action verb, (b) direct object, and (c) objective (the purpose or outcome, if stated). Then group using this priority:
+- When parsing (b), separate the **direct object** (what is acted on) from the **downstream artifact** (where the output flows to). For "writing grants to secure funding": direct object = *grants*, downstream = *funding*. For "ideating ideas for research papers": direct object = *ideas*, downstream = *papers*. Tasks with the same direct object can merge even when the downstream artifact differs.
+- **Preferred — group by shared action + direct object + objective** when all cluster members have a clear, consistent objective. Members must share roughly the same purpose, not just the same verb and object.
+- **Fallback — group by shared action + direct object** when members lack a stated objective, or their objectives diverge. Do not invent an objective for the group in this case.
+- Tasks sharing the same specific direct object belong together regardless of verb.
 - Tasks sharing the same broad object domain belong together.
 - ALL meeting/talk/seminar/check-in activities → ONE cluster, regardless of verb or audience.
-- Group workflow-lifecycle siblings under one parent when they act on the same artifact class (e.g., running experiments + analyzing experiment results).
+- **Ideation-class tasks** (verbs: "ideating", "developing ideas", "brainstorming", "conceptualizing", "thinking through") have direct object = *ideas*, not the downstream artifact. When two or more ideation tasks appear, **merge them into a single leaf** with all sources in `merged_from` — do NOT split them across downstream-artifact workflows, and do NOT create an invented group with them as children. Test: could a single ideation session plausibly produce output for both? If yes, they are the same activity — merge into one leaf. Example: "ideating ideas and framing for research papers" + "developing new research ideas for future projects" → ONE leaf node like "ideating research ideas and framing for papers and future projects" with both originals in `merged_from`. Only keep ideation tasks separate when the streams are genuinely unrelated (e.g., "ideating product features" vs "ideating marketing copy"). This rule takes precedence over the workflow-lifecycle-sibling rule below.
+- Group workflow-lifecycle siblings under one parent when they act on the same artifact class (e.g., running experiments + analyzing experiment results). Does NOT apply to ideation-class tasks — see rule above.
 - "reading X" and "writing X" are always separate even if the same object class.
-- For each cluster, derive the shared objective from the extracted (c) values of its members.
-- Name each cluster as a full task statement in the exact shape "<action> <object> to <purpose>".
-- The label MUST contain all three parts: a concrete action verb, a concrete object/domain, and a purpose after "to".
-- Use descriptive labels (typically 8-18 words). Avoid short noun phrases like "Meetings and talks", "Experimentation", or "Writing".
+- Name each cluster as a full task statement:
+  - If the cluster has a shared objective → use the shape "<action> <object> to <purpose>".
+  - If no shared objective (fallback grouping) → use the shape "<action> <object>" with NO "to ..." clause. Do not fabricate a purpose just to fill the slot.
+- Use descriptive labels (typically 6–18 words). Avoid short noun phrases like "Meetings and talks", "Experimentation", or "Writing".
 - Write high-level labels as impersonal task statements: remove personal association words (e.g., "I", "my", "we", "our").
-- Good example: "participating in meetings and talks to exchange updates and feedback".
+- Good examples: "participating in meetings and talks to exchange updates and feedback" (shared objective); "reviewing documents" (no shared objective).
 
 **Deduplicate** — merge when tasks share the same action AND the same direct object (the thing being acted on). Trailing clauses — purpose ("to ..."), beneficiary ("for ..."), or tool qualifiers ("using AI ...") — do NOT make tasks distinct. When in doubt, prefer merging; keep the single most informative phrasing.
 
@@ -138,9 +139,12 @@ Merge patterns (all of these MUST be merged):
   "Preparing for presentations" + "Preparing presentations to communicate work" → MERGE
 - Tool qualifier on one variant only:
   "Running experiments using AI tools" + "Running experiments" → MERGE. Keep tool context as a trailing qualifier: "<action> <object> to <purpose> with <tool>".
+- Ideation-class variants (verbs: "ideating", "developing ideas", "brainstorming", "conceptualizing") name the same core activity. When you see two of them, compare what the ideas are for:
+  - If both feed into the same broad work stream, MERGE. Example: "ideating ideas and framing for research papers" + "developing new research ideas for future projects" → MERGE — both are research-output ideation. Test: could a single ideation session plausibly produce output for both? If yes, merge.
+  - If they feed into genuinely different streams, keep separate. Example: "ideating product features" vs "ideating marketing copy" — different streams.
 
 Do NOT merge:
-- Different objects (writing grants vs writing papers).
+- Different direct objects (writing grants vs writing papers).
 - Different actions on the same object (reading papers vs writing papers).
 - Different document types (proposal vs manuscript).
 - Preparing for X vs attending X (different actions, not stylistic variants).
@@ -156,7 +160,7 @@ Prefer fewer coherent top-level buckets over many flat leaves. If the input has 
 
 Before finalizing output, do a self-check:
 - If you created multiple meeting-like buckets, merge them into one descriptive meetings bucket.
-- If any invented group label is not in "<action> <object> to <purpose>" form, rewrite it.
+- If any invented group label is not in "<action> <object> to <purpose>" form (when members share a purpose) or "<action> <object>" form (when they don't), rewrite it.
 - If you left many near-duplicate top-level leaves, re-cluster them before emitting JSON.
 
 Two kinds of parent nodes:
@@ -191,6 +195,14 @@ Example (illustrative — do not copy task names):
   {{
     "name": "reading papers to track the field",
     "children": []
+  }},
+  {{
+    "name": "reviewing documents",
+    "is_group": true,
+    "children": [
+      {{"name": "reviewing grant proposals", "children": []}},
+      {{"name": "reviewing manuscript drafts for journals", "children": []}}
+    ]
   }}
 ]
 </hierarchy>
@@ -294,21 +306,31 @@ def _build_dedup_prompt(tasks: List[str]) -> str:
 ---
 
 ## Your Job
-Identify tasks that describe the **same core work activity** and should be merged.
+Identify tasks that describe the **same core work activity** and should be deduplicated.
 
-Merge tasks when:
-- They share the same action verb AND object domain (e.g. both are about writing grants)
-- One is a specific instance of the other (attending standups IS sharing progress updates)
-- Trailing purpose ("to <X>"), beneficiary ("for <X>"), or tool qualifiers ("using AI") do not make them distinct
-- Separating them would not be meaningful to a job analyst or worker
+Deduplicate and merge tasks when:
+- They describe the same core action and direct object, even if phrased differently (paraphrased verbs, colloquial vs concise, time/hedge/filler qualifiers).
+- One is a specific instance of the other (attending standups IS sharing progress updates).
+- Trailing purpose, beneficiary, tool, or time qualifiers don't make them distinct.
+- Separating them would not be meaningful to a job analyst or worker.
+
+Concrete merge examples (these MUST merge):
+- "teach executive education sessions" + "do executive teachings"
+- "brainstorm ideas for the Infosys collaboration" + "spend like four hours brainstorming exactly what to do with Infosys"
+- "send event logistics emails for a conference" + "send out some emails because organizing an event for a conference"
+- "visiting companies to conduct field work" + "going to companies to do field work"
 
 Do NOT merge tasks that:
-- Differ substantially in object (e.g. "review code" vs "review documentation")
-- Use different core actions (e.g. "reading papers" vs "writing papers")
-- Serve different audiences or have substantially different outcomes
+- Differ substantially in direct object (e.g. "review code" vs "review documentation").
+- Use genuinely different core actions (e.g. "reading papers" vs "writing papers").
+- Serve different audiences or have substantially different outcomes.
 
-For merged tasks, write a NEW statement that covers all merged sources without losing specificity.
-Use the structure: <Action> <object> to <immediate outcome>.
+For merged tasks, pick the most specific source variant as the base and only minimally adjust it. Requirements:
+- The merged statement MUST preserve every concrete modifier present in ANY source: object qualifiers ("data analysis", "project proposals"), domain/context ("for research projects", "with company employees"), and named entities ("Infosys", "conference").
+- Do NOT abstract the verb or object to a shorter generic form. "run data analysis for research projects" + "run analysis during project phases" → "running data analysis for research projects" (NOT "running analysis").
+- Do NOT drop named entities, domains, or object qualifiers in the name of brevity.
+- If the sources genuinely share no common specifics, keep the longest source phrasing verbatim rather than synthesizing a vaguer umbrella.
+- Use the structure: <Action> <object> to <immediate outcome>, keeping all preserved specifics. Prefer the clearest non-colloquial phrasing.
 
 ## Output
 
@@ -587,7 +609,7 @@ def _apply_dedup_merges_to_tree(
 def _build_screen_prompt(tasks: List[str]) -> str:
     task_list = "\n".join(f"{i}. {t}" for i, t in enumerate(tasks))
     return f"""You are a job analyst screening worker-reported task statements for validity.
-Your goal is to keep only concrete, recurring activities the person CURRENTLY PERFORMS —
+Your goal is to keep only concrete, recurring WORK activities the person CURRENTLY PERFORMS —
 not goals, research agendas, aspirations, or descriptions of a domain they work in.
 
 ## Task statements ({len(tasks)} statements)
@@ -597,7 +619,7 @@ not goals, research agendas, aspirations, or descriptions of a domain they work 
 
 ## Instructions
 
-For each statement, apply these five checks:
+For each statement, apply these seven checks:
 
 1. **Currently performed?** — Is the activity itself something the person does in a typical week
    or month? Judge the action, not the outcome — writing a proposal about future work passes
@@ -615,7 +637,10 @@ For each statement, apply these five checks:
 
 2. **Specific action?** — Does it name a concrete, observable verb?
    Pass: "Debug", "Review", "Write", "Run", "Analyze", "Draft", "Read", "Attend", "Listen to",
-         "Design", "Build", "Train", "Deploy", "Investigate" (when paired with concrete object)
+         "Design", "Build", "Train", "Deploy", "Investigate" (when paired with concrete object),
+         "Ideate", "Brainstorm", "Conceptualize", "Develop ideas for", "Think through"
+         (cognitive work counts when paired with a concrete object like ideas, framings,
+         research directions, or plans — the output is observable even if the thinking isn't).
    Fail: verbs so broad that a watching stranger couldn't tell what the person is physically doing.
    Common vague verbs that MUST be rewritten: "working on", "doing", "handling", "managing",
    "dealing with", "helping with", "leveraging" — always rewrite these to the specific action implied
@@ -641,6 +666,13 @@ For each statement, apply these five checks:
    (e.g., remote/on-site/home/in-office) without naming a concrete work activity and object.
    Fail: "working from home", "working remotely", "working from home to perform work remotely"
    Pass: "writing research papers from home", "running experiments remotely"
+
+7. **Work-related (not personal-life admin)?** — Keep only activities tied to the person's job,
+   research, organization, or professional responsibilities. Reject personal-life tasks even if
+   they are concrete and recurring.
+   Pass: "sending conference logistics emails", "reviewing proposal methods sections"
+   Fail: "doing taxes", "filing personal taxes", "scheduling personal medical appointments",
+         "planning personal vacation travel", "buying groceries"
 
 ## Rewriting
 
@@ -1114,7 +1146,104 @@ def _collapse_core_duplicates(tree: List[Dict[str, Any]]) -> List[Dict[str, Any]
             node["children"] = children
         return nodes
 
-    return _walk(tree)
+    def _iter_leaf_refs(nodes: List[Dict[str, Any]], depth: int = 0) -> List[Dict[str, Any]]:
+        refs: List[Dict[str, Any]] = []
+        if not isinstance(nodes, list):
+            return refs
+        for node in nodes:
+            if not isinstance(node, dict):
+                continue
+            children = node.get("children") or []
+            if children:
+                refs.extend(_iter_leaf_refs(children, depth + 1))
+            if node.get("is_group"):
+                continue
+            # Cross-level pass only deduplicates true leaves.
+            if children:
+                continue
+            refs.append({"node": node, "depth": depth})
+        return refs
+
+    def _prefer_leaf_ref(candidate: Dict[str, Any], incumbent: Dict[str, Any]) -> bool:
+        """Choose a winner for near-duplicate leaf pairs.
+
+        Prefer keeping grouped children over loose root leaves when possible,
+        then prefer the more informative (longer) statement.
+        """
+        c_depth = int(candidate.get("depth") or 0)
+        i_depth = int(incumbent.get("depth") or 0)
+        c_grouped = c_depth > 0
+        i_grouped = i_depth > 0
+        if c_grouped != i_grouped:
+            return c_grouped
+
+        c_name = str((candidate.get("node") or {}).get("name") or "").strip()
+        i_name = str((incumbent.get("node") or {}).get("name") or "").strip()
+        if len(c_name) != len(i_name):
+            return len(c_name) > len(i_name)
+        return False
+
+    def _collapse_cross_level_leaf_duplicates(nodes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        leaf_refs = _iter_leaf_refs(nodes)
+        if len(leaf_refs) <= 1:
+            return nodes
+
+        winners: List[Dict[str, Any]] = []
+        removed_ids: Set[int] = set()
+
+        for ref in leaf_refs:
+            node = ref.get("node")
+            if not isinstance(node, dict) or id(node) in removed_ids:
+                continue
+            name = str(node.get("name") or "").strip()
+            if not name:
+                continue
+
+            matched_idx = None
+            for idx, existing_ref in enumerate(winners):
+                existing_node = existing_ref.get("node")
+                if not isinstance(existing_node, dict) or id(existing_node) in removed_ids:
+                    continue
+                existing_name = str(existing_node.get("name") or "").strip()
+                if existing_name and _is_near_duplicate_task_name(name, existing_name):
+                    matched_idx = idx
+                    break
+
+            if matched_idx is None:
+                winners.append(ref)
+                continue
+
+            winner_ref = winners[matched_idx]
+            winner_node = winner_ref["node"]
+            loser_node = node
+
+            if _prefer_leaf_ref(ref, winner_ref):
+                winner_node = node
+                loser_node = winner_ref["node"]
+                winners[matched_idx] = ref
+
+            _merge_leaf_node_into_winner(winner_node, loser_node)
+            removed_ids.add(id(loser_node))
+
+        if not removed_ids:
+            return nodes
+
+        def _prune(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+            out: List[Dict[str, Any]] = []
+            for item in items or []:
+                if not isinstance(item, dict):
+                    continue
+                if id(item) in removed_ids:
+                    continue
+                children = item.get("children") or []
+                if children:
+                    item["children"] = _prune(children)
+                out.append(item)
+            return out
+
+        return _prune(nodes)
+
+    return _collapse_cross_level_leaf_duplicates(_walk(tree))
 
 
 def _apply_coverage_safety_net(tree: List[Dict[str, Any]], tasks: List[str]) -> List[Dict[str, Any]]:
@@ -1302,132 +1431,160 @@ def organize_tasks(
     model_name: str = "gpt-5.4",
     screen: bool = False,
     grouping_feedback: str = "",
+    append_uncovered_tasks: bool = True,
 ) -> List[Dict[str, Any]]:
     """Return a tree of nodes (dedup + group, optionally with screening in a single LLM call).
 
     screen=False (default): tasks are assumed already clean (e.g. from portrait generation).
     screen=True: adds an O*NET-style validity/rewrite pass before grouping.
+    append_uncovered_tasks=True (default): append any covered-task gaps as flat leaves.
     On any failure, returns the input as a flat list of leaves.
     """
-    cleaned = [str(t).strip() for t in tasks if str(t).strip()]
-    if len(cleaned) <= 1:
-        return _flat_fallback(cleaned)
-
+    total_t0 = time.perf_counter()
+    screen_ms = 0.0
+    dedup_ms = 0.0
+    group_ms = 0.0
     try:
-        engine = get_engine(model_name)
-    except Exception:
-        if model_name != "gpt-5.1":
+        cleaned = [str(t).strip() for t in tasks if str(t).strip()]
+        if len(cleaned) <= 1:
+            return _flat_fallback(cleaned)
+
+        try:
+            engine = get_engine(model_name)
+        except Exception:
+            if model_name != "gpt-5.1":
+                try:
+                    print(
+                        f"[task_hierarchy] model '{model_name}' unavailable; falling back to 'gpt-5.1'"
+                    )
+                    engine = get_engine("gpt-5.1")
+                except Exception:
+                    return _flat_fallback(cleaned)
+            else:
+                return _flat_fallback(cleaned)
+
+        if screen:
+            screen_t0 = time.perf_counter()
             try:
-                print(
-                    f"[task_hierarchy] model '{model_name}' unavailable; falling back to 'gpt-5.1'"
+                cleaned = _screen_tasks(cleaned, engine)
+            finally:
+                screen_ms = (time.perf_counter() - screen_t0) * 1000.0
+            if len(cleaned) <= 1:
+                return _flat_fallback(cleaned)
+
+        dedup_t0 = time.perf_counter()
+        try:
+            # LLM-only dedup. Preserve verbatim strings for all inputs (including
+            # dropped) so downstream cache/merged_from still round-trip correctly.
+            verbatim = {_norm(t): t for t in cleaned}
+            cleaned, dedup_merge_map = _dedup_tasks_llm(cleaned, engine)
+        finally:
+            dedup_ms = (time.perf_counter() - dedup_t0) * 1000.0
+
+        group_t0 = time.perf_counter()
+        try:
+            try:
+                normalized_feedback = _normalize_grouping_feedback(grouping_feedback)
+                if len(cleaned) <= 1:
+                    tree = _flat_fallback(cleaned)
+                    tree = _apply_dedup_merges_to_tree(tree, dedup_merge_map)
+                    return tree
+                tree = _sanitize(
+                    _invoke_and_parse_hierarchy(
+                        engine,
+                        _build_prompt(
+                            cleaned,
+                            screen=screen,
+                            grouping_feedback=normalized_feedback,
+                        ),
+                        cleaned,
+                    ),
+                    verbatim,
                 )
-                engine = get_engine("gpt-5.1")
+                if not tree:
+                    # Model-first fallback: ask for a clean regroup starting from a flat seed.
+                    flat_seed = _flat_fallback(cleaned)
+                    tree = _sanitize(
+                        _invoke_and_parse_hierarchy(
+                            engine,
+                            _build_refine_prompt(
+                                cleaned,
+                                flat_seed,
+                                grouping_feedback=normalized_feedback,
+                            ),
+                            cleaned,
+                        ),
+                        verbatim,
+                    )
+                if not tree:
+                    return _flat_fallback(cleaned)
+
+                # Remove top-level leaves already present as children of a group node.
+                child_names = {
+                    _norm(c["name"])
+                    for n in tree if n.get("is_group")
+                    for c in n.get("children") or []
+                }
+                tree = [
+                    n for n in tree if n.get("is_group") or _norm(n["name"]) not in child_names
+                ]
+
+                # Structural cleanup before optional refine.
+                tree = _dedupe_leaf_nodes(tree)
+                tree = _collapse_core_duplicates(tree)
+                tree = _dedupe_leaf_nodes(tree)
+                if append_uncovered_tasks:
+                    tree = _apply_coverage_safety_net(tree, cleaned)
+
+                # Optional pass-3 smart repair (disabled by default for latency).
+                if _RUN_REFINE_PASS and _needs_smart_refine(tree, cleaned):
+                    tree = _smart_refine_grouping(
+                        tree=tree,
+                        tasks=cleaned,
+                        engine=engine,
+                        verbatim=verbatim,
+                        grouping_feedback=normalized_feedback,
+                    )
+
+                # Final cleanup for AI-tool variants and duplicate leaves.
+                tree = _merge_ai_tool_variants(tree)
+                tree = _collapse_core_duplicates(tree)
+                tree = _dedupe_leaf_nodes(tree)
+                if append_uncovered_tasks:
+                    tree = _apply_coverage_safety_net(tree, cleaned)
+
+                # Fold pre-dedup drops into the matching leaf's merged_from so the UI
+                # still reflects what was absorbed.
+                tree = _apply_dedup_merges_to_tree(tree, dedup_merge_map)
+
+                # Presentation normalization: top-level nodes should be written as
+                # impersonal task statements (no first-person phrasing).
+                tree = _rewrite_high_level_task_names(tree)
+
+                print("[task_hierarchy] GROUP pass:")
+                for n in tree:
+                    if n.get("is_group"):
+                        print(f"  [group] {n['name']}")
+                        for c in n.get("children") or []:
+                            merged = c.get("merged_from") or []
+                            suffix = f"  ← merged: {merged}" if merged else ""
+                            print(f"    {c['name']}{suffix}")
+                    else:
+                        merged = n.get("merged_from") or []
+                        suffix = f"  ← merged: {merged}" if merged else ""
+                        print(f"  {n['name']}{suffix}")
+
+                return tree
             except Exception:
                 return _flat_fallback(cleaned)
-        else:
-            return _flat_fallback(cleaned)
-
-    if screen:
-        cleaned = _screen_tasks(cleaned, engine)
-        if len(cleaned) <= 1:
-            return _flat_fallback(cleaned)
-
-    # LLM-only dedup. Preserve verbatim strings for all inputs (including
-    # dropped) so downstream cache/merged_from still round-trip correctly.
-    verbatim = {_norm(t): t for t in cleaned}
-    cleaned, llm_merge_map = _dedup_tasks_llm(cleaned, engine)
-    cleaned, fuzzy_merge_map = _dedup_tasks_fuzzy(cleaned)
-    dedup_merge_map = _compose_merge_maps(llm_merge_map, fuzzy_merge_map)
-
-    try:
-        normalized_feedback = _normalize_grouping_feedback(grouping_feedback)
-        if len(cleaned) <= 1:
-            tree = _flat_fallback(cleaned)
-            tree = _apply_dedup_merges_to_tree(tree, dedup_merge_map)
-            return tree
-        tree = _sanitize(
-            _invoke_and_parse_hierarchy(
-                engine,
-                _build_prompt(
-                    cleaned,
-                    screen=screen,
-                    grouping_feedback=normalized_feedback,
-                ),
-                cleaned,
-            ),
-            verbatim,
+        finally:
+            group_ms = (time.perf_counter() - group_t0) * 1000.0
+    finally:
+        total_ms = (time.perf_counter() - total_t0) * 1000.0
+        print(
+            "[task_hierarchy] TIMING:"
+            f" screen_ms={screen_ms:.2f}"
+            f" dedup_ms={dedup_ms:.2f}"
+            f" group_ms={group_ms:.2f}"
+            f" total_ms={total_ms:.2f}"
         )
-        if not tree:
-            # Model-first fallback: ask for a clean regroup starting from a flat seed.
-            flat_seed = _flat_fallback(cleaned)
-            tree = _sanitize(
-                _invoke_and_parse_hierarchy(
-                    engine,
-                    _build_refine_prompt(
-                        cleaned,
-                        flat_seed,
-                        grouping_feedback=normalized_feedback,
-                    ),
-                    cleaned,
-                ),
-                verbatim,
-            )
-        if not tree:
-            return _flat_fallback(cleaned)
-
-        # Remove top-level leaves already present as children of a group node.
-        child_names = {
-            _norm(c["name"])
-            for n in tree if n.get("is_group")
-            for c in n.get("children") or []
-        }
-        tree = [
-            n for n in tree if n.get("is_group") or _norm(n["name"]) not in child_names
-        ]
-
-        # Structural cleanup before optional refine.
-        tree = _dedupe_leaf_nodes(tree)
-        tree = _collapse_core_duplicates(tree)
-        tree = _dedupe_leaf_nodes(tree)
-        tree = _apply_coverage_safety_net(tree, cleaned)
-
-        # Optional pass-3 smart repair (disabled by default for latency).
-        if _RUN_REFINE_PASS and _needs_smart_refine(tree, cleaned):
-            tree = _smart_refine_grouping(
-                tree=tree,
-                tasks=cleaned,
-                engine=engine,
-                verbatim=verbatim,
-                grouping_feedback=normalized_feedback,
-            )
-
-        # Final cleanup for AI-tool variants and duplicate leaves.
-        tree = _merge_ai_tool_variants(tree)
-        tree = _collapse_core_duplicates(tree)
-        tree = _dedupe_leaf_nodes(tree)
-        tree = _apply_coverage_safety_net(tree, cleaned)
-
-        # Fold pre-dedup drops into the matching leaf's merged_from so the UI
-        # still reflects what was absorbed.
-        tree = _apply_dedup_merges_to_tree(tree, dedup_merge_map)
-
-        # Presentation normalization: top-level nodes should be written as
-        # impersonal task statements (no first-person phrasing).
-        tree = _rewrite_high_level_task_names(tree)
-
-        print("[task_hierarchy] GROUP pass:")
-        for n in tree:
-            if n.get("is_group"):
-                print(f"  [group] {n['name']}")
-                for c in n.get("children") or []:
-                    merged = c.get("merged_from") or []
-                    suffix = f"  ← merged: {merged}" if merged else ""
-                    print(f"    {c['name']}{suffix}")
-            else:
-                merged = n.get("merged_from") or []
-                suffix = f"  ← merged: {merged}" if merged else ""
-                print(f"  {n['name']}{suffix}")
-
-        return tree
-    except Exception:
-        return _flat_fallback(cleaned)

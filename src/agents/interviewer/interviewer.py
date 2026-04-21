@@ -1,6 +1,7 @@
 import asyncio
 import os
 import re
+import time
 from typing import TYPE_CHECKING, TypedDict, Tuple
 
 import json
@@ -15,7 +16,7 @@ from src.utils.llm.xml_formatter import parse_rubric_call
 from src.utils.logger.session_logger import SessionLogger
 from src.utils.constants.colors import GREEN, RESET
 from src.content.question_bank.question import Rubric
-from src.utils.llm.engines import invoke_engine
+from src.utils.llm.engines import get_engine, invoke_engine
 
 if TYPE_CHECKING:
     from src.interview_session.interview_session import InterviewSession
@@ -65,6 +66,31 @@ class Interviewer(BaseAgent, Participant):
         except (TypeError, ValueError):
             self._inferability_threshold = 0.80
         self._inferability_threshold = max(0.50, min(0.99, self._inferability_threshold))
+        # Temporarily hard-disable rewrite path to reduce latency and avoid
+        # unintended prompt drift in production interviews.
+        self._rewrite_mode = "off"
+        try:
+            self._prompt_chat_events_limit = int(
+                os.getenv("INTERVIEWER_PROMPT_CHAT_EVENTS", "16")
+            )
+        except (TypeError, ValueError):
+            self._prompt_chat_events_limit = 16
+        self._prompt_chat_events_limit = max(8, self._prompt_chat_events_limit)
+        try:
+            self._prompt_recent_interviewer_limit = int(
+                os.getenv("INTERVIEWER_PROMPT_RECENT_INTERVIEWER", "8")
+            )
+        except (TypeError, ValueError):
+            self._prompt_recent_interviewer_limit = 8
+        self._prompt_recent_interviewer_limit = max(4, self._prompt_recent_interviewer_limit)
+        try:
+            self._prompt_recent_user_answers_limit = int(
+                os.getenv("INTERVIEWER_PROMPT_RECENT_USER_ANSWERS", "8")
+            )
+        except (TypeError, ValueError):
+            self._prompt_recent_user_answers_limit = 8
+        self._prompt_recent_user_answers_limit = max(4, self._prompt_recent_user_answers_limit)
+        self._judge_engine = None
 
         self.tools = {
             "recall": Recall(memory_bank=self.interview_session.memory_bank),
@@ -162,29 +188,57 @@ class Interviewer(BaseAgent, Participant):
         """Return True when the interviewer's last delivered message is a question."""
         return "?" in str(self._last_sent_message_text or "")
 
-    def _looks_like_closing_goodbye(self, text: str) -> bool:
-        """Heuristic for goodbye text when the model used respond_to_user."""
-        t = self._normalize_text(text).lower()
+    def _get_judge_engine(self):
+        """Lazily construct a small LLM used for lightweight classification calls."""
+        if self._judge_engine is None:
+            model_name = os.getenv("INTERVIEWER_JUDGE_MODEL", "gpt-4.1-mini")
+            self._judge_engine = get_engine(model_name=model_name)
+        return self._judge_engine
+
+    async def _looks_like_closing_goodbye(self, text: str) -> bool:
+        """Classify whether a `respond_to_user` message is actually a goodbye/closing.
+
+        Uses a small LLM instead of keyword matching so natural-sounding closings
+        ("thanks for the chat, that's all I needed for today") are recognized.
+        """
+        t = self._normalize_text(text)
         if not t or "?" in t:
             return False
-        markers = (
-            "we're all set",
-            "were all set",
-            "all set here",
-            "all wrapped up",
-            "that covers what i needed",
-            "that's everything i needed",
-            "thats everything i needed",
-            "we'll wrap here",
-            "we will wrap here",
-            "let's wrap here",
-            "lets wrap here",
-            "we can wrap here",
-            "we can end here",
-            "we'll end here",
-            "we will end here",
+
+        judge_prompt = (
+            "You decide whether an interviewer's message is intended as a closing/goodbye "
+            "at the end of a session, versus an in-progress conversational turn that just "
+            "happens to lack a question mark (e.g. a pure acknowledgment).\n\n"
+            "A CLOSING signals the session is over: thanks + wrap-up intent, "
+            "'we're all set', 'that covers what I needed', 'we'll wrap here', etc.\n"
+            "An IN-PROGRESS message acknowledges what the user said but does not signal "
+            "the session is ending (e.g. 'thanks for laying that out, that's a clear "
+            "picture of your week' with no wrap-up).\n\n"
+            f"Message:\n\"\"\"\n{t}\n\"\"\"\n\n"
+            "Return JSON only:\n"
+            "{\n"
+            "  \"is_closing\": true or false,\n"
+            "  \"reason\": \"short reason\"\n"
+            "}\n"
         )
-        return any(m in t for m in markers)
+
+        try:
+            response = await asyncio.to_thread(
+                invoke_engine, self._get_judge_engine(), judge_prompt
+            )
+            raw = response.content if hasattr(response, "content") else str(response)
+        except Exception as e:
+            SessionLogger.log_to_file(
+                "execution_log",
+                f"[GUARD] closing_goodbye_check LLM call failed: {e}",
+                log_level="warning",
+            )
+            return False
+
+        parsed = self._extract_json_dict(raw)
+        if not isinstance(parsed, dict):
+            return False
+        return bool(parsed.get("is_closing"))
 
     def _no_active_topics_remaining(self) -> bool:
         """Return True when agenda has no active or incomplete topics.
@@ -386,6 +440,7 @@ class Interviewer(BaseAgent, Participant):
         subtopic_id: str = "",
     ) -> tuple[bool, str]:
         """LLM judge: determine if question answer is already inferable from context."""
+        check_start = time.perf_counter()
         recent_answers = self._get_recent_user_answers(limit=10)
         recent_qs = self._get_recent_interviewer_questions(limit=8)
         subtopic_context = self._get_subtopic_inference_context(subtopic_id)
@@ -413,8 +468,11 @@ class Interviewer(BaseAgent, Participant):
               "}\n"
         )
 
+        llm_s = 0.0
         try:
+            llm_start = time.perf_counter()
             response = await asyncio.to_thread(invoke_engine, self.engine, judge_prompt)
+            llm_s = time.perf_counter() - llm_start
             raw = response.content if hasattr(response, "content") else str(response)
         except Exception as e:
             SessionLogger.log_to_file(
@@ -424,7 +482,15 @@ class Interviewer(BaseAgent, Participant):
             )
             return False, ""
 
+        parse_start = time.perf_counter()
         parsed = self._extract_json_dict(raw)
+        parse_s = time.perf_counter() - parse_start
+        total_s = time.perf_counter() - check_start
+        SessionLogger.log_to_file(
+            "execution_log",
+            f"[LATENCY] inferability_check: llm={llm_s:.2f}s parse={parse_s:.2f}s total={total_s:.2f}s "
+            f"subtopic_id={subtopic_id or '(none)'}"
+        )
         if not isinstance(parsed, dict):
             return False, ""
 
@@ -485,6 +551,17 @@ class Interviewer(BaseAgent, Participant):
                 )
         return False
 
+    def _is_task_list_completion_subtopic(self, subtopic_id: str) -> bool:
+        """Return True when subtopic is the lower-cadence Task List Completion sweep."""
+        sid = str(subtopic_id or "").strip()
+        if not sid:
+            return False
+        subtopic = self._get_subtopic(sid)
+        if subtopic is None:
+            return False
+        desc = str(getattr(subtopic, "description", "")).lower()
+        return "task list completion" in desc or "lower-cadence" in desc
+
     def _should_run_semantic_duplicate_llm(self, proposed_question: str, subtopic_id: str = "") -> bool:
         """Gate expensive semantic-duplicate checks behind cheap local risk signals."""
         mode = str(os.getenv("INTERVIEWER_SEMANTIC_DUP_MODE", "auto")).strip().lower()
@@ -496,11 +573,7 @@ class Interviewer(BaseAgent, Participant):
         q = self._normalize_text(proposed_question)
         if not q or "?" not in q:
             return False
-
-        # Task list collection benefits from stronger duplicate guarding because
-        # generic "anything else" variants are common and user-visible.
-        if self._is_task_list_collection_subtopic(subtopic_id):
-            return True
+        q_l = q.lower()
 
         # Broad catch-all probes are the most common repeat source.
         if self._is_breadth_probe_question(q):
@@ -510,9 +583,106 @@ class Interviewer(BaseAgent, Participant):
         if len(recent_qs) < 2:
             return False
 
+        # Task List Completion (2.2-like) should only pay semantic LLM cost when
+        # cadence-sweep wording is likely duplicative with nearby questions.
+        if self._is_task_list_completion_subtopic(subtopic_id):
+            cadence_markers = (
+                "month or quarter",
+                "monthly",
+                "quarterly",
+                "other recurring",
+                "other types of work",
+                "anything else",
+                "beyond those",
+            )
+            if any(marker in q_l for marker in cadence_markers):
+                for prev in recent_qs[-4:]:
+                    if self._question_overlap_score(q, prev) >= 0.70:
+                        return True
+            return False
+
         # Only run the LLM judge when lexical overlap is already high.
         for prev in recent_qs[-4:]:
-            if self._question_overlap_score(q, prev) >= 0.80:
+            if self._question_overlap_score(q, prev) >= 0.85:
+                return True
+
+        return False
+
+    def _rewrite_question_locally(self, question: str, subtopic_id: str = "") -> str:
+        """Fast deterministic rewrite for common bad patterns without another LLM call."""
+        q = self._normalize_text(question)
+        if not q or "?" not in q:
+            return q
+        q_l = q.lower()
+
+        # Collapse count+duration asks into one qualitative question.
+        if ("how many" in q_l and "how long" in q_l) or (
+            ("how many" in q_l or "how long" in q_l or "how much" in q_l)
+            and " and " in q_l
+        ):
+            anchor = ""
+            recent_answers = self._get_recent_user_answers(limit=4)
+            for ans in reversed(recent_answers):
+                anchor = self._extract_anchor_clause(ans)
+                if anchor:
+                    break
+            if "meeting" in q_l or "collabor" in q_l:
+                if anchor:
+                    return f"You mentioned {anchor}. What do those meetings usually focus on?"
+                return "What do those meetings usually focus on?"
+            if anchor:
+                return f"You mentioned {anchor}. What does that usually involve in practice?"
+            return "What does that usually involve in practice?"
+
+        # Remove example-list wording in monthly/quarterly sweep questions.
+        if self._is_task_list_completion_subtopic(subtopic_id):
+            if ("month" in q_l or "quarter" in q_l) and (
+                "like " in q_l or "for example" in q_l or "such as" in q_l
+            ):
+                return (
+                    "Over a typical month or quarter, are there any other recurring kinds "
+                    "of work you spend meaningful time on?"
+                )
+        return q
+
+    def _should_run_llm_rewrite(self, proposed_question: str, subtopic_id: str = "") -> bool:
+        """Gate LLM rewrite calls to high-risk turns to reduce latency."""
+        mode = self._rewrite_mode
+        if mode == "off":
+            return False
+        if mode == "always":
+            return True
+
+        q = self._normalize_text(proposed_question)
+        if not q or "?" not in q:
+            return False
+        q_l = q.lower()
+
+        # Known risky patterns.
+        if self._is_breadth_probe_question(q):
+            return True
+        if q.count("?") > 1:
+            return True
+        if " and " in q_l and ("how many" in q_l or "how long" in q_l or "how much" in q_l):
+            return True
+
+        quant_markers = ("how many", "how long", "how much", "number of", "percent", "%", "hours", "minutes")
+        quant_hits = sum(1 for marker in quant_markers if marker in q_l)
+        if quant_hits >= 2:
+            return True
+
+        # For task-list collection subtopics, only rewrite when question shape is
+        # likely to drift into count/duration detail that criteria do not require.
+        if self._is_task_list_collection_subtopic(subtopic_id):
+            if quant_hits >= 1:
+                return True
+            if q.count("?") > 1:
+                return True
+
+        # High lexical overlap with recent interviewer questions is duplicate-prone.
+        recent_qs = self._get_recent_interviewer_questions(limit=6)
+        for prev in recent_qs[-3:]:
+            if self._question_overlap_score(q, prev) >= 0.92:
                 return True
 
         return False
@@ -550,22 +720,30 @@ class Interviewer(BaseAgent, Participant):
             return c.strip(" ,;-")
         return ""
 
-    async def _check_semantic_duplicate(self, proposed_question: str) -> tuple[bool, str]:
+    async def _check_semantic_duplicate(
+        self,
+        proposed_question: str,
+        subtopic_id: str = "",
+    ) -> tuple[bool, str]:
         """LLM judge: is proposed_question a semantic duplicate of any recent interviewer question?
 
         Returns (is_duplicate, replacement_question). If is_duplicate is True and a
         valid replacement was produced, the caller should send the replacement instead.
         """
+        check_start = time.perf_counter()
         recent_qs = self._get_recent_interviewer_questions(limit=8)
         if not recent_qs:
             return False, ""
         recent_answers = self._get_recent_user_answers(limit=3)
         last_answer = recent_answers[-1] if recent_answers else ""
+        subtopic_context = self._get_subtopic_inference_context(subtopic_id)
 
         recent_qs_block = "\n".join(f"- {q}" for q in recent_qs)
         judge_prompt = (
             "You are judging whether a proposed interview question is a semantic "
             "duplicate of any recent interviewer question already asked in this session.\n\n"
+            f"Current subtopic id: {subtopic_id or '(none)'}\n"
+            f"{subtopic_context}\n\n"
             "A question is a DUPLICATE if its core information goal overlaps with a "
             "prior question's — even when:\n"
             "- The wording is different\n"
@@ -574,9 +752,17 @@ class Interviewer(BaseAgent, Participant):
             "- It \"zooms in\" or \"zooms out\" from the prior framing\n"
             "- It rephrases the same abstract ask (e.g. \"what are you aiming for\" vs "
             "\"what's the goal in your mind\")\n\n"
+            "Numeric policy:\n"
+            "- Only ask numeric count/duration/percentage when the active subtopic's "
+            "coverage criteria explicitly require numbers.\n"
+            "- In Task Inventory list-collection/completion turns, avoid count/duration "
+            "questions and prefer qualitative follow-ups that still satisfy cadence/"
+            "closure/action+object criteria.\n"
+            "- Never introduce two numeric dimensions in one question.\n\n"
             "A question is NOT a duplicate if it targets a genuinely different dimension: "
-            "a number, a frequency, a recent specific instance, a named tool, an "
-            "assessment/outcome, a collaborator, or a concrete artifact.\n\n"
+            "cadence/frequency, a recent specific instance, a named tool, an "
+            "assessment/outcome, a collaborator, a coordination detail, or a concrete "
+            "artifact.\n\n"
             f"Recent interviewer questions (oldest → newest):\n{recent_qs_block}\n\n"
             f"User's most recent answer:\n{last_answer or '(none)'}\n\n"
             f"Proposed next question:\n{proposed_question}\n\n"
@@ -587,14 +773,17 @@ class Interviewer(BaseAgent, Participant):
             "  \"reason\": \"one short sentence\",\n"
             "  \"replacement\": \"if is_duplicate is true, a specific replacement question that "
             "(a) anchors on a concrete noun from the user's last answer, "
-            "(b) targets a DIFFERENT dimension (quantity, frequency, recent instance, "
-            "artifact, tool, outcome, collaborator), and (c) is NOT a reworded abstract "
+            "(b) targets a DIFFERENT dimension (cadence/frequency, recent instance, "
+            "artifact, tool, outcome, collaborator, coordination detail), and (c) is NOT a reworded abstract "
             "question. Otherwise empty string.\"\n"
             "}\n"
         )
 
+        llm_s = 0.0
         try:
+            llm_start = time.perf_counter()
             raw = await self.call_engine_async(judge_prompt)
+            llm_s = time.perf_counter() - llm_start
         except Exception as e:
             SessionLogger.log_to_file(
                 "execution_log",
@@ -603,6 +792,7 @@ class Interviewer(BaseAgent, Participant):
             )
             return False, ""
 
+        parse_start = time.perf_counter()
         parsed = self._extract_tool_json_dict(raw)
         if not isinstance(parsed, dict):
             try:
@@ -616,6 +806,13 @@ class Interviewer(BaseAgent, Participant):
                 except Exception:
                     return False, ""
 
+        parse_s = time.perf_counter() - parse_start
+        total_s = time.perf_counter() - check_start
+        SessionLogger.log_to_file(
+            "execution_log",
+            f"[LATENCY] semantic_duplicate_check: llm={llm_s:.2f}s parse={parse_s:.2f}s total={total_s:.2f}s "
+            f"subtopic_id={subtopic_id or '(none)'}"
+        )
         if not isinstance(parsed, dict):
             return False, ""
 
@@ -636,75 +833,86 @@ class Interviewer(BaseAgent, Participant):
             return True, replacement
         return False, ""
 
-    def _rewrite_repetitive_breadth_probe(self, question: str) -> str:
-        """Rewrite repeated broad probes into a specific, differentiated follow-up."""
+    async def _rewrite_question_with_llm(self, question: str, subtopic_id: str = "") -> str:
+        """LLM-based question rewrite pass for duplicate-prone or malformed asks."""
+        rewrite_start = time.perf_counter()
         q = self._normalize_text(question)
-        if not self._is_breadth_probe_question(q):
+        if not q or "?" not in q:
             return q
 
-        recent_questions = self._get_recent_interviewer_questions(limit=6)
-        prior_breadth = [x for x in recent_questions if self._is_breadth_probe_question(x)]
-        if not prior_breadth:
-            return q
-
-        anchor = ""
+        recent_qs = self._get_recent_interviewer_questions(limit=8)
         recent_answers = self._get_recent_user_answers(limit=6)
-        for ans in reversed(recent_answers):
-            if self._is_repetition_signal(ans):
-                continue
-            anchor = self._extract_anchor_clause(ans)
-            if anchor:
-                break
+        last_answer = recent_answers[-1] if recent_answers else ""
+        subtopic_context = self._get_subtopic_inference_context(subtopic_id)
 
-        if anchor:
-            return f"You mentioned {anchor}. What's the main outcome you're aiming for there?"
-        return "To keep this specific, which single task you mentioned takes the biggest share of your week right now?"
+        rewrite_prompt = (
+            "You are an interview question quality rewriter.\n"
+            "Decide whether the candidate question should be rewritten.\n\n"
+            "Candidate question:\n"
+            f"{q}\n\n"
+            f"Current subtopic id: {subtopic_id or '(none)'}\n"
+            f"{subtopic_context}\n\n"
+            "Recent interviewer questions (oldest -> newest):\n"
+            + "\n".join(f"- {x}" for x in recent_qs)
+            + "\n\nRecent user answers (oldest -> newest):\n"
+            + "\n".join(f"- {x}" for x in recent_answers)
+            + "\n\nMost recent user answer:\n"
+            + (last_answer or "(none)")
+            + "\n\nRules:\n"
+              "- Prefer keeping the question unchanged when it is already high-quality.\n"
+              "- Preserve the same coverage target as the candidate question's subtopic; do not broaden or narrow coverage scope.\n"
+              "- Rewrite when the question is duplicate-prone, catch-all, double-barreled, or asks two numeric dimensions at once.\n"
+              "- If the candidate asks for numeric count/duration/percentage but the active subtopic criteria do NOT explicitly require numbers, rewrite it to a qualitative question.\n"
+              "- For Task Inventory list-completion turns, do NOT ask headcount/count/duration questions (for example, how many trainees/meetings). Keep focus on cadence/completeness/action+object clarification.\n"
+              "- Output question must be exactly one sentence and contain exactly one question mark.\n"
+              "- Output must ask for one information target only.\n"
+              "- No examples/options lists.\n"
+              "- Non-leading.\n"
+              "- If rewritten, anchor on a concrete noun from the most recent user answer.\n\n"
+              "Return JSON only:\n"
+              "{\n"
+              "  \"rewrite\": true or false,\n"
+              "  \"question\": \"final question text\",\n"
+              "  \"reason\": \"short reason\"\n"
+              "}\n"
+        )
 
-    def _rewrite_multi_quant_question(self, question: str, subtopic_id: str = "") -> str:
-        """Rewrite quantified double-barreled questions into a single qualitative ask."""
-        q = self._normalize_text(question)
-        q_l = q.lower()
-        if "?" not in q_l:
+        llm_s = 0.0
+        try:
+            llm_start = time.perf_counter()
+            raw = await self.call_engine_async(rewrite_prompt)
+            llm_s = time.perf_counter() - llm_start
+        except Exception as e:
+            SessionLogger.log_to_file(
+                "execution_log",
+                f"[GUARD] llm_rewrite_check failed: {e}",
+                log_level="warning",
+            )
             return q
 
-        quant_markers = (
-            "how many",
-            "how much",
-            "how long",
-            "number of",
-            "hours",
-            "minutes",
-            "percent",
-            "%",
+        parse_start = time.perf_counter()
+        parsed = self._extract_json_dict(raw)
+        parse_s = time.perf_counter() - parse_start
+        total_s = time.perf_counter() - rewrite_start
+        SessionLogger.log_to_file(
+            "execution_log",
+            f"[LATENCY] llm_rewrite_check: llm={llm_s:.2f}s parse={parse_s:.2f}s total={total_s:.2f}s "
+            f"subtopic_id={subtopic_id or '(none)'}"
         )
-        hits = sum(1 for marker in quant_markers if marker in q_l)
-        has_multi_quant_pattern = (
-            ("how many" in q_l and "how long" in q_l)
-            or (hits >= 2 and " and " in q_l)
-        )
-        if not has_multi_quant_pattern:
+        if not isinstance(parsed, dict):
             return q
 
-        # Time-allocation subtopics can ask for one numeric split, but still not
-        # as a combined count+duration ask.
-        if self._is_time_allocation_subtopic(subtopic_id):
-            return "Roughly how is your time split across the main tasks you mentioned this week?"
+        rewrite = bool(parsed.get("rewrite"))
+        rewritten = self._normalize_text(parsed.get("question", ""))
+        if not rewritten or rewritten.count("?") != 1:
+            return q
 
-        recent_answers = self._get_recent_user_answers(limit=4)
-        anchor = ""
-        for ans in reversed(recent_answers):
-            anchor = self._extract_anchor_clause(ans)
-            if anchor:
-                break
-
-        if "meeting" in q_l or "collabor" in q_l:
-            if anchor:
-                return f"You mentioned {anchor}. What do those meetings usually focus on?"
-            return "What do those meetings usually focus on?"
-
-        if anchor:
-            return f"You mentioned {anchor}. What does that usually look like in practice?"
-        return "What does that usually look like in practice?"
+        if rewrite and rewritten != q:
+            SessionLogger.log_to_file(
+                "execution_log",
+                f"[GUARD] llm_rewrite applied: original={q[:120]!r} rewritten={rewritten[:120]!r}"
+            )
+        return rewritten
 
     def _extract_tool_json_dict(self, raw: str) -> dict | None:
         """Best-effort extraction of tool JSON from raw model output.
@@ -834,28 +1042,24 @@ class Interviewer(BaseAgent, Participant):
         quantified_question = response
         rubric = None
 
-        rewritten_question = self._rewrite_repetitive_breadth_probe(quantified_question)
-        if rewritten_question != quantified_question:
-            SessionLogger.log_to_file(
-                "execution_log",
-                "[GUARD] Rewrote repetitive breadth probe into a specific follow-up."
-            )
-            quantified_question = rewritten_question
-
-        rewritten_question = self._rewrite_multi_quant_question(
+        pipeline_start = time.perf_counter()
+        sem_gate_start = time.perf_counter()
+        should_semantic = self._should_run_semantic_duplicate_llm(
             quantified_question,
             subtopic_id=subtopic_id,
         )
-        if rewritten_question != quantified_question:
-            SessionLogger.log_to_file(
-                "execution_log",
-                "[GUARD] Rewrote quantified double-barreled question into a single-focus follow-up."
-            )
-            quantified_question = rewritten_question
-        elif self._should_run_semantic_duplicate_llm(quantified_question, subtopic_id=subtopic_id):
+        sem_gate_s = time.perf_counter() - sem_gate_start
+        sem_check_s = 0.0
+
+        if should_semantic:
             # Only run the LLM judge when the cheap regex guard didn't already fire.
             try:
-                is_dup, replacement = await self._check_semantic_duplicate(quantified_question)
+                sem_check_start = time.perf_counter()
+                is_dup, replacement = await self._check_semantic_duplicate(
+                    quantified_question,
+                    subtopic_id=subtopic_id,
+                )
+                sem_check_s = time.perf_counter() - sem_check_start
             except Exception as e:
                 SessionLogger.log_to_file(
                     "execution_log",
@@ -868,15 +1072,25 @@ class Interviewer(BaseAgent, Participant):
         else:
             SessionLogger.log_to_file(
                 "execution_log",
-                "[LATENCY] semantic_duplicate_check skipped (low-risk turn)."
+                f"[LATENCY] semantic_duplicate_check skipped (low-risk turn): gate={sem_gate_s:.2f}s"
             )
 
-        if self._should_run_inferability_llm(quantified_question, subtopic_id=subtopic_id):
+        infer_gate_start = time.perf_counter()
+        should_inferability = self._should_run_inferability_llm(
+            quantified_question,
+            subtopic_id=subtopic_id,
+        )
+        infer_gate_s = time.perf_counter() - infer_gate_start
+        infer_check_s = 0.0
+
+        if should_inferability:
             try:
+                infer_check_start = time.perf_counter()
                 inferable, replacement = await self._check_inferable_question(
                     quantified_question,
                     subtopic_id=subtopic_id,
                 )
+                infer_check_s = time.perf_counter() - infer_check_start
             except Exception as e:
                 SessionLogger.log_to_file(
                     "execution_log",
@@ -889,8 +1103,68 @@ class Interviewer(BaseAgent, Participant):
         else:
             SessionLogger.log_to_file(
                 "execution_log",
-                "[LATENCY] inferability_check skipped (low-risk turn)."
+                f"[LATENCY] inferability_check skipped (low-risk turn): gate={infer_gate_s:.2f}s"
             )
+
+        local_rewrite_s = 0.0
+        rewrite_gate_s = 0.0
+        rewrite_s = 0.0
+        if self._rewrite_mode != "off":
+            local_rewrite_start = time.perf_counter()
+            local_rewritten = self._rewrite_question_locally(
+                quantified_question,
+                subtopic_id=subtopic_id,
+            )
+            local_rewrite_s = time.perf_counter() - local_rewrite_start
+            if local_rewritten != quantified_question:
+                SessionLogger.log_to_file(
+                    "execution_log",
+                    f"[GUARD] local_rewrite applied: original={quantified_question[:120]!r} "
+                    f"rewritten={local_rewritten[:120]!r}"
+                )
+                quantified_question = local_rewritten
+
+            rewrite_gate_start = time.perf_counter()
+            should_rewrite = self._should_run_llm_rewrite(
+                quantified_question,
+                subtopic_id=subtopic_id,
+            )
+            rewrite_gate_s = time.perf_counter() - rewrite_gate_start
+            if should_rewrite:
+                try:
+                    rewrite_start = time.perf_counter()
+                    quantified_question = await self._rewrite_question_with_llm(
+                        quantified_question,
+                        subtopic_id=subtopic_id,
+                    )
+                    rewrite_s = time.perf_counter() - rewrite_start
+                except Exception as e:
+                    SessionLogger.log_to_file(
+                        "execution_log",
+                        f"[GUARD] llm_rewrite_check errored: {e}",
+                        log_level="warning",
+                    )
+            else:
+                SessionLogger.log_to_file(
+                    "execution_log",
+                    f"[LATENCY] llm_rewrite_check skipped (low-risk turn): gate={rewrite_gate_s:.2f}s"
+                )
+        else:
+            SessionLogger.log_to_file(
+                "execution_log",
+                "[LATENCY] llm_rewrite_check skipped (mode=off)"
+            )
+
+        pipeline_s = time.perf_counter() - pipeline_start
+        SessionLogger.log_to_file(
+            "execution_log",
+            f"[LATENCY] response_pipeline: total={pipeline_s:.2f}s "
+            f"semantic_gate={sem_gate_s:.2f}s semantic_check={sem_check_s:.2f}s "
+            f"infer_gate={infer_gate_s:.2f}s infer_check={infer_check_s:.2f}s "
+            f"local_rewrite={local_rewrite_s:.2f}s rewrite_gate={rewrite_gate_s:.2f}s "
+            f"rewrite_check={rewrite_s:.2f}s "
+            f"subtopic_id={subtopic_id or '(none)'}"
+        )
 
         # Don't send a question if the session is already ending gracefully
         if getattr(self.interview_session, '_session_ending', False):
@@ -925,6 +1199,16 @@ class Interviewer(BaseAgent, Participant):
                 )
             )
 
+        should_show_time_split_widget = (
+            bool(subtopic_id)
+            and self._is_time_allocation_subtopic(subtopic_id)
+            and not self._time_split_widget_shown
+        )
+        if should_show_time_split_widget:
+            quantified_question = self._ensure_time_split_widget_mention(
+                quantified_question
+            )
+
         self.interview_session.add_message_to_chat_history(
             role=self.title,
             content=quantified_question,
@@ -933,9 +1217,7 @@ class Interviewer(BaseAgent, Participant):
         self.add_event(sender=self.name, tag="message",
                        content=quantified_question)
 
-        if (subtopic_id
-                and self._is_time_allocation_subtopic(subtopic_id)
-                and not self._time_split_widget_shown):
+        if should_show_time_split_widget:
             self._time_split_widget_shown = True
             # Signal to the scribe that the next user message is a widget
             # submission so it can auto-mark coverage and validate task names.
@@ -1070,6 +1352,21 @@ class Interviewer(BaseAgent, Participant):
                     return True
         return False
 
+    def _ensure_time_split_widget_mention(self, question: str) -> str:
+        """Ensure first time-allocation prompt explicitly references the widget."""
+        q = self._normalize_text(question)
+        if not q:
+            return (
+                "Using the time-allocation widget below, please split your work "
+                "time across tasks as percentages that add up to about 100%."
+            )
+        if "widget" in q.lower():
+            return q
+        if q.endswith("?"):
+            stem = q[:-1].rstrip()
+            return f"{stem} using the time-allocation widget below?"
+        return f"{q} Please use the time-allocation widget below."
+
     def _is_fresh_intake_session(self) -> bool:
         """Return True for a brand-new intake session with no prior summary context."""
         if getattr(self.interview_session, "session_type", "intake") != "intake":
@@ -1202,17 +1499,24 @@ class Interviewer(BaseAgent, Participant):
                 _loop_timed_out = True
                 _poll_s = 0.1
                 try:
-                    _max_wait_s = float(os.getenv("INTERVIEWER_MAX_SCRIBE_WAIT_S", "10.0"))
+                    _max_wait_s = float(os.getenv("INTERVIEWER_MAX_SCRIBE_WAIT_S", "6.0"))
                 except (TypeError, ValueError):
-                    _max_wait_s = 10.0
+                    _max_wait_s = 6.0
                 _max_wait_s = max(0.5, _max_wait_s)
                 try:
                     _coverage_only_fast_exit_s = float(
-                        os.getenv("INTERVIEWER_MAX_COVERAGE_ONLY_WAIT_S", "1.5")
+                        os.getenv("INTERVIEWER_MAX_COVERAGE_ONLY_WAIT_S", "1.0")
                     )
                 except (TypeError, ValueError):
-                    _coverage_only_fast_exit_s = 1.5
+                    _coverage_only_fast_exit_s = 1.0
                 _coverage_only_fast_exit_s = max(0.0, _coverage_only_fast_exit_s)
+                try:
+                    _coverage_stable_required_ticks = int(
+                        os.getenv("INTERVIEWER_COVERAGE_STABLE_TICKS", "1")
+                    )
+                except (TypeError, ValueError):
+                    _coverage_stable_required_ticks = 1
+                _coverage_stable_required_ticks = max(1, _coverage_stable_required_ticks)
                 _max_ticks = max(1, int(_max_wait_s / _poll_s))
                 for _ in range(_max_ticks):
                     if profile_confirm_pending:
@@ -1245,7 +1549,7 @@ class Interviewer(BaseAgent, Participant):
                         _loop_timed_out = False
                         break
                     # Every 5 ticks (0.5s), check if coverage has changed.
-                    # If stable for 2 consecutive checks (1s) and the speculative
+                    # If stable for N consecutive checks and the speculative
                     # result is ready, we can proceed without waiting for the rest
                     # of the scribe's work (memory writes, portrait update).
                     if (
@@ -1256,10 +1560,14 @@ class Interviewer(BaseAgent, Participant):
                         curr = self._get_coverage_snapshot()
                         if curr == _last_seen_coverage:
                             _coverage_stable_ticks += 1
-                            if _coverage_stable_ticks >= 2 and speculative_task.done():
+                            if (
+                                _coverage_stable_ticks >= _coverage_stable_required_ticks
+                                and speculative_task.done()
+                            ):
                                 SessionLogger.log_to_file(
                                     "execution_log",
-                                    "[LATENCY] early-exit scribe wait: coverage stable 1s"
+                                    "[LATENCY] early-exit scribe wait: coverage stable "
+                                    f"{0.5 * _coverage_stable_required_ticks:.1f}s"
                                 )
                                 _scribe_wait_exit = "coverage_stable_early_exit"
                                 _loop_timed_out = False
@@ -1406,7 +1714,7 @@ class Interviewer(BaseAgent, Participant):
             incomplete_topics = topic_manager.get_all_incomplete_core_topic()
             allows_emergent = topic_manager.any_active_topic_allows_emergent()
             topics_complete = not incomplete_topics and not allows_emergent
-            closing_intent = self._looks_like_closing_goodbye(
+            closing_intent = await self._looks_like_closing_goodbye(
                 self._last_sent_message_text
             )
             if topics_complete or closing_intent:
@@ -1470,18 +1778,20 @@ class Interviewer(BaseAgent, Participant):
             as_list=True
         )
 
-        recent_events = chat_history_events[-self._max_events_len:] if \
-            len(chat_history_events) > self._max_events_len else chat_history_events
+        event_window = min(self._max_events_len, self._prompt_chat_events_limit)
+        recent_events = chat_history_events[-event_window:] if \
+            len(chat_history_events) > event_window else chat_history_events
         current_events = recent_events[-2:] if len(recent_events) >= 2 else recent_events
 
         all_interviewer_messages = self.get_event_stream_str(
             [{"sender": "Interviewer", "tag": "message"}],
             as_list=True
         )
-        recent_interviewer_messages = all_interviewer_messages[-15:] if \
-            len(all_interviewer_messages) >= 15 else all_interviewer_messages
+        recent_interviewer_messages = all_interviewer_messages[
+            -self._prompt_recent_interviewer_limit:
+        ] if len(all_interviewer_messages) >= self._prompt_recent_interviewer_limit else all_interviewer_messages
         recent_user_answers = self._get_recent_user_answers(
-            limit=max(self._max_events_len, 15)
+            limit=self._prompt_recent_user_answers_limit
         )
         recent_user_answers_str = (
             "\n".join(f"- {msg}" for msg in recent_user_answers)

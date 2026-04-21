@@ -103,6 +103,56 @@ class TestProfileWidgetRoleFirstRenderingRegression:
         )
 
 
+class TestProfileBuildingIndicatorLeadInRegression:
+    def test_profile_building_indicator_lead_in_helper_exists(self):
+        text = _chat_template_text()
+        assert "const PROFILE_BUILDING_INDICATOR_MIN_VISIBLE_MS = 320;" in text
+        assert "async function ensureProfileBuildingIndicatorLeadIn()" in text
+
+    def test_role_ready_path_waits_for_indicator_before_show(self):
+        text = _chat_template_text()
+        assert re.search(
+            r"showProfilePanelWhenRoleReady\(\)\s*\{.*?await ensureProfileBuildingIndicatorLeadIn\(\);\s*if \(!profileConfirmPending\) return;\s*showProfilePanel\(\);",
+            text,
+            re.DOTALL,
+        )
+
+    def test_profile_panel_reveal_paths_use_indicator_lead_in(self):
+        text = _chat_template_text()
+        assert text.count("await ensureProfileBuildingIndicatorLeadIn();") >= 3
+
+
+class TestProfileBuildingIndicatorPlacementRegression:
+    def test_pre_confirm_indicator_probe_exists(self):
+        text = _chat_template_text()
+        assert "let profileConfirmWidgetSeen = false;" in text
+        assert "async function maybeShowProfileBuildingIndicatorBeforeConfirm()" in text
+        assert "function isFirstTopicCoveredForProfileConfirm(topics)" in text
+
+    def test_poll_triggers_pre_confirm_indicator_probe(self):
+        text = _chat_template_text()
+        assert re.search(
+            r"if\s*\(!fullHistory\)\s*\{\s*maybeShowProfileBuildingIndicatorBeforeConfirm\(\);\s*\}",
+            text,
+        )
+
+    def test_pre_confirm_probe_replaces_typing_with_profile_indicator(self):
+        text = _chat_template_text()
+        assert re.search(
+            r"maybeShowProfileBuildingIndicatorBeforeConfirm\(\)\s*\{.*?typing-indicator.*?removeTyping\(\);\s*showProfileBuildingIndicator\(\);",
+            text,
+            re.DOTALL,
+        )
+
+    def test_normal_bot_message_clears_stale_profile_indicator(self):
+        text = _chat_template_text()
+        assert re.search(
+            r"if \(appendMessage\(\"bot\", msg\.content, msg\.id\)\) \{.*?if \(!profileConfirmPending\) removeProfileBuildingIndicator\(\);.*?removeTyping\(\);",
+            text,
+            re.DOTALL,
+        )
+
+
 class TestProfileWidgetFreezeDuringConfirmRegression:
     def test_profile_confirm_snapshot_state_exists(self):
         text = _chat_template_text()

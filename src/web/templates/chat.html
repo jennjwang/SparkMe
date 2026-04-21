@@ -565,6 +565,31 @@
         }
       }
 
+      /* ---- Profile building indicator (shown in chat before profile panel opens) ---- */
+      .profile-building-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        background: #f3f4f6;
+        border: 1px solid #e5e7eb;
+        border-radius: 999px;
+        padding: 10px 16px;
+        margin: 6px 0;
+        color: #4b5563;
+        font-size: 13px;
+        font-weight: 500;
+        animation: fadeInUp 0.3s ease-out;
+      }
+      .profile-building-indicator::before {
+        content: "";
+        width: 14px;
+        height: 14px;
+        border: 2px solid #d1d5db;
+        border-top-color: #6366f1;
+        border-radius: 50%;
+        animation: profileSpin 0.7s linear infinite;
+      }
+
       .disclaimer {
         text-align: center;
         font-size: 12px;
@@ -2690,6 +2715,7 @@
       const MAX_SESSION_RECOVER_ATTEMPTS = 1;
       const MIN_SESSION_DURATION_MS = 0;
       let profileConfirmPending = false;
+      let profileConfirmWidgetSeen = false;
       let botMessageBuffer = [];
       let profilePanelRevealInFlight = false;
       let profileConfirmSnapshot = null;
@@ -3402,8 +3428,8 @@
                     </div>
                     ${phase === "allocate" ? stackedBarMarkup() : ""}
                     <div id="tsp-rows">${buildRows()}</div>
-                    ${groupingFeedbackMarkup()}
                     ${addRow}
+                    ${groupingFeedbackMarkup()}
                     ${footer}`;
           widget.querySelectorAll(".tsp-task-edit").forEach((el) => {
             el.style.height = "auto";
@@ -4447,6 +4473,7 @@
                 return;
               }
               if (msg.type === "profile_confirm_widget") {
+                profileConfirmWidgetSeen = true;
                 const shouldShow =
                   !fullHistory || unresolvedProfileWidgetIds.has(msg.id);
                 if (!seenMessageIds.has(msg.id) && shouldShow) {
@@ -4455,6 +4482,7 @@
                   // in this same poll batch are buffered.
                   profileConfirmPending = true;
                   removeTyping();
+                  showProfileBuildingIndicator();
                   showProfilePanelWhenRoleReady();
                 } else if (!seenMessageIds.has(msg.id) && msg.id) {
                   seenMessageIds.add(msg.id);
@@ -4473,10 +4501,12 @@
                   return;
                 }
                 if (ttsEnabled && msg.id && !fullHistory) {
+                  if (!profileConfirmPending) removeProfileBuildingIndicator();
                   pendingAudioMessages.add(msg.id);
                   showMessageWithAudio(msg);
                 } else {
                   if (appendMessage("bot", msg.content, msg.id)) {
+                    if (!profileConfirmPending) removeProfileBuildingIndicator();
                     removeTyping();
                   }
                 }
@@ -4493,6 +4523,9 @@
                 }
               }
             });
+          }
+          if (!fullHistory) {
+            maybeShowProfileBuildingIndicatorBeforeConfirm();
           }
           if (data.session_completed && !isSessionCompleted) {
             // If feedback widget is currently shown, don't end yet —
@@ -4649,6 +4682,7 @@
 
       // Typing indicator
       function showTyping(loadingNote) {
+        if (!profileConfirmPending) removeProfileBuildingIndicator();
         removeTyping();
         const box = document.getElementById("chat-box");
         const div = document.createElement("div");
@@ -4664,6 +4698,93 @@
       function removeTyping() {
         const el = document.getElementById("typing-indicator");
         if (el) el.remove();
+      }
+
+      function showProfileBuildingIndicator() {
+        const existing = document.getElementById("profile-building-indicator");
+        if (existing) {
+          if (!profileBuildingIndicatorShownAt) {
+            profileBuildingIndicatorShownAt = Date.now();
+          }
+          return;
+        }
+        const box = document.getElementById("chat-box");
+        if (!box) return;
+        const div = document.createElement("div");
+        div.id = "profile-building-indicator";
+        div.className = "profile-building-indicator";
+        div.textContent = "Building your profile...";
+        box.appendChild(div);
+        profileBuildingIndicatorShownAt = Date.now();
+        scrollToBottom();
+      }
+      function removeProfileBuildingIndicator() {
+        const el = document.getElementById("profile-building-indicator");
+        if (el) el.remove();
+        profileBuildingIndicatorShownAt = 0;
+      }
+
+      async function ensureProfileBuildingIndicatorLeadIn() {
+        const panel = document.getElementById("profile-panel");
+        if (panel && panel.classList.contains("visible")) return;
+        showProfileBuildingIndicator();
+        if (!profileBuildingIndicatorShownAt) return;
+        const elapsed = Date.now() - profileBuildingIndicatorShownAt;
+        const remaining = PROFILE_BUILDING_INDICATOR_MIN_VISIBLE_MS - elapsed;
+        if (remaining > 0) {
+          await new Promise((r) => setTimeout(r, remaining));
+        }
+      }
+
+      let preConfirmIndicatorProbeInFlight = false;
+      let preConfirmIndicatorLastProbeAt = 0;
+      const PRE_CONFIRM_INDICATOR_PROBE_INTERVAL_MS = 1200;
+
+      function isFirstTopicCoveredForProfileConfirm(topics) {
+        if (!Array.isArray(topics) || topics.length === 0) return false;
+        const firstTopic = topics[0] || {};
+        const subtopics = Array.isArray(firstTopic.subtopics)
+          ? firstTopic.subtopics
+          : [];
+        const required = subtopics.filter((s) => !s || !s.is_emergent);
+        if (required.length === 0) return false;
+        return required.every((s) => !!(s && s.is_covered));
+      }
+
+      async function maybeShowProfileBuildingIndicatorBeforeConfirm() {
+        if (!sessionToken) return;
+        if (profileConfirmPending || profileConfirmWidgetSeen) return;
+        if (!document.getElementById("typing-indicator")) return;
+        if (document.getElementById("profile-building-indicator")) return;
+        const now = Date.now();
+        if (
+          preConfirmIndicatorProbeInFlight ||
+          now - preConfirmIndicatorLastProbeAt <
+            PRE_CONFIRM_INDICATOR_PROBE_INTERVAL_MS
+        ) {
+          return;
+        }
+        preConfirmIndicatorProbeInFlight = true;
+        preConfirmIndicatorLastProbeAt = now;
+        try {
+          const res = await fetch(
+            `/api/session-state?session_token=${sessionToken}`,
+          );
+          if (!res.ok) return;
+          const data = await res.json();
+          if (!data || !data.success) return;
+          if (String(data.session_type || "intake") !== "intake") return;
+          const portrait = data.user_portrait || {};
+          if (!profileHasRoleAndTenure(portrait)) return;
+          if (!isFirstTopicCoveredForProfileConfirm(data.topics || [])) return;
+          if (profileConfirmPending || profileConfirmWidgetSeen) return;
+          if (!document.getElementById("typing-indicator")) return;
+          removeTyping();
+          showProfileBuildingIndicator();
+        } catch (_) {
+        } finally {
+          preConfirmIndicatorProbeInFlight = false;
+        }
       }
 
       function showEndBanner() {
@@ -4813,6 +4934,8 @@
       let profilePanelLoadingHold = false;
       const PROFILE_LOADING_MIN_VISIBLE_MS = 300;
       let profileAutosizeRefreshTimer = null;
+      let profileBuildingIndicatorShownAt = 0;
+      const PROFILE_BUILDING_INDICATOR_MIN_VISIBLE_MS = 320;
       // When a time-split widget is open, this holds the tree it resolved so the
       // profile panel shows the exact same groupings. Cleared when the widget submits.
       let activeWidgetTree = null;
@@ -5098,6 +5221,7 @@
       }
 
       function showProfilePanel() {
+        removeProfileBuildingIndicator();
         document.getElementById("profile-panel").classList.add("visible");
         document.getElementById("profile-btn").classList.add("active");
         const backdrop = document.getElementById("profile-backdrop");
@@ -5153,6 +5277,8 @@
                       JSON.stringify(lastPortrait || {}),
                     );
                     renderProfile(profileConfirmSnapshot);
+                    await ensureProfileBuildingIndicatorLeadIn();
+                    if (!profileConfirmPending) return;
                     showProfilePanel();
                     break;
                   }
@@ -5179,6 +5305,7 @@
         if (!profileConfirmPending) return;
         profileConfirmPending = false;
         profileConfirmSnapshot = null;
+        removeProfileBuildingIndicator();
         document.getElementById("profile-panel").classList.remove("visible");
         document.getElementById("profile-btn").classList.remove("active");
         const backdrop = document.getElementById("profile-backdrop");
@@ -5263,6 +5390,8 @@
               JSON.stringify(lastPortrait || {}),
             );
             renderProfile(profileConfirmSnapshot);
+            await ensureProfileBuildingIndicatorLeadIn();
+            if (!profileConfirmPending) return;
             showProfilePanel();
             return;
           }
@@ -5283,6 +5412,7 @@
             if (window.matchMedia("(max-width: 900px)").matches) {
               profileShown = true;
             } else {
+              await ensureProfileBuildingIndicatorLeadIn();
               showProfilePanel();
             }
           }

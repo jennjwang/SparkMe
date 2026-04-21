@@ -27,6 +27,19 @@
         display: flex;
         flex-direction: column;
         -webkit-font-smoothing: antialiased;
+        opacity: 0;
+        transform: translateY(6px);
+        transition:
+          opacity 0.22s ease-out,
+          transform 0.22s ease-out;
+      }
+      body.page-ready {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      body.page-transitioning {
+        opacity: 0;
+        transform: translateY(-4px);
       }
       .top-header {
         display: flex;
@@ -124,9 +137,32 @@
         font-weight: 600;
         transition: background 0.15s;
         margin-top: 8px;
+        position: relative;
       }
       .start-button:hover {
         background: #374151;
+      }
+      .start-button.loading {
+        pointer-events: none;
+        opacity: 0.92;
+        background: #1f2937;
+      }
+      .start-button.loading::after {
+        content: "";
+        display: inline-block;
+        width: 14px;
+        height: 14px;
+        margin-left: 10px;
+        border: 2px solid rgba(255, 255, 255, 0.35);
+        border-top-color: #fff;
+        border-radius: 50%;
+        vertical-align: -2px;
+        animation: startSpin 0.7s linear infinite;
+      }
+      @keyframes startSpin {
+        to {
+          transform: rotate(360deg);
+        }
       }
     </style>
   </head>
@@ -224,6 +260,7 @@
         <a
           href="#"
           class="start-button"
+          id="start-interview-btn"
           onclick="
             startInterview();
             return false;
@@ -231,9 +268,26 @@
           >Begin Interview</a
         >
         <script>
+          let introNavigating = false;
+          window.addEventListener("DOMContentLoaded", () => {
+            requestAnimationFrame(() => {
+              document.body.classList.add("page-ready");
+            });
+          });
+
           function startInterview() {
+            if (introNavigating) return;
+            introNavigating = true;
             const minutes = document.getElementById("available-time").value;
-            window.location.href = "/chat?available_time=" + minutes;
+            const startBtn = document.getElementById("start-interview-btn");
+            if (startBtn) {
+              startBtn.classList.add("loading");
+              startBtn.textContent = "Starting interview";
+            }
+            document.body.classList.add("page-transitioning");
+            setTimeout(() => {
+              window.location.href = "/chat?available_time=" + minutes;
+            }, 190);
           }
         </script>
       </div>

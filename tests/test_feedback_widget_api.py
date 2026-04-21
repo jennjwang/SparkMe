@@ -303,4 +303,5 @@ class TestOrganizeTasksApi:
             model_name=main_flask._TASK_HIERARCHY_MODEL_NAME,
             screen=True,
             grouping_feedback="",
+            append_uncovered_tasks=False,
         )
