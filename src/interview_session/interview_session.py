@@ -182,6 +182,11 @@ class InterviewSession:
         self._time_limit_triggered = False   # True once the time check fires
         self._awaiting_time_extension = False  # True while waiting for user's yes/no
 
+        # Portrait update deduplication: lock prevents concurrent LLM calls;
+        # memory count prevents re-running when no new memories were added.
+        self._portrait_update_lock = asyncio.Lock()
+        self._portrait_update_memory_count = 0
+
         # User in the interview session
         if interaction_mode == 'agent':
             hesitancy = float(os.getenv("USER_AGENT_HESITANCY", "0.0"))
@@ -621,6 +626,15 @@ class InterviewSession:
 
     async def _generate_and_save_user_portrait(self):
         """Synthesize all session memories into the user portrait schema and save to file."""
+        if self._portrait_update_lock.locked():
+            # Another portrait update is already in flight; skip this concurrent call
+            # so we never run two LLM extractions simultaneously (which produces
+            # divergent task lists and cascades into multiple screen passes).
+            return
+        async with self._portrait_update_lock:
+            await self._generate_and_save_user_portrait_inner()
+
+    async def _generate_and_save_user_portrait_inner(self):
         from src.agents.session_scribe.prompts import get_prompt as scribe_get_prompt
         from src.utils.llm.engines import get_engine, invoke_engine
 
@@ -673,6 +687,23 @@ class InterviewSession:
 
         portrait_data = normalize_user_portrait(portrait_data)
 
+        # Merge Task Inventory: preserve tasks from the prior portrait that the LLM
+        # dropped (it may omit tasks not mentioned in the current session's memories
+        # even though they were confirmed in a prior session).
+        prior_tasks = current_portrait.get("Task Inventory", []) if isinstance(current_portrait, dict) else []
+        new_tasks = portrait_data.get("Task Inventory", [])
+        if prior_tasks:
+            def _norm_task(t: str) -> str:
+                return t.lower().strip()
+            merged = list(new_tasks)
+            for old in prior_tasks:
+                old_n = _norm_task(old)
+                covered = any(old_n in _norm_task(new) or _norm_task(new) in old_n
+                              for new in new_tasks)
+                if not covered:
+                    merged.append(old)
+            portrait_data["Task Inventory"] = merged
+
         # Update the in-memory portrait
         self.session_agenda.user_portrait = portrait_data
 
@@ -684,6 +715,7 @@ class InterviewSession:
         with open(portrait_path, "w") as f:
             json.dump(portrait_data, f, indent=2)
 
+        self._portrait_update_memory_count = len(memories)
         SessionLogger.log_to_file(
             "execution_log", f"[PORTRAIT] User portrait updated ({len(memories)} memories)"
         )

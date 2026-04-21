@@ -9,20 +9,18 @@
         "coverage_criteria": [
           "Provides their current role or title, such as job title, academic position, or equivalent."
         ]
-      },
-      {
-        "description": "Their tenure in the role",
-        "coverage_criteria": [
-          "States how long they have been in their current role or position (in years, months, etc.)."
-        ]
-      },
-      {
-        "description": "Their domain or industry",
-        "coverage_criteria": [
-          "Names a field, industry, or area (e.g., AI, healthcare, finance). A broad field name is sufficient — do NOT probe for sub-specialties, research focus, or sub-areas within the field."
-        ]
       }
     ]
+  },
+  {
+    "description": "Priority tasks: the task(s) the participant considers most important in their work.",
+    "coverage_criteria": [
+      "STEP 1 (open ask) — REQUIRED: The Interviewer has asked the participant, open-endedly, which task feels most important to them (e.g., 'Which of those feels most important to you?' or 'Which one matters most?'). Ask this once regardless of how many priorities the participant names.",
+      "STEP 2 (single confirmation) — REQUIRED: The Interviewer has asked ONE follow-up after the participant named their priority — e.g., 'Anything else on that same level, or is that the main one?' Ask this exactly once. A future-oriented answer ('will be important', 'down the line') is fully valid — accept it without probing further.",
+      "COMPLETION: Once STEP 1 and STEP 2 have each been asked once, this subtopic is DONE. Mark it covered and move on immediately. Do NOT ask any further questions about priorities.",
+      "For each priority task, map out the workflow of the task and the subtasks that are part of the workflow."
+    ],
+    "priority_weight": 0.5
   },
   {
     "description": "Priority tasks: the task(s) the participant considers most important in their work.",

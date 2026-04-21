@@ -52,6 +52,7 @@ class Interviewer(BaseAgent, Participant):
         self._message_sent_this_turn = False
         self._time_split_widget_shown = False
         self._response_lock = asyncio.Lock()
+        self._turn_start: float | None = None
 
         self.tools = {
             "recall": Recall(memory_bank=self.interview_session.memory_bank),
@@ -167,6 +168,15 @@ class Interviewer(BaseAgent, Participant):
             self._turn_to_respond = False
             return quantified_question
 
+        turn_start = getattr(self, '_turn_start', None)
+        if turn_start is not None:
+            total_wait_s = asyncio.get_event_loop().time() - turn_start
+            SessionLogger.log_to_file(
+                "execution_log",
+                f"[LATENCY] total_wait={total_wait_s:.2f}s"
+                f" response_preview={quantified_question[:60].replace(chr(10), ' ')!r}"
+            )
+
         self.interview_session.add_message_to_chat_history(
             role=self.title,
             content=quantified_question,
@@ -179,9 +189,12 @@ class Interviewer(BaseAgent, Participant):
                 and self._is_time_allocation_subtopic(subtopic_id)
                 and not self._time_split_widget_shown):
             self._time_split_widget_shown = True
-            # Emit widget immediately so it appears alongside the question,
-            # then refresh the portrait in the background — the widget JS
-            # re-fetches the portrait when it opens, so it will get fresh data.
+            # Signal to the scribe that the next user message is a widget
+            # submission so it can auto-mark coverage and validate task names.
+            self.interview_session._widget_pending_subtopic_id = str(subtopic_id)
+            # Emit the widget message immediately so the loading placeholder
+            # appears as soon as the question does. Portrait refresh runs async;
+            # the frontend polls /api/session-state until tasks are ready.
             self.interview_session.add_message_to_chat_history(
                 role=self.title,
                 content="",
@@ -189,37 +202,14 @@ class Interviewer(BaseAgent, Participant):
             )
             asyncio.create_task(self._refresh_portrait_before_widget())
 
-        # Fallback: schedule a delayed check so that if the LLM used respond_to_user
-        # for a closing message (instead of end_conversation), the feedback widget
-        # still fires once the scribe has had time to mark topics as covered.
-        asyncio.create_task(self._delayed_feedback_check(response))
-
         return quantified_question
 
-    async def _delayed_feedback_check(self, response: str) -> None:
-        """Wait for the scribe to finish processing, then trigger the feedback widget
-        if all core topics are covered or the response looks like a goodbye.
-        This is the fallback for when the LLM sends a farewell via respond_to_user
-        instead of end_conversation."""
-        await asyncio.sleep(8)
-        # Every real interviewer question contains '?' — no '?' means it's a closing message.
-        is_closing = '?' not in response
-        if (not getattr(self.interview_session, '_feedback_widget_sent', False)
-                and (self.interview_session.session_agenda.all_core_topics_completed()
-                     or is_closing)):
-            SessionLogger.log_to_file(
-                "execution_log",
-                "(Interviewer) Delayed fallback: triggering feedback widget "
-                f"(all_covered={self.interview_session.session_agenda.all_core_topics_completed()}, "
-                f"is_closing={is_closing})"
-            )
-            self.interview_session.trigger_feedback_widget()
-
     async def _refresh_portrait_before_widget(self) -> None:
-        """Ensure the user portrait reflects the latest turn's memories before the
-        time-split widget reads it. Waits for in-flight scribe processing, then
-        runs a fresh portrait extraction synchronously."""
+        """Refresh portrait with latest memories, then emit the time-split widget.
+        Emitting AFTER portrait is ready means the frontend's /api/session-state
+        call on render always sees a populated Task Inventory."""
         scribe = getattr(self.interview_session, 'session_scribe', None)
+        _scribe_wait_start = asyncio.get_event_loop().time()
         if scribe is not None:
             start = asyncio.get_event_loop().time()
             while getattr(scribe, 'processing_in_progress', False):
@@ -230,13 +220,55 @@ class Interviewer(BaseAgent, Participant):
                         "[WIDGET] Timed out waiting for scribe before portrait refresh"
                     )
                     break
+        _scribe_wait_s = asyncio.get_event_loop().time() - _scribe_wait_start
+        _portrait_start = asyncio.get_event_loop().time()
         try:
-            await self.interview_session._generate_and_save_user_portrait()
+            # Acquire the lock (wait, don't skip) so we run AFTER any concurrent
+            # portrait update finishes, then force a fresh extraction with all
+            # current memories — the widget needs a populated Task Inventory.
+            async with self.interview_session._portrait_update_lock:
+                await self.interview_session._generate_and_save_user_portrait_inner()
         except Exception as e:
             SessionLogger.log_to_file(
                 "execution_log",
                 f"[WIDGET] Portrait refresh before time-split widget failed: {e}"
             )
+        _portrait_s = asyncio.get_event_loop().time() - _portrait_start
+        SessionLogger.log_to_file(
+            "execution_log",
+            f"[LATENCY] widget_portrait_refresh: scribe_wait={_scribe_wait_s:.2f}s"
+            f" portrait_llm={_portrait_s:.2f}s"
+        )
+        # Pre-warm the task-tree cache so the widget's first /api/organize-tasks
+        # request is served instantly from cache rather than triggering a fresh
+        # GROUP-pass LLM call at render time.
+        asyncio.create_task(self._prewarm_task_tree_cache())
+
+    async def _prewarm_task_tree_cache(self) -> None:
+        """Run organize-tasks server-side and populate the backend cache so the
+        widget's first GET /api/organize-tasks is a cache hit, not a 7-second LLM call."""
+        try:
+            from src.utils.task_hierarchy import organize_tasks as _organize_tasks
+            from src.main_flask import _TASK_TREE_CACHE, _TASK_TREE_CACHE_LOCK, _task_tree_signature, _TASK_TREE_CACHE_MAX
+            portrait = self.interview_session.session_agenda.user_portrait
+            tasks = portrait.get("Task Inventory", []) if isinstance(portrait, dict) else []
+            if len(tasks) < 2:
+                return
+            sig = _task_tree_signature(tasks)
+            if not sig:
+                return
+            with _TASK_TREE_CACHE_LOCK:
+                if sig in _TASK_TREE_CACHE:
+                    return  # already cached
+            tree = await asyncio.to_thread(_organize_tasks, [str(t) for t in tasks], "gpt-4.1-mini", True)
+            with _TASK_TREE_CACHE_LOCK:
+                _TASK_TREE_CACHE[sig] = tree
+                _TASK_TREE_CACHE.move_to_end(sig)
+                while len(_TASK_TREE_CACHE) > _TASK_TREE_CACHE_MAX:
+                    _TASK_TREE_CACHE.popitem(last=False)
+            SessionLogger.log_to_file("execution_log", "[WIDGET] Task tree pre-warmed in cache")
+        except Exception as e:
+            SessionLogger.log_to_file("execution_log", f"[WIDGET] Task tree pre-warm failed: {e}")
 
     def _is_time_allocation_subtopic(self, subtopic_id: str) -> bool:
         agenda = self.interview_session.session_agenda
@@ -268,6 +300,7 @@ class Interviewer(BaseAgent, Participant):
     async def _on_message_body(self, message: Message):
 
         self._message_sent_this_turn = False
+        self._turn_start = asyncio.get_event_loop().time()
 
         if message:
             # Ignore notifications about the Interviewer's own messages.
@@ -292,30 +325,66 @@ class Interviewer(BaseAgent, Participant):
         speculative_prompt: str | None = None
         speculative_task = None
         pre_scribe_coverage: frozenset | None = None
+        _speculative_start = None
         if message is not None:
             pre_scribe_coverage = self._get_coverage_snapshot()
             speculative_prompt = self._get_prompt()
+            _speculative_start = asyncio.get_event_loop().time()
             speculative_task = asyncio.create_task(
                 self.call_engine_async(speculative_prompt)
             )
 
-        # Wait for the scribe to finish processing the current turn so coverage is up to date
+        # Wait for the scribe to finish processing the current turn so coverage is up to date.
+        # Early-exit once coverage has been stable for 1s AND the speculative LLM call is done
+        # — further scribe work (memory writes, portrait) doesn't affect topic selection.
+        _scribe_wait_start = asyncio.get_event_loop().time()
+        _scribe_waited = False
         if message is not None:
             scribe = getattr(self.interview_session, 'session_scribe', None)
             if scribe is not None:
+                _last_seen_coverage = pre_scribe_coverage
+                _coverage_stable_ticks = 0
                 for _ in range(100):  # max ~10s wait
                     if not getattr(scribe, 'processing_in_progress', False):
                         break
+                    _scribe_waited = True
                     await asyncio.sleep(0.1)
+                    # Every 5 ticks (0.5s), check if coverage has changed.
+                    # If stable for 2 consecutive checks (1s) and the speculative
+                    # result is ready, we can proceed without waiting for the rest
+                    # of the scribe's work (memory writes, portrait update).
+                    if _ % 5 == 4 and speculative_task is not None:
+                        curr = self._get_coverage_snapshot()
+                        if curr == _last_seen_coverage:
+                            _coverage_stable_ticks += 1
+                            if _coverage_stable_ticks >= 2 and speculative_task.done():
+                                SessionLogger.log_to_file(
+                                    "execution_log",
+                                    "[LATENCY] early-exit scribe wait: coverage stable 1s"
+                                )
+                                break
+                        else:
+                            _coverage_stable_ticks = 0
+                            _last_seen_coverage = curr
+        _scribe_wait_s = asyncio.get_event_loop().time() - _scribe_wait_start
 
         # If the scribe updated coverage, the speculative prompt is stale — discard it
         # and regenerate with the fresh state to avoid acting on stale coverage.
+        _speculative_discarded = False
         if message is not None and speculative_task is not None:
             post_scribe_coverage = self._get_coverage_snapshot()
             if post_scribe_coverage != pre_scribe_coverage:
                 speculative_task.cancel()
                 speculative_task = None
                 speculative_prompt = None
+                _speculative_discarded = True
+
+        if message is not None:
+            SessionLogger.log_to_file(
+                "execution_log",
+                f"[LATENCY] scribe_wait={_scribe_wait_s:.2f}s"
+                f" speculative_discarded={_speculative_discarded}"
+            )
 
         self._turn_to_respond = True
         iterations = 0
@@ -571,6 +640,23 @@ class Interviewer(BaseAgent, Participant):
             # Keep contents, just drop the marker tags.
             main_prompt = main_prompt.replace('<emergent_insights_block>', '')
             main_prompt = main_prompt.replace('</emergent_insights_block>', '')
+
+        # Include strict mode banner only when ALL active topics disable both emergent
+        # exploration and strategic planning — i.e. the interviewer must stay exactly
+        # on the configured subtopics.
+        strict_mode = (
+            not topic_manager.any_active_topic_allows_emergent()
+            and not topic_manager.any_active_topic_allows_strategic_planner()
+        )
+        if strict_mode:
+            main_prompt = main_prompt.replace('<strict_mode_block>', '').replace('</strict_mode_block>', '')
+        else:
+            main_prompt = re.sub(
+                r'[ \t]*<strict_mode_block>.*?</strict_mode_block>[ \t]*\n?',
+                '',
+                main_prompt,
+                flags=re.DOTALL,
+            )
 
         return format_prompt(main_prompt, format_params)
 

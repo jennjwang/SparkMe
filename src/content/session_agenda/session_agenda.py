@@ -116,13 +116,23 @@ class SessionAgenda:
                        if d.startswith('session_') and \
                        os.path.isdir(os.path.join(base_path, d))]
         
-        # No session can't be found
+        # No session dirs found — still load saved portrait if it exists
         if not session_dirs:
-            return cls.initialize_session_agenda(user_id=user_id,
-                                                 initial_user_portrait_path=initial_user_portrait_path,
-                                                 interview_plan_path=interview_plan_path,
-                                                 interview_description=interview_description,
-                                                 interview_evaluation=interview_evaluation)
+            fresh = cls.initialize_session_agenda(user_id=user_id,
+                                                  initial_user_portrait_path=initial_user_portrait_path,
+                                                  interview_plan_path=interview_plan_path,
+                                                  interview_description=interview_description,
+                                                  interview_evaluation=interview_evaluation)
+            saved_portrait_path = os.path.join(LOGS_DIR, user_id, "user_portrait.json")
+            if os.path.exists(saved_portrait_path):
+                try:
+                    with open(saved_portrait_path, "r", encoding="utf-8") as f:
+                        saved_portrait = normalize_user_portrait(json.load(f))
+                    if saved_portrait:
+                        fresh.user_portrait = saved_portrait
+                except Exception:
+                    pass
+            return fresh
         
         # Sort by session number
         session_dirs.sort(key=lambda x: int(x.split('_')[1]), reverse=True)
@@ -142,11 +152,25 @@ class SessionAgenda:
             fresh.last_meeting_summary = prior.last_meeting_summary
             fresh.session_id = prior.session_id
             return fresh
-        return cls.initialize_session_agenda(user_id=user_id,
-                                             initial_user_portrait_path=initial_user_portrait_path,
-                                             interview_plan_path=interview_plan_path,
-                                             interview_description=interview_description,
-                                             interview_evaluation=interview_evaluation)
+
+        # No session_agenda.json: fall back to fresh agenda, but load the saved
+        # per-user portrait from the user directory so tasks from a prior session
+        # are preserved across restarts.
+        fresh = cls.initialize_session_agenda(user_id=user_id,
+                                              initial_user_portrait_path=initial_user_portrait_path,
+                                              interview_plan_path=interview_plan_path,
+                                              interview_description=interview_description,
+                                              interview_evaluation=interview_evaluation)
+        saved_portrait_path = os.path.join(LOGS_DIR, user_id, "user_portrait.json")
+        if os.path.exists(saved_portrait_path):
+            try:
+                with open(saved_portrait_path, "r", encoding="utf-8") as f:
+                    saved_portrait = normalize_user_portrait(json.load(f))
+                if saved_portrait:
+                    fresh.user_portrait = saved_portrait
+            except Exception:
+                pass
+        return fresh
 
     def add_interview_question_raw(self, subtopic_id: str, question: str,
                                    rubric: Optional[str] = None) -> bool:
@@ -441,10 +465,12 @@ class SessionAgenda:
             topics_list = self.interview_topic_manager.get_active_topics()
 
         for topic in topics_list:
+            topic_complete = self.interview_topic_manager.check_core_topic_completion(topic.topic_id)
             output.append("=== TOPIC ===")
             output.append(f"Topic ID: {topic.topic_id}")
             output.append(f"Topic Description: {topic.description}")
             output.append(f"Topic Priority Weight: {topic.priority_weight}")
+            output.append(f"Topic Status: {'COVERED — do not ask any more questions about this topic' if topic_complete else 'NOT COVERED'}")
             output.append(f"Allow Emergent Subtopics: {'Yes' if topic.allow_emergent else 'No'}\n")
 
             for subtopic in topic:
@@ -454,8 +480,11 @@ class SessionAgenda:
                 output.append(f"    Subtopic Priority Weight: {subtopic.priority_weight}")
                 if subtopic.coverage_criteria:
                     output.append(f"    Coverage Criteria:")
-                    for criterion in subtopic.coverage_criteria:
-                        output.append(f"        - {criterion}")
+                    statuses = subtopic.criteria_coverage
+                    for i, criterion in enumerate(subtopic.coverage_criteria):
+                        done = statuses[i] if i < len(statuses) else False
+                        marker = "✓ DONE" if done else "✗ NOT YET"
+                        output.append(f"        [{marker}] {criterion}")
                 # TODO I think if it's covered, can give the summary of subtopics; otherwise just notes
                 if subtopic.check_coverage():
                     output.append(f"    Subtopic Status: COVERED")

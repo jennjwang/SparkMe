@@ -99,8 +99,9 @@ def main():
     parser.add_argument("--sim-user-id", nargs="*",
                         help="Override synthetic user_id(s) (skip profile copy if set)")
     parser.add_argument("--max-turns", type=int, default=40)
-    parser.add_argument("--hesitancy", nargs="*", type=float, default=[0.0],
-                        help="Hesitancy level(s) 0.0–1.0 (default 0.0)")
+    _default_hesitancy = float(os.getenv("USER_AGENT_HESITANCY", "0.0"))
+    parser.add_argument("--hesitancy", nargs="*", type=float, default=[_default_hesitancy],
+                        help=f"Hesitancy level(s) 0.0–1.0 (default: {_default_hesitancy} from USER_AGENT_HESITANCY)")
     parser.add_argument("--session-type", default="intake", choices=["intake", "weekly"])
     parser.add_argument("--profiles-dir", default=None,
                         help="Override USER_AGENT_PROFILES_DIR")

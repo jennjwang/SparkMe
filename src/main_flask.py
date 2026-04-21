@@ -22,6 +22,17 @@ import secrets
 import json
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
+
+
+class _SuppressPollingEndpoints(logging.Filter):
+    _SUPPRESS = {'/api/session-state', '/api/get-messages'}
+
+    def filter(self, record):
+        msg = record.getMessage()
+        return not any(ep in msg for ep in self._SUPPRESS)
+
+
+logging.getLogger('werkzeug').addFilter(_SuppressPollingEndpoints())
 from typing import Dict, Optional
 from dotenv import load_dotenv
 
@@ -1287,7 +1298,7 @@ def organize_tasks_route():
                 _TASK_TREE_CACHE.move_to_end(sig)
                 return jsonify({'success': True, 'tree': cached, 'cached': True})
 
-    tree = organize_tasks([str(t) for t in tasks])
+    tree = organize_tasks([str(t) for t in tasks], skip_screen=True)
 
     if sig:
         with _TASK_TREE_CACHE_LOCK:

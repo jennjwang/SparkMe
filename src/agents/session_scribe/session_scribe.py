@@ -1,5 +1,6 @@
 from typing import List, TYPE_CHECKING, TypedDict, Optional
 import asyncio
+import re
 import time
 import os
 
@@ -51,6 +52,10 @@ class SessionScribe(BaseAgent, Participant):
 
         # Track last interviewer message
         self._last_interviewer_message = None
+        # Set by _locked_update_subtopic_coverage when a widget submission is detected;
+        # consumed by _get_formatted_prompt and _update_subtopic_coverage.
+        self._pending_widget_subtopic_id: str | None = None
+        self._pending_widget_task_names: list[str] | None = None
 
         # Locks and processing flags
         self.processing_in_progress = False # If processing is in progress
@@ -370,15 +375,62 @@ class SessionScribe(BaseAgent, Participant):
             await self._decrement_pending_tasks()
 
         # Fire portrait update after releasing processing_in_progress so it
-        # doesn't block the Interviewer from asking the next question
+        # doesn't block the Interviewer from asking the next question.
+        # Screening runs as a separate follow-on task so it never competes
+        # with the interviewer's LLM call.
         if getattr(self.interview_session, "session_type", "intake") == "intake":
             async def _portrait_task():
+                # Skip portrait re-extraction when no new memories were added since
+                # the last update — the LLM would produce a near-identical portrait
+                # (modulo phrasing noise) and needlessly trigger another screen pass.
+                current_count = len(self.interview_session.memory_bank.memories)
+                if current_count <= self.interview_session._portrait_update_memory_count:
+                    return
                 try:
                     await self.interview_session._generate_and_save_user_portrait()
                 except Exception as e:
                     SessionLogger.log_to_file(
                         "execution_log", f"[PORTRAIT] Error updating user portrait: {e}"
                     )
+                # Screen tasks after portrait is saved so the widget gets a
+                # clean list.  Runs in a separate task so it doesn't race with
+                # the interviewer.
+                asyncio.create_task(_screen_portrait_tasks(self.interview_session))
+
+            async def _screen_portrait_tasks(session):
+                try:
+                    from src.utils.task_hierarchy import _screen_tasks
+                    from src.utils.llm.engines import get_engine
+                    portrait = session.session_agenda.user_portrait
+                    if not isinstance(portrait, dict):
+                        return
+                    raw_tasks = portrait.get("Task Inventory", [])
+                    if not raw_tasks:
+                        return
+                    sig = "||".join(sorted(str(t) for t in raw_tasks))
+                    if getattr(session, '_last_screened_task_sig', None) == sig:
+                        return
+                    session._last_screened_task_sig = sig
+                    engine = get_engine("gpt-4.1-mini")
+                    screened = await asyncio.to_thread(_screen_tasks, raw_tasks, engine)
+                    if screened:
+                        portrait["Task Inventory"] = screened
+                        session.session_agenda.user_portrait = portrait
+                        import os, json
+                        portrait_path = os.path.join(
+                            os.getenv("LOGS_DIR"), session.user_id, "user_portrait.json"
+                        )
+                        with open(portrait_path, "w") as f:
+                            json.dump(portrait, f, indent=2)
+                        SessionLogger.log_to_file(
+                            "execution_log",
+                            f"[PORTRAIT] Task screen pass complete ({len(screened)} tasks kept)"
+                        )
+                except Exception as e:
+                    SessionLogger.log_to_file(
+                        "execution_log", f"[PORTRAIT] Task screen pass failed: {e}"
+                    )
+
             asyncio.create_task(_portrait_task())
 
     async def _locked_write_memory_notes_and_question_bank(self, interviewer_message: Message, user_message: Message) -> None:
@@ -396,11 +448,36 @@ class SessionScribe(BaseAgent, Participant):
         """Wrapper to handle update_subtopic_coverage with lock"""
         async with self._session_agenda_lock:
             self.add_event(sender=interviewer_message.role,
-                        tag="agenda_lock_message", 
+                        tag="agenda_lock_message",
                         content=interviewer_message.content)
             self.add_event(sender=user_message.role,
-                        tag="agenda_lock_message", 
+                        tag="agenda_lock_message",
                         content=user_message.content)
+
+            # Detect widget submission: interviewer set a pending subtopic_id when the
+            # time-split widget was shown. Consume the flag here and extract task names
+            # from the user's formatted allocation string for downstream validation.
+            widget_subtopic_id = getattr(
+                self.interview_session, '_widget_pending_subtopic_id', None
+            )
+            if widget_subtopic_id:
+                self.interview_session._widget_pending_subtopic_id = None
+                self._pending_widget_subtopic_id = widget_subtopic_id
+                # Extract leaf task names: "Task Name: XX%" or "Parent › Child: XX%"
+                # Take only the part after the last "›" to get the leaf name.
+                raw_names = re.findall(
+                    r'([^,\n]+?):\s*\d+(?:\.\d+)?%',
+                    user_message.content
+                )
+                self._pending_widget_task_names = [
+                    name.split('›')[-1].strip()
+                    for name in raw_names
+                    if name.strip()
+                ]
+            else:
+                self._pending_widget_subtopic_id = None
+                self._pending_widget_task_names = None
+
             await self._update_subtopic_coverage()
             
     async def _locked_update_list_of_subtopics(self, interviewer_message: Message, user_message: Message) -> None:
@@ -710,18 +787,34 @@ class SessionScribe(BaseAgent, Participant):
         """Process the latest conversation and update subtopic coverage and possibly move to the next topic."""
         prompt = self._get_formatted_prompt("update_subtopic_coverage", active_topics_only=active_topics_only)
         self.add_event(
-            sender=self.name, 
-            tag="update_subtopic_coverage_prompt", 
+            sender=self.name,
+            tag="update_subtopic_coverage_prompt",
             content=prompt
         )
         response = await self.call_engine_async(prompt)
         self.add_event(
-            sender=self.name, 
-            tag="update_subtopic_coverage_response", 
+            sender=self.name,
+            tag="update_subtopic_coverage_response",
             content=response
         )
         self.handle_tool_calls(response)
-        
+
+        # Guarantee the time-allocation subtopic is marked covered after a widget
+        # submission, even if the LLM failed to call update_subtopic_coverage.
+        if self._pending_widget_subtopic_id:
+            agenda = self.interview_session.session_agenda
+            subtopic_id = str(self._pending_widget_subtopic_id)
+            self._pending_widget_subtopic_id = None
+            self._pending_widget_task_names = None
+            topic_id = subtopic_id.split(".")[0]
+            core_topic = agenda.interview_topic_manager.get_core_topic(topic_id)
+            subtopic = core_topic.get_subtopic(subtopic_id) if core_topic else None
+            if subtopic is not None and not subtopic.is_covered:
+                agenda.update_subtopic_coverage(
+                    subtopic_id=subtopic_id,
+                    aggregated_notes="Time allocation captured via widget submission."
+                )
+
         # Decide if need to proceed
         self.interview_session.session_agenda.revise_agenda_after_update()
         
@@ -901,22 +994,96 @@ class SessionScribe(BaseAgent, Participant):
             topics_list = self.interview_session.session_agenda.get_questions_and_notes_str(hide_answered="all",
                                                                                             active_topics_only=active_topics_only)
 
-            return format_prompt(prompt, {
+            task_deep_dive_enabled = (
+                os.getenv("ENABLE_TASK_DEEP_DIVE", "false").lower() == "true"
+                and getattr(self.interview_session, "session_type", "intake") != "weekly"
+            )
+
+            # Build widget task context when processing a widget submission.
+            # _pending_widget_task_names is set by _locked_update_subtopic_coverage.
+            widget_task_names = self._pending_widget_task_names
+            widget_subtopic_id = self._pending_widget_subtopic_id
+            if widget_task_names:
+                names_list = "\n".join(f"  - {n}" for n in widget_task_names)
+                widget_task_context = (
+                    f"\n<widget_task_context>\n"
+                    f"The participant just submitted the time-allocation widget. "
+                    f"The following task names were included in the submission — "
+                    f"check each one for action+object+objective format and call "
+                    f"`add_snapshot_subtopic` for any that are bare verbs, bare nouns, "
+                    f"or lack a clear purpose/objective:\n"
+                    f"{names_list}\n"
+                    f"\n⚠️ SCOPE RESTRICTION: In this evaluation round, ONLY assess "
+                    f"subtopic {widget_subtopic_id} (time allocation). "
+                    f"Do NOT mark any other subtopic as covered based on widget data — "
+                    f"time percentages do NOT constitute answers to questions the "
+                    f"interviewer has not yet asked (e.g. priority tasks).\n"
+                    f"</widget_task_context>"
+                )
+                # Narrow the topics_list to just the time-allocation subtopic so the
+                # LLM cannot see — and accidentally mark — other subtopics as covered.
+                if widget_subtopic_id:
+                    topic_id = widget_subtopic_id.split(".")[0]
+                    agenda = self.interview_session.session_agenda
+                    core_topic = agenda.interview_topic_manager.get_core_topic(topic_id)
+                    st = core_topic.get_subtopic(widget_subtopic_id) if core_topic else None
+                    if st is not None:
+                        lines = [
+                            "=== TOPIC ===",
+                            f"Topic ID: {topic_id}",
+                            f"Topic Description: {core_topic.description}",
+                            "",
+                            "    --- SUBTOPIC ---",
+                            f"    Subtopic ID: {st.subtopic_id}",
+                            f"    Subtopic Description: {st.description}",
+                        ]
+                        if st.coverage_criteria:
+                            lines.append("    Coverage Criteria:")
+                            for c in st.coverage_criteria:
+                                lines.append(f"        - {c}")
+                        lines.append(
+                            f"    Subtopic Status: "
+                            f"{'COVERED' if st.is_covered else 'NOT COVERED'}"
+                        )
+                        if not st.is_covered and st.notes:
+                            lines.append(
+                                f"    [Subtopic NOTES]: "
+                                + "\n         -".join(st.notes)
+                            )
+                        topics_list = "\n".join(lines)
+            else:
+                widget_task_context = ""
+
+            selected_tools = (
+                ["update_criteria_coverage", "update_subtopic_coverage",
+                 "add_task_deep_dive_topic"]
+                if task_deep_dive_enabled
+                else ["update_criteria_coverage", "update_subtopic_coverage"]
+            )
+            if widget_task_names:
+                selected_tools = selected_tools + ["add_snapshot_subtopic"]
+
+            formatted_prompt = format_prompt(prompt, {
                 "user_portrait": self.interview_session.session_agenda.user_portrait,
                 "previous_events": "\n".join(previous_events),
                 "current_qa": "\n".join(current_qa),
                 "last_meeting_summary": self.interview_session.session_agenda.get_last_meeting_summary_str(),
+                "widget_task_context": widget_task_context,
                 "topics_list": topics_list,
                 "tool_descriptions": self.get_tools_description(
-                    selected_tools=(
-                        ["update_criteria_coverage", "update_subtopic_coverage",
-                         "add_task_deep_dive_topic"]
-                        if (os.getenv("ENABLE_TASK_DEEP_DIVE", "false").lower() == "true"
-                            and getattr(self.interview_session, "session_type", "intake") != "weekly")
-                        else ["update_criteria_coverage", "update_subtopic_coverage"]
-                    )
+                    selected_tools=selected_tools
                 )
             })
+            if not task_deep_dive_enabled:
+                formatted_prompt = re.sub(
+                    r'[ \t]*<task_deep_dive_block>.*?</task_deep_dive_block>[ \t]*\n?',
+                    '',
+                    formatted_prompt,
+                    flags=re.DOTALL,
+                )
+            else:
+                formatted_prompt = formatted_prompt.replace('<task_deep_dive_block>', '').replace('</task_deep_dive_block>', '')
+            return formatted_prompt
         elif prompt_type == "update_subtopic_notes":
             return format_prompt(prompt, {
                 "additional_context": kwargs.get("additional_context"),

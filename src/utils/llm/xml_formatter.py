@@ -41,25 +41,41 @@ def parse_tool_calls(xml_string: str) -> Dict[str, Any]:
     """
     Parse XML tool calls with proper XML entity handling
     """
-    # First, identify and escape any < or > within response tags
     xml_string = xml_string.replace('&', '&amp;')
-    # xml_string = xml_string.replace('<', '&lt;')
-    # xml_string = xml_string.replace('>', '&gt;')
     xml_string = xml_string.replace('"', '&quot;')
     xml_string = xml_string.replace("'", '&apos;')
-    
-    # Find content between <response> tags and escape < and > within it
-    def escape_response_content(match):
-        content = match.group(1)
-        escaped_content = content.replace('<', '&lt;').replace('>', '&gt;')
-        return f"<response>{escaped_content}</response>"
-    
-    xml_string = re.sub(r'<response>(.*?)</response>', 
-                        escape_response_content, 
-                        xml_string, 
-                        flags=re.DOTALL)
-    
-    root = ET.fromstring(xml_string)
+
+    # Escape < and > inside leaf-level tag content (any field whose text
+    # doesn't contain child XML tags).  Covers <response>, <aggregated_notes>,
+    # <subtopic_id>, etc. — not just <response>.
+    def escape_leaf_content(match):
+        tag, content = match.group(1), match.group(2)
+        if not re.search(r'<[a-zA-Z/_]', content):
+            content = content.replace('<', '&lt;').replace('>', '&gt;')
+        return f'<{tag}>{content}</{tag}>'
+
+    xml_string = re.sub(
+        r'<([a-zA-Z_][a-zA-Z0-9_]*)>(.*?)</\1>',
+        escape_leaf_content,
+        xml_string,
+        flags=re.DOTALL,
+    )
+
+    try:
+        root = ET.fromstring(xml_string)
+    except ET.ParseError:
+        # Final fallback: split at tag boundaries and escape stray < > in text nodes
+        parts = re.split(r'(</?[a-zA-Z_][a-zA-Z0-9_]*>)', xml_string)
+        xml_string = ''.join(
+            p if re.match(r'</?[a-zA-Z_][a-zA-Z0-9_]*>', p)
+            else p.replace('<', '&lt;').replace('>', '&gt;')
+            for p in parts
+        )
+        try:
+            root = ET.fromstring(xml_string)
+        except ET.ParseError as e:
+            print(f"[XML] parse_tool_calls: could not parse XML after fallback: {e}")
+            return []
     result = []
     
     def parse_value(text: str) -> Any:

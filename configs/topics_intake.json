@@ -9,18 +9,6 @@
         "coverage_criteria": [
           "Provides their current role or title, such as job title, academic position, or equivalent."
         ]
-      },
-      {
-        "description": "Their tenure in the role",
-        "coverage_criteria": [
-          "States how long they have been in their current role or position (in years, months, etc.)."
-        ]
-      },
-      {
-        "description": "Their domain or industry",
-        "coverage_criteria": [
-          "Names a field, industry, or area (e.g., AI, healthcare, finance). A broad field name is sufficient — do NOT probe for sub-specialties, research focus, or sub-areas within the field."
-        ]
       }
     ]
   },
@@ -31,41 +19,30 @@
     "priority_weight": 1.0,
     "subtopics": [
       {
-        "description": "Breadth: the list of tasks the person performs in a typical week. Elicit via week reconstruction — ask the participant to recall what a typical week of their work looks like — rather than asking abstractly for 'your tasks'.",
+        "description": "Week Recall: the participant's initial description of what their typical week looks like, establishing the base task list.",
         "coverage_criteria": [
-          "STEP 1 (week recall): The participant has described what their typical week of work looks like — the kinds of tasks they actually do. This criterion is satisfied if the participant has already described their day-to-day or weekly work pattern in ANY prior response, including in response to a role/context question. Only if that description is absent should the interviewer ask a week-reconstruction question (e.g., 'Can you walk me through what a typical week looks like for you?'). Concrete weekly rhythm surfaces more tasks than abstract averages.",
-          "STEP 2 (frequency sweep): After the week walkthrough, explicitly ask about tasks that occur on a DIFFERENT, LOWER cadence — monthly, quarterly, or a few times a year. The question MUST reference cadence/frequency, e.g., 'Is there anything you do monthly, or every few months, that wouldn't show up in a typical week?' A generic 'anything else?' does NOT satisfy this step. This step must be asked even if the user already said no to a general catch-all.",
-          "STEP 3 (targeted catch-all, conditional): After STEP 2, mentally scan the inventory against what would be typical for someone in this role/domain. If there are concrete tasks you would reasonably expect from this profession that the participant has NOT mentioned, do ONE final probe naming those specific expected examples — e.g., for an academic: 'I haven't heard you mention things like advising students, reviewing papers, or grant writing — are any of those part of your work?'; for a software engineer: 'You haven't mentioned things like code review or on-call — do those come up for you?'. Tailor the examples to THIS participant's stated role and domain; do NOT use a generic list. If nothing obvious is missing from their inventory, SKIP STEP 3 entirely and mark the subtopic covered — do NOT fall back to a generic 'anything else?'. STEP 3 cannot be combined with STEP 2.",
-          "Every task recorded is a specific action+object+objective, where 'objective' means the PURPOSE or GOAL of the task (why they do it), NOT the procedural steps involved in doing it. Example: 'writing code to run experiments' (purpose = run experiments), NOT 'writing code: opening the IDE, typing, debugging' (those are steps). Do NOT embed cadence, frequency, or scheduling information inside the task description itself — phrases like 'on a roughly monthly cadence', 'every few weeks', 'quarterly', 'weekly' must be stripped from the recorded task. Example: record 'writing up project proposals' NOT 'working on writeups for project proposals on a roughly monthly cadence'. Cadence is captured separately (via the time-allocation widget and the STEP 2 frequency sweep), never as part of the task name.",
-          "ORDERING: STEP 1 must come before STEP 2, and STEP 2 must come before STEP 3 (when STEP 3 is asked). STEP 1 and STEP 2 are mandatory and must never be skipped or merged. STEP 3 is conditional — it is asked only if there are role-typical tasks obviously missing from the inventory, and is otherwise skipped. Once STEP 1 and STEP 2 have been asked, and STEP 3 has either been asked once or deliberately skipped per its own criterion, mark this subtopic FULLY COVERED and move on immediately — do NOT re-probe in different wording, do NOT ask another STEP 2-style question afterward, and do NOT reopen the task list for any reason. A 'no' answer to STEP 3 is final.",
-          "If the user gives two consecutive sub-5-word replies with no new task, stop probing and advance to the next subtopic.",
-          "Any task given as a bare verb or generic action (e.g., 'write', 'read', 'meet with people') must be clarified to action+object+objective before this subtopic is marked covered. Clarify by asking the PURPOSE ('what's that for?' / 'what are you trying to accomplish?'), NOT by asking for sub-steps.",
-          "If the user's purpose/objective clause names an action they also perform themselves (e.g., 'I read nonfiction to write reviews' → 'writing reviews' is itself a task), record BOTH as separate tasks in the inventory — the input action AND the output action. Probe the output action briefly to confirm: 'Is writing the reviews its own thing you spend time on, separate from the reading?'. Exception: purposes that are outcomes/states rather than actions the user performs (e.g., 'to stay informed', 'to understand the field') are NOT separate tasks — only split when the purpose is an activity the user actively does.",
-          "Do NOT decompose a named task into its procedural sub-steps (e.g., if the user says 'paint portraits', do NOT ask about sketching, mixing paint, finishing, or 'walk me through start to finish'). Those are how-to details, not separate tasks. If a task is already named with a purpose, treat it as covered and probe for OTHER tasks in the week instead.",
-          "Questions in this subtopic must NOT include examples, suggestions, or option lists (no 'like X, Y, or Z', 'such as X', 'for example'). The participant must generate their own list — planted examples bias recall and invite yes/no replies. EXCEPTION: STEP 3 (targeted catch-all) is explicitly allowed to name specific role-typical tasks that appear missing from the inventory, since its purpose is to surface obvious gaps the participant forgot."
+          "STEP 1 (week recall) — REQUIRED: The participant has described what their typical week of work looks like, including the kinds of tasks they actually do. This is satisfied if they described their day-to-day or weekly work pattern in ANY prior response — do not re-ask if it was already answered during role/context. Ask a week-reconstruction question (e.g., 'Can you walk me through what a typical week looks like?', 'What did you work on yesterday?') only if no such description exists yet. The question MUST be anchored in time and actions — do NOT ask about responsibilities, ownership, or role identity (e.g., do NOT ask 'what are your core responsibilities', 'what's really yours vs the lab's', 'how do you see your role'). Those belong to Role and Context, not Task Inventory."
         ],
         "priority_weight": 1.0
       },
       {
-        "description": "Time allocation: how much time they spend on each task, as a percentage of their total work week. A time-split widget is shown to the participant to collect the actual percentages — do NOT ask for per-task percentages one by one in conversation. The interviewer's only job here is to confirm the task list is complete and accounts for essentially all of the participant's work time.",
+        "description": "Task List Completion: sweeping for lower-cadence tasks, confirming the list is exhaustive, and ensuring every task has a stated objective.",
         "coverage_criteria": [
-          "PREREQUISITE: This subtopic CANNOT be marked covered unless the Interviewer has already sent a dedicated message asking whether the task list accounts for all of the participant's work time (e.g. 'Does that list cover everything you spend your time on?'). A 'yes' or confirmation given by the participant during task inventory does NOT satisfy this criterion — the participant must have answered a direct, explicit question from the Interviewer specifically about overall time coverage.",
-          "The participant responded to that direct question and confirmed the task list accounts for essentially all of their work time.",
-          "No significant unaccounted portion remains — the participant has not flagged any large chunk of their week that is missing from the task list."
+          "STEP 2 (frequency sweep) — REQUIRED: The Interviewer has explicitly asked about tasks that occur on a LOWER cadence — monthly, quarterly, or a few times a year. The question MUST reference cadence/frequency (e.g., 'Is there anything you do monthly or every few months that wouldn't show up in a typical week?'). A generic 'anything else?' does NOT satisfy this step. Ask STEP 2 exactly once — after it is asked, never re-ask it or a variant of it.",
+          "STEP 3 (targeted catch-all + completeness confirmation) — CONDITIONAL: After STEP 2, the Interviewer has asked a completeness confirmation. If there are obvious role-typical tasks missing from the inventory, this question must name those specific expected tasks AND end with a completeness confirmation (e.g., 'I haven't heard you mention advising students or grant writing — are any of those part of your work, or does that basically cover everything?'). If nothing obvious is missing, ask ONLY the completeness confirmation (e.g., 'Does that basically cover everything you spend your time on?'). STEP 3 cannot be combined with STEP 2. Ask it exactly once; a 'no' or 'yes' answer is final.",
+          "COMPLETION: Once STEP 1 and STEP 2 have been asked, and STEP 3 has been asked once or deliberately skipped, this subtopic is FULLY COVERED. Do NOT re-probe, do NOT ask another version of STEP 2 or STEP 3, and do NOT reopen the task list for any reason. If the user gives two consecutive sub-5-word replies with no new task information, stop probing and treat this as done.",
+          "Every task in the inventory has a stated objective — the participant has described WHY they do it (the goal or outcome, not the procedural steps). If a task was mentioned without a purpose, the interviewer has asked for it before moving on. Tasks with only an action+object and no stated purpose are NOT covered."
         ],
-        "priority_weight": 0.8
+        "priority_weight": 1.0
       },
       {
-        "description": "Priority tasks: the task(s) the participant considers most important in their work.",
+        "description": "Time allocation: how much time they spend on each task, as a percentage of their total work week. A time-split widget is shown to the participant to collect the actual percentages. IMPORTANT: The interviewer MUST send a message targeting this subtopic — for example, 'Now let's see how your time breaks down across these tasks — here's a quick widget for you to fill in.' This message triggers the widget. Do NOT ask for per-task percentages one by one in conversation. Do NOT skip this subtopic even if task-list completeness was already confirmed in the Breadth subtopic.",
         "coverage_criteria": [
-          "STEP 1 (open ask): Ask once, open-ended, which task is most important — e.g., 'Which of those feels most important to you?' or 'Which one matters most?'. Do not frame as 'one or two'; let the participant name whatever count they volunteer.",
-          "STEP 2 (single confirmation): After the participant names their priority task(s), ask ONE confirmation probe — e.g., 'Anything else on the same level, or is that the main one?'. Accept whatever answer they give and move on. Do NOT probe a second time, do NOT re-ask in different wording, do NOT push for more.",
-          "Once STEP 1 and STEP 2 have each been asked once, mark this subtopic covered and advance — regardless of how many priorities were named.",
-          "Distinguishes priority from time-spent — a task can be low-frequency but high-stakes.",
-          "Do NOT plant reasons or offer multiple-choice framings when asking about priority (e.g., avoid 'is that because of X, or because of Y?'). Use open probes: 'What makes it the most important?' or 'Why that one?'.",
-          "Questions in this subtopic must NOT include examples, suggestions, or option lists (no 'like reading, coding, writing, meetings', 'such as X', 'for example'). Ask open-endedly — let the participant name the task in their own words."
+          "PREREQUISITE: The task list has been confirmed complete. This is satisfied by EITHER: (a) STEP 3 of the Breadth subtopic, which always ends with a completeness confirmation (e.g., 'Does that basically cover everything you spend your time on?') and the participant did not introduce a large new unaccounted block of time in reply, OR (b) a standalone completeness confirmation asked by the Interviewer that received a similar response. Do NOT ask another completeness question if STEP 3 already covered it. If the task list is not yet confirmed complete, ask the completeness question first.",
+          "The participant has provided explicit percentage or fraction breakdowns showing how their work time is divided across tasks — for example, 'I spend about 50% on X and 30% on Y', or a submitted widget with per-task percentages. Evaluate this criterion by scanning the conversation for explicit numeric time splits: if NO percentages or fractions appear in the participant's messages, this criterion is FALSE regardless of any other confirmations. A 'yes' or 'no that's it' reply to a completeness question does NOT satisfy this criterion.",
+          "Every task in the Task Inventory has a corresponding time allocation entry. This is FALSE if the participant has not quantified time for each task."
         ],
-        "priority_weight": 0.5
+        "priority_weight": 0.8
       }
     ]
   }

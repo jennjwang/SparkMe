@@ -86,32 +86,54 @@ Then form clusters using this hybrid rule:
      thing — not just loosely related. Two triggers for merging:
 
      (a) Same specific object — tasks that act on the exact same artifact or event
-         belong in one cluster regardless of action verb.
-         Example: "preparing for advisor meetings" and "attending advisor meetings"
-         → same specific object (advisor meetings) → merge into one cluster.
+         belong in one cluster regardless of action verb. The verb does NOT matter
+         when the object is the same: preparing, attending, reviewing, following up,
+         presenting at, debriefing after — all cluster together if they share the
+         same specific object.
          Example: "running experiments" and "analyzing experimental data"
-         → same underlying artifact (experiments/data) → merge into one cluster.
+         → same underlying artifact (experiments/data) → one cluster.
 
      (b) Same object domain across verbs — tasks whose objects are different instances
          of the same category belong together.
-         Example: "attending advisor meetings" and "meeting with peers"
-         → both involve human gatherings → merge into one cluster.
+         Example: "attending lab meetings", "attending project meetings",
+                  "meeting with peers", "attending research talks"
+         → different specific objects but same broad domain (gatherings/meetings/talks) → one cluster.
+         CRITICAL: meeting-type activities of ANY kind (attending, preparing for, presenting at,
+         following up on — any meeting, seminar, talk, or check-in, regardless of audience:
+         advisor, lab, project, peer, cross-team) ALWAYS form ONE single cluster.
+         Do NOT split meetings by audience or specificity (e.g. do NOT create separate
+         "advisor meetings" and "other meetings" clusters). Rule (a) does NOT override
+         this: even when "attending advisor meetings" + "preparing for advisor meetings"
+         share the same specific object, they belong in the SAME broad meetings cluster
+         as all other meeting-type tasks, not in their own separate cluster.
 
      Counter-example: "reading papers" and "writing papers" → same object class but
      opposite directions of work → keep separate.
+     Counter-example: "writing project proposals" and "writing submission manuscripts"
+     → same action (writing) but DIFFERENT document types (proposal ≠ manuscript) →
+     SEPARATE tasks. They may be grouped in STEP 2 but must remain distinct leaf nodes.
 
   3. For each final cluster, identify three things:
        - Shared action(s): the verb(s) that cover the cluster
        - Shared object domain: the general thing being acted on
        - Shared objective: the common purpose or outcome across all tasks in the cluster
 
-     Name the cluster: "<action(s)> <object domain> to <shared objective>"
+     Name the cluster: "<action> <object domain> to <shared objective>"
+     CRITICAL naming rules:
+       - Use at most ONE or TWO action words. Do NOT list every verb in the cluster.
+         If the cluster has many verbs (preparing, attending, meeting with …), pick the
+         single most representative verb (e.g. "attending") or a short natural blend
+         (e.g. "attending and presenting in"). Never produce "attending and meeting with
+         and preparing for …".
+       - The object domain is a single concise noun phrase (e.g. "meetings", "experiments",
+         "research documents") — NOT a list like "meetings and peers and talks".
+       - The whole label must read as natural English under 10 words.
      Examples:
-       "running"+"analyzing" / "experiments" / "generate and interpret findings"
+       Verbs: running, analyzing  |  Object: experiments  |  Objective: generate findings
          → "Running and analyzing experiments to generate findings"
-       "attending"+"meeting with" / "meetings and peers" / "exchange updates and feedback"
-         → "Attending meetings to exchange updates and feedback"
-       "writing" / "documents" / "communicate and plan research"
+       Verbs: attending, meeting with, preparing for  |  Object: meetings  |  Objective: exchange updates and feedback
+         → "Attending meetings and talks to exchange updates and feedback"
+       Verbs: writing, drafting  |  Object: research documents  |  Objective: communicate work
          → "Writing research documents to communicate and plan work"
      Keep it under 10 words, sentence case.
 
@@ -149,6 +171,10 @@ advisor meetings" and "attending talks"). In particular: preparing for X and
 attending X are ALWAYS different tasks — different actions — never merge them.
 (They can be grouped together in STEP 2 because they share the same object,
 but they must remain separate leaf nodes.)
+Writing different document types is NOT the same task even if both use the verb "write":
+"writing project proposals" and "writing submission manuscripts/papers" have different
+objects (proposal ≠ manuscript) → DO NOT merge. Group them in STEP 2 under an invented
+"Writing research documents …" label, but keep them as separate children.
 
 ================================================================
 STEP 2 — GROUP (nest into a hierarchy)
@@ -225,21 +251,31 @@ For each statement, apply these five checks:
    or month? Judge the action, not the outcome — writing a proposal about future work passes
    because writing is the current activity. Reject only when the whole statement describes a
    mission, research agenda, or aspiration rather than a discrete, recurring activity.
-   Pass: "writing project proposals", "running experiments", "attending lab meetings"
-   Fail: "advancing AI alignment", "conducting research on human-centered AI" (ongoing mission,
-   not a specific activity), "improving language models for populations" (aspiration)
+   Pass: "writing project proposals", "running experiments", "attending lab meetings",
+         "designing and building language models to improve AI", "reading research papers"
+   Fail: "advancing AI alignment" (pure aspiration — no observable action),
+         "conducting research on human-centered AI" (ongoing mission, not a specific activity),
+         "improving language models for populations" (outcome goal, not an activity)
+   IMPORTANT: "designing and building [concrete artifact like models, systems, tools]" is a
+   PASS — it has a specific action (design+build) and a concrete object (the artifact).
+   "investigating/exploring [domain]" is borderline — rewrite it to "running experiments
+   and analyzing results to understand [domain]" rather than rejecting outright.
 
 2. **Specific action?** — Does it name a concrete, observable verb?
-   Pass: "Debug", "Review", "Write", "Run", "Analyze", "Draft", "Read", "Attend", "Listen to"
+   Pass: "Debug", "Review", "Write", "Run", "Analyze", "Draft", "Read", "Attend", "Listen to",
+         "Design", "Build", "Train", "Deploy", "Investigate" (when paired with concrete object)
    Fail: verbs so broad that a watching stranger couldn't tell what the person is physically doing.
    Common vague verbs that MUST be rewritten: "working on", "doing", "handling", "managing",
-   "dealing with", "helping with" — always rewrite these to the specific action implied
-   (e.g. "working on proposals" → "writing project proposals to secure funding")
+   "dealing with", "helping with", "leveraging" — always rewrite these to the specific action implied
+   (e.g. "working on proposals" → "writing project proposals to secure funding";
+    "leveraging human knowledge to improve AI" → reject: this describes a method, not an activity)
 
 3. **Concrete object?** — Does it act on a specific artifact, system, document, or person —
    something you could point to or hand to someone?
-   Pass: "experiment results", "research papers", "project proposal draft", "lab presentations"
-   Fail: topic areas ("AI", "human-centered systems"), abstract goals ("the field", "populations")
+   Pass: "experiment results", "research papers", "project proposal draft", "lab presentations",
+         "language models", "AI systems", "codebases", "datasets"
+   Fail: topic areas ("AI alignment", "human-centered systems"), abstract goals ("the field",
+         "populations"), vague methods ("human knowledge", "AI capabilities")
 
 4. **Bounded activity?** — Does it have a start and end, not a standing trait or disposition?
    Pass: a recurring or one-time activity that happens and finishes
@@ -252,10 +288,11 @@ For each statement, apply these five checks:
 ## Rewriting
 
 If a statement FAILS one or more checks but describes a real current work activity, fix it:
-- Replace vague verbs with the most specific action implied by the statement
-- Narrow a vague object to the concrete artifact or person actually involved
-- Keep the purpose/objective; use format: <Action> <object> to <purpose>
-- Use only details present in the original — do NOT fabricate
+- **Preserve the user's own words as much as possible.** Keep their exact phrasing for the action and object wherever it already works — only change the minimum needed to satisfy the failing check.
+- Replace vague verbs with the most specific action implied by the statement; prefer the user's verb if it is specific enough
+- Narrow a vague object to the concrete artifact or person actually involved; use the user's own noun phrase if it already names something concrete
+- Keep the purpose/objective the user stated; use format: <Action> <object> to <purpose>
+- Use only details present in the original — do NOT fabricate, generalize, or substitute synonyms
 - Keep under 20 words
 
 If it bundles multiple distinct current activities, **split** it — return one object per activity.
@@ -411,10 +448,11 @@ def _flat_fallback(tasks: List[str]) -> List[Dict[str, Any]]:
     return [{"name": t, "children": []} for t in tasks]
 
 
-def organize_tasks(tasks: List[str], model_name: str = "gpt-4.1-mini") -> List[Dict[str, Any]]:
+def organize_tasks(tasks: List[str], model_name: str = "gpt-4.1-mini", skip_screen: bool = False) -> List[Dict[str, Any]]:
     """Return a tree of nodes.
 
     Pipeline: ONET-style validity screen → dedup + group via single LLM call.
+    Pass skip_screen=True when the caller has already screened the task list.
     On any failure, returns the (screened) input as a flat list of leaves.
     """
     cleaned = [str(t).strip() for t in tasks if str(t).strip()]
@@ -426,7 +464,10 @@ def organize_tasks(tasks: List[str], model_name: str = "gpt-4.1-mini") -> List[D
     except Exception:
         return _flat_fallback(cleaned)
 
-    screened = _screen_tasks(cleaned, engine)
+    if skip_screen:
+        screened = cleaned
+    else:
+        screened = _screen_tasks(cleaned, engine)
     if len(screened) <= 1:
         return _flat_fallback(screened)
 

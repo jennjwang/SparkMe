@@ -632,7 +632,17 @@ Here is last meeting summary that might be helpful:
 <last_meeting_summary>
 {last_meeting_summary}
 </last_meeting_summary>
-"""
+
+Here are previous interview events for context:
+<previous_events>
+{previous_events}
+</previous_events>
+
+Here is the most recent question-answer exchange to evaluate:
+<current_qa>
+{current_qa}
+</current_qa>
+{widget_task_context}"""
 
 UPDATE_SUBTOPIC_COVERAGE_TOOL = """
 You have access to the following tool(s) for updating subtopic coverage:
@@ -647,7 +657,10 @@ UPDATE_SUBTOPIC_COVERAGE_INSTRUCTIONS = """
 ## Process
 
 1. **Check for Subtopic-Level Coverage Criteria**
-   - If the subtopic has explicit `Coverage Criteria` listed, evaluate each criterion individually against the notes.
+   - If the subtopic has explicit `Coverage Criteria` listed, evaluate each criterion individually.
+   - Criteria that describe **what the participant said or revealed** → evaluate against the subtopic notes.
+   - Criteria that describe **what the interviewer asked or did** (e.g., "STEP 1: Ask once, open-ended...", "STEP 2: ask ONE confirmation probe") → evaluate against the conversation events (previous_events / current_qa). Look for the interviewer's actual question text to determine if the step was performed.
+   - ⚠️ **STEP-based criteria are evaluated on the interviewer's action, NOT the participant's answer quality.** When a criterion says "This criterion is met once the interviewer has asked [X] once, regardless of the participant's answer" — mark it TRUE as soon as the Interviewer's corresponding question appears anywhere in `previous_events` or `current_qa`. Do NOT require a complete, confident, or current-focused answer from the participant. Future-oriented, hedged, or brief answers ("probably", "eventually", "as I continue", "not really") are fully valid — the step is about the interviewer asking, not the participant's response depth. If the STEP question was asked several turns ago with unrelated questions in between, it still counts — scan all of `previous_events`, not just recent turns.
    - Call `update_criteria_coverage` with the subtopic ID and a boolean list (one per criterion, in order) reflecting whether each criterion is met.
    - The subtopic is fully covered only when ALL criteria are met.
 
@@ -667,6 +680,7 @@ UPDATE_SUBTOPIC_COVERAGE_INSTRUCTIONS = """
    - For fully covered subtopics, synthesize the notes into a coherent and concise final summary capturing the essence of what was discussed.
    - Avoid repetition or rephrasing—focus on integration and clarity.
 
+<task_deep_dive_block>
 5. **Task Deep Dive Topic Creation (Priority tasks subtopic only)**
    - Only create Task Deep Dives from the **Priority tasks** subtopic notes — the subtopic where the participant names which tasks they consider most important.
    - Do NOT create deep dives based on the Breadth subtopic (the full task list) alone. The breadth list is for context; the priority subtopic is the signal.
@@ -674,10 +688,23 @@ UPDATE_SUBTOPIC_COVERAGE_INSTRUCTIONS = """
    - Only create a Task Deep Dive topic for tasks that:
      * Are named in the Priority tasks subtopic notes as important, central, or high-priority.
      * Are concrete, named activities (e.g., "running experiments", "writing code") — not vague responsibilities or goals.
+     * Are **current, recurring activities** the participant actively performs now — NOT future plans, aspirations, or things they expect to do eventually. If the participant framed a task with language like "will be important", "down the line", "as I continue", "eventually", "probably", or any future-oriented qualifier, do NOT create a deep dive for it.
+     * Also appear in the breadth subtopic's task inventory. A task mentioned only in the priority discussion but absent from the breadth inventory is likely aspirational and should NOT get a deep dive.
      * Do NOT already have a "Task Deep Dive: [task name]" topic in the topics list.
    - Call all `add_task_deep_dive_topic` calls before calling `update_subtopic_coverage` for that subtopic.
+</task_deep_dive_block>
 
-6. **Tool Invocation**
+6. **Widget Task Validation (only when `<widget_task_context>` is present)**
+   - When the `<widget_task_context>` section lists task names submitted via the time-allocation widget, check each task name for the **action + object + objective** format:
+     * **action**: a concrete verb describing what the person does (e.g., "reviewing", "drafting", "presenting")
+     * **object**: what they act on (e.g., "reports", "proposals", "clients")
+     * **objective**: the purpose or goal — WHY they do it (e.g., "to ensure quality", "to secure approval")
+   - A task name like "reviewing reports to ensure quality" ✅ passes.
+   - A task name like "reports" or "writing" or "meetings" ❌ fails — it's a bare noun or bare verb with no objective.
+   - For each task that **fails** (is a bare verb, bare noun, or lacks a clear purpose), call `add_snapshot_subtopic` with `topic_id` matching the Task Inventory topic (typically "2") and a description asking the interviewer to clarify that task's purpose. Example: `"Clarify task 'experiments': ask what specifically they do and what it's for, since it currently lacks an objective."`
+   - Do NOT flag tasks that already have a clear purpose embedded in the name.
+
+7. **Tool Invocation**
    - For subtopics WITH coverage criteria: always call `update_criteria_coverage` first (even if not all criteria are met yet).
    - Only call `update_subtopic_coverage` for subtopics that are fully covered.
    - Each `update_subtopic_coverage` call should include:
@@ -695,18 +722,24 @@ For each subtopic, you should:
    - If yes: evaluate each criterion against the notes, then call `update_criteria_coverage`.
    - If no: evaluate completeness against the subtopic's description.
 2. Evaluate overall completeness.
-3. If this subtopic is the **Priority tasks** subtopic, check its notes for tasks the participant named as most important. For each such task not yet having a Task Deep Dive topic, plan to call `add_task_deep_dive_topic`.
-4. For fully covered subtopics, aggregate the notes and call `update_subtopic_coverage`.
+<task_deep_dive_block>3. If this subtopic is the **Priority tasks** subtopic, check its notes for tasks the participant named as most important. For each such task not yet having a Task Deep Dive topic, plan to call `add_task_deep_dive_topic`.
+</task_deep_dive_block>3. For fully covered subtopics, aggregate the notes and call `update_subtopic_coverage`.
+4. If `<widget_task_context>` is present, check each listed task name for action+object+objective and call `add_snapshot_subtopic` for any that lack a clear objective.
 </thinking>
 
 <tool_calls>
-    <!-- Call add_task_deep_dive_topic only for tasks from the Priority tasks subtopic notes.
+    <task_deep_dive_block><!-- Call add_task_deep_dive_topic only for tasks from the Priority tasks subtopic notes.
          Do NOT create deep dives from the breadth list alone. -->
     <add_task_deep_dive_topic>
         <task_name>Short descriptive name for the task (e.g., "Weekly status report")</task_name>
     </add_task_deep_dive_topic>
     ...
-
+    </task_deep_dive_block>
+    <!-- If widget_task_context is present and a task lacks action+object+objective: -->
+    <!-- <add_snapshot_subtopic>
+        <topic_id>2</topic_id>
+        <description>Clarify task '[name]': ask what specifically they do and what it's for.</description>
+    </add_snapshot_subtopic> -->
     <!-- One update_subtopic_coverage call per subtopic id, ONLY when the subtopic is considered fully covered -->
     <update_subtopic_coverage>
         <subtopic_id>The subtopic ID to be marked as covered</subtopic_id>
@@ -1184,7 +1217,9 @@ Rules:
 - Use the user's own language and phrasing where possible
 - Lists should contain specific, concrete items — not vague categories
 - Task Inventory must contain only discrete tasks — do NOT include sentences that describe how time is split across tasks (e.g. "spends 65% on X and 35% on Y"). Those belong in Time Allocation.
-- **Every task must follow action+object+objective format.** Each entry must state WHAT the user does (action+object) AND WHY they do it (objective = the purpose or goal). If the memories explicitly state a purpose, use it. If the purpose is strongly implied by context or role (e.g. "running experiments" for a PhD student implies "to generate data for research"), infer it. Do NOT leave a task as bare action+object with no purpose clause. Example: write "running experiments to generate research data", NOT "running experiments"; write "attending lab meetings to give feedback on lab members' work", NOT "attending lab meetings". Exception: if neither the memories nor the role context give any basis for an objective, leave the task as-is rather than inventing one.
+- **Task Inventory must ONLY contain tasks the user has explicitly described in the conversation.** Do NOT infer, hallucinate, or add tasks based on the user's role or domain — even if those tasks are common for that profession. If the user has only mentioned their job title or field and nothing about specific activities, return an empty list. A task exists in the inventory only if the user named it or clearly described doing it.
+- **Do NOT put research mission statements or role descriptions in Task Inventory.** Phrases like "conducting research on X", "working on Y research", "advancing the field of Z", "investigating problems related to X" describe the user's ROLE, not a discrete task — they belong in the Role field. Task Inventory should contain only specific recurring activities the user explicitly mentioned performing. If the memories only describe what the user researches (their domain/topic) rather than what they specifically DO, return an empty Task Inventory.
+- **Every task must follow action+object+objective format.** Each entry must state WHAT the user does (action+object) AND WHY they do it (objective = the purpose or goal). Use the user's own words for the purpose wherever they stated one. Only infer the purpose if the user's own statement makes it unambiguous. Do NOT invent a purpose the user did not express — if no genuine purpose is recoverable from the user's words, record the task as action+object alone rather than fabricating one.
 - **Strip cadence/frequency from task names.** Do NOT embed scheduling phrases like "on a roughly monthly cadence", "every few weeks", "quarterly", "weekly", "a few times a year", "occasionally" inside the task description. Record only the bare action+object+objective. Example: write "writing up project proposals", NOT "working on writeups for project proposals on a roughly monthly cadence". Cadence belongs in Time Allocation or is captured separately — never in the Task Inventory entry itself.
 - **Dedup Task Inventory using action+object identity.** Two tasks are the same task ONLY if they share the same action AND the same object — one entry is just a less-specific way of saying the same thing (e.g. "reading books" vs "reading nonfiction books" — same action=reading, same object=books). In that case, keep ONLY the most specific version. Tasks that differ in either action OR object are DISTINCT tasks and must both be included. Example: "preparing for advisor meetings" (action=preparing, object=advisor meetings) and "attending lab meetings" (action=attending, object=lab meetings) are two different tasks — different action, different object. When in doubt, keep both.
 - **Split compound "X to Y" tasks when Y is itself a distinct activity.** If a task is phrased as "doing X to do Y" and Y is a separate action the user also performs (not just the purpose), list X and Y as two tasks. Example: "reading nonfiction books to write reviews" implies TWO tasks — "reading nonfiction books" AND "writing book reviews" — because writing reviews is itself a distinct activity consuming time, not merely the motivation for reading. Keep only the most specific phrasing of each.
