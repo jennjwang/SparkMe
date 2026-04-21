@@ -122,6 +122,36 @@
       .continue-btn:hover {
         background: #374151;
       }
+      .continue-btn.loading {
+        display: inline-flex;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
+        background: #374151;
+      }
+      .continue-btn.loading::after {
+        content: "";
+        width: 14px;
+        height: 14px;
+        border: 2px solid rgba(255, 255, 255, 0.35);
+        border-top-color: #fff;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+      .continue-btn:disabled,
+      .id-generate-btn:disabled {
+        cursor: not-allowed;
+        opacity: 0.75;
+      }
+      .loading-note {
+        display: none;
+        text-align: center;
+        font-size: 13px;
+        color: #6b7280;
+      }
+      .loading-note.visible {
+        display: block;
+      }
       .card .link {
         display: block;
         text-align: center;
@@ -147,6 +177,11 @@
         color: #854d0e;
         border: 1px solid #fde68a;
       }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
     </style>
   </head>
   <body>
@@ -157,7 +192,12 @@
       messages %} {% for category, message in messages %}
       <div class="alert">{{ message }}</div>
       {% endfor %} {% endif %} {% endwith %}
-      <form method="POST" action="/login">
+      <form
+        method="POST"
+        action="{{ url_for('login', next=request.args.get('next')) }}"
+        id="login-form"
+      >
+        <input type="hidden" name="next" value="{{ request.args.get('next', '') }}" />
         <input
           id="username-input"
           type="hidden"
@@ -176,7 +216,12 @@
         >
           Generate another
         </button>
-        <button type="submit" class="continue-btn">Continue</button>
+        <button type="submit" class="continue-btn" id="continue-btn">
+          Continue
+        </button>
+        <div class="loading-note" id="login-loading-note">
+          Signing you in...
+        </div>
       </form>
     </div>
     <script>
@@ -187,6 +232,10 @@
         const input = document.getElementById("username-input");
         const valueEl = document.getElementById("id-value");
         const btn = document.getElementById("generate-id-btn");
+        const form = document.getElementById("login-form");
+        const continueBtn = document.getElementById("continue-btn");
+        const loadingNote = document.getElementById("login-loading-note");
+        let submitting = false;
         function syncId(nextId) {
           if (!input) return;
           input.value = nextId;
@@ -196,6 +245,20 @@
         if (btn && input) {
           btn.addEventListener("click", function () {
             syncId(randomNumericId());
+          });
+        }
+        if (form && continueBtn) {
+          form.addEventListener("submit", function (e) {
+            if (submitting) {
+              e.preventDefault();
+              return;
+            }
+            submitting = true;
+            continueBtn.disabled = true;
+            continueBtn.classList.add("loading");
+            continueBtn.textContent = "Loading";
+            if (btn) btn.disabled = true;
+            if (loadingNote) loadingNote.classList.add("visible");
           });
         }
       })();

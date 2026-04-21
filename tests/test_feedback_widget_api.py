@@ -282,3 +282,25 @@ class TestOrganizeTasksApi:
             ["task a", "task b"],
             grouping_feedback="",
         )
+
+    def test_cached_organizer_enables_screening(self, client):
+        # Regression: task list organization should run with screen=True so
+        # context-only entries (e.g., "working from home") can be filtered.
+        main_flask._TASK_TREE_CACHE.clear()
+        main_flask._TASK_TREE_INFLIGHT.clear()
+
+        tasks = ["working from home", "writing grants to secure funding"]
+        with patch(
+            "src.utils.task_hierarchy.organize_tasks",
+            create=True,
+            autospec=True,
+            return_value=[{"name": "writing grants to secure funding", "children": []}],
+        ) as mock_organize:
+            main_flask._organize_tasks_cached(tasks, grouping_feedback="")
+
+        mock_organize.assert_called_once_with(
+            tasks,
+            model_name=main_flask._TASK_HIERARCHY_MODEL_NAME,
+            screen=True,
+            grouping_feedback="",
+        )

@@ -93,6 +93,35 @@ def test_first_breadth_probe_is_not_rewritten(interviewer, fake_session):
     assert rewritten == "Besides teaching and research, what else is on your plate?"
 
 
+def test_multi_quant_question_is_rewritten_to_single_qualitative_followup(interviewer, fake_session):
+    _prime_prompt_methods(fake_session)
+    interviewer.add_event(
+        sender="User",
+        tag="message",
+        content="I met with trainees and coordinators to align priorities for experiments and paperwork.",
+    )
+
+    rewritten = interviewer._rewrite_multi_quant_question(
+        "On a recent Tuesday, roughly how many separate meetings did you have with postdocs, "
+        "PhD students, and coordinators, and about how long do they usually run?",
+        subtopic_id="2.2",
+    )
+
+    assert "how many" not in rewritten.lower()
+    assert "how long" not in rewritten.lower()
+    assert rewritten.count("?") == 1
+    assert "focus on" in rewritten.lower()
+
+
+def test_multi_quant_question_in_time_allocation_subtopic_rewrites_to_single_split(interviewer, fake_session):
+    _prime_prompt_methods(fake_session)
+    rewritten = interviewer._rewrite_multi_quant_question(
+        "Roughly how many blocks do you have and how long is each one?",
+        subtopic_id="2.4",
+    )
+    assert rewritten == "Roughly how is your time split across the main tasks you mentioned this week?"
+
+
 def test_semantic_duplicate_gate_skips_low_risk_question(interviewer, fake_session, monkeypatch):
     _prime_prompt_methods(fake_session)
     monkeypatch.setenv("INTERVIEWER_SEMANTIC_DUP_MODE", "auto")
@@ -126,6 +155,40 @@ def test_semantic_duplicate_gate_runs_for_task_list_collection_subtopic(
         subtopic_id="2.2",
     )
     assert should_run is True
+
+
+def test_inferability_gate_runs_for_task_list_collection_subtopic(
+    interviewer, fake_session, monkeypatch
+):
+    _prime_prompt_methods(fake_session)
+    monkeypatch.setenv("INTERVIEWER_INFERABILITY_MODE", "auto")
+    interviewer._inferability_mode = "auto"
+    interviewer.add_event(
+        sender="User",
+        tag="message",
+        content="I usually prepare slide decks and supporting figures for those presentations.",
+    )
+    should_run = interviewer._should_run_inferability_llm(
+        "For that presentation prep work, what's the main thing you're producing?",
+        subtopic_id="2.2",
+    )
+    assert should_run is True
+
+
+def test_inferability_gate_skips_when_mode_off(interviewer, fake_session, monkeypatch):
+    _prime_prompt_methods(fake_session)
+    monkeypatch.setenv("INTERVIEWER_INFERABILITY_MODE", "off")
+    interviewer._inferability_mode = "off"
+    interviewer.add_event(
+        sender="User",
+        tag="message",
+        content="I prepare slide decks for those talks.",
+    )
+    should_run = interviewer._should_run_inferability_llm(
+        "For that presentation prep work, what's the main thing you're producing?",
+        subtopic_id="2.2",
+    )
+    assert should_run is False
 
 
 @pytest.mark.asyncio
@@ -168,3 +231,60 @@ async def test_handle_response_runs_semantic_duplicate_llm_for_task_list_collect
     )
 
     interviewer._check_semantic_duplicate.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_handle_response_rewrites_inferable_question_before_sending(
+    interviewer, fake_session, monkeypatch
+):
+    _prime_prompt_methods(fake_session)
+    monkeypatch.setenv("INTERVIEWER_SEMANTIC_DUP_MODE", "off")
+    monkeypatch.setenv("INTERVIEWER_INFERABILITY_MODE", "always")
+    interviewer._inferability_mode = "always"
+    interviewer._check_inferable_question = AsyncMock(
+        return_value=(
+            True,
+            "Shifting gears a bit — roughly how is your time split across those tasks in a typical week?",
+        )
+    )
+    interviewer.add_event(
+        sender="User",
+        tag="message",
+        content="I mostly produce slide decks and speaking notes for those presentations.",
+    )
+
+    await interviewer._handle_response(
+        "For that presentation prep work, what's the main thing you're producing?",
+        subtopic_id="2.2",
+    )
+
+    interviewer._check_inferable_question.assert_awaited_once()
+    assert fake_session.chat_history[-1]["content"] == (
+        "Shifting gears a bit — roughly how is your time split across those tasks in a typical week?"
+    )
+
+
+@pytest.mark.asyncio
+async def test_handle_response_rewrites_multi_quant_question_before_sending(
+    interviewer, fake_session, monkeypatch
+):
+    _prime_prompt_methods(fake_session)
+    monkeypatch.setenv("INTERVIEWER_SEMANTIC_DUP_MODE", "off")
+    monkeypatch.setenv("INTERVIEWER_INFERABILITY_MODE", "off")
+    interviewer._inferability_mode = "off"
+    interviewer.add_event(
+        sender="User",
+        tag="message",
+        content="I had several meetings with postdocs and coordinators to unblock ongoing studies.",
+    )
+
+    await interviewer._handle_response(
+        "On a recent Tuesday, roughly how many separate meetings did you have with postdocs, "
+        "PhD students, and coordinators, and about how long do they usually run?",
+        subtopic_id="2.2",
+    )
+
+    sent = fake_session.chat_history[-1]["content"]
+    assert "how many" not in sent.lower()
+    assert "how long" not in sent.lower()
+    assert sent.count("?") == 1

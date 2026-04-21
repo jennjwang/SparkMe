@@ -277,6 +277,14 @@ class TestProfileLoadingSignalRegression:
             re.DOTALL,
         )
 
+    def test_silent_profile_load_uses_loading_signal(self):
+        text = _chat_template_text()
+        assert re.search(
+            r"async function silentProfileLoad\(\)\s*\{.*?const stopLoadingSignal = beginProfileLoadingSignal\(\);.*?finally\s*\{\s*stopLoadingSignal\(\);\s*\}",
+            text,
+            re.DOTALL,
+        )
+
     def test_profile_toggle_schedules_autosize_refresh_on_open(self):
         text = _chat_template_text()
         assert re.search(

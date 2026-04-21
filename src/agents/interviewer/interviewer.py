@@ -660,6 +660,52 @@ class Interviewer(BaseAgent, Participant):
             return f"You mentioned {anchor}. What's the main outcome you're aiming for there?"
         return "To keep this specific, which single task you mentioned takes the biggest share of your week right now?"
 
+    def _rewrite_multi_quant_question(self, question: str, subtopic_id: str = "") -> str:
+        """Rewrite quantified double-barreled questions into a single qualitative ask."""
+        q = self._normalize_text(question)
+        q_l = q.lower()
+        if "?" not in q_l:
+            return q
+
+        quant_markers = (
+            "how many",
+            "how much",
+            "how long",
+            "number of",
+            "hours",
+            "minutes",
+            "percent",
+            "%",
+        )
+        hits = sum(1 for marker in quant_markers if marker in q_l)
+        has_multi_quant_pattern = (
+            ("how many" in q_l and "how long" in q_l)
+            or (hits >= 2 and " and " in q_l)
+        )
+        if not has_multi_quant_pattern:
+            return q
+
+        # Time-allocation subtopics can ask for one numeric split, but still not
+        # as a combined count+duration ask.
+        if self._is_time_allocation_subtopic(subtopic_id):
+            return "Roughly how is your time split across the main tasks you mentioned this week?"
+
+        recent_answers = self._get_recent_user_answers(limit=4)
+        anchor = ""
+        for ans in reversed(recent_answers):
+            anchor = self._extract_anchor_clause(ans)
+            if anchor:
+                break
+
+        if "meeting" in q_l or "collabor" in q_l:
+            if anchor:
+                return f"You mentioned {anchor}. What do those meetings usually focus on?"
+            return "What do those meetings usually focus on?"
+
+        if anchor:
+            return f"You mentioned {anchor}. What does that usually look like in practice?"
+        return "What does that usually look like in practice?"
+
     def _extract_tool_json_dict(self, raw: str) -> dict | None:
         """Best-effort extraction of tool JSON from raw model output.
 
@@ -793,6 +839,17 @@ class Interviewer(BaseAgent, Participant):
             SessionLogger.log_to_file(
                 "execution_log",
                 "[GUARD] Rewrote repetitive breadth probe into a specific follow-up."
+            )
+            quantified_question = rewritten_question
+
+        rewritten_question = self._rewrite_multi_quant_question(
+            quantified_question,
+            subtopic_id=subtopic_id,
+        )
+        if rewritten_question != quantified_question:
+            SessionLogger.log_to_file(
+                "execution_log",
+                "[GUARD] Rewrote quantified double-barreled question into a single-focus follow-up."
             )
             quantified_question = rewritten_question
         elif self._should_run_semantic_duplicate_llm(quantified_question, subtopic_id=subtopic_id):
@@ -1086,7 +1143,7 @@ class Interviewer(BaseAgent, Participant):
         if message is None and self._is_fresh_intake_session():
             opening_question = (
                 "Thanks for making time today. "
-                "To start, how would you describe your current role or title in your own words?"
+                "To start, how would you describe your current role or title?"
             )
             SessionLogger.log_to_file(
                 "execution_log",

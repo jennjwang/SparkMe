@@ -698,6 +698,28 @@
         background: #d1d5db;
         border-radius: 3px;
       }
+      .profile-loading-state {
+        min-height: 180px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        color: #4b5563;
+        text-align: center;
+      }
+      .profile-loading-spinner {
+        width: 18px;
+        height: 18px;
+        border: 2px solid #d1d5db;
+        border-top-color: #4b5563;
+        border-radius: 50%;
+        animation: profileSpin 0.7s linear infinite;
+      }
+      .profile-loading-caption {
+        font-size: 12px;
+        color: #9ca3af;
+      }
 
       .profile-section {
         margin-bottom: 8px;
@@ -2661,7 +2683,12 @@
       let ttsEnabled = false;
       let isSessionCompleted = false;
       let pollingInterval = null;
+      let endSessionButtonTimer = null;
       let isInitializing = false;
+      let sessionRecovering = false;
+      let pendingSessionRecovery = false;
+      let sessionRecoverAttempts = 0;
+      const MAX_SESSION_RECOVER_ATTEMPTS = 1;
       const MIN_SESSION_DURATION_MS = 0;
       let profileConfirmPending = false;
       let botMessageBuffer = [];
@@ -4272,6 +4299,8 @@
           const data = await res.json();
           if (data.success) {
             sessionToken = data.session_token;
+            pendingSessionRecovery = false;
+            sessionRecoverAttempts = 0;
             const targetMinutes = parseInt(
               data.available_time || availableTime,
               10,
@@ -4295,7 +4324,9 @@
                 pollingInterval = setInterval(pollForMessages, 400);
               }, 8000);
             }
-            setInterval(updateEndSessionButton, 1000);
+            if (!endSessionButtonTimer) {
+              endSessionButtonTimer = setInterval(updateEndSessionButton, 1000);
+            }
             if (!profilePollInterval)
               profilePollInterval = setInterval(fetchAndRenderProfile, 5000);
             fetchAndRenderProfile();
@@ -4311,6 +4342,36 @@
           updateStatus("Error starting session");
         } finally {
           isInitializing = false;
+          if (pendingSessionRecovery && !isSessionCompleted) {
+            pendingSessionRecovery = false;
+            recoverFromInvalidSession();
+          }
+        }
+      }
+
+      async function recoverFromInvalidSession() {
+        if (sessionRecovering || isSessionCompleted) return;
+        if (isInitializing) {
+          pendingSessionRecovery = true;
+          return;
+        }
+        if (sessionRecoverAttempts >= MAX_SESSION_RECOVER_ATTEMPTS) {
+          updateStatus("Session expired. Please refresh to continue.");
+          return;
+        }
+        sessionRecovering = true;
+        sessionRecoverAttempts += 1;
+        removeTyping();
+        if (pollingInterval) {
+          clearInterval(pollingInterval);
+          pollingInterval = null;
+        }
+        sessionToken = null;
+        updateStatus("Reconnecting session...");
+        try {
+          await initializeSession();
+        } finally {
+          sessionRecovering = false;
         }
       }
 
@@ -4322,12 +4383,25 @@
             : `/api/get-messages?session_token=${sessionToken}`;
           const res = await fetch(url);
           if (res.status === 400) {
-            removeTyping();
-            sessionToken = null;
-            clearInterval(pollingInterval);
+            let errText = "";
+            try {
+              const payload = await res.json();
+              errText = String(payload.error || "");
+            } catch (_) {}
+            if (!errText || /invalid|expired/i.test(errText)) {
+              await recoverFromInvalidSession();
+            } else {
+              updateStatus(errText);
+            }
             return;
           }
           const data = await res.json();
+          if (!data.success) {
+            if (/invalid|expired/i.test(String(data.error || ""))) {
+              await recoverFromInvalidSession();
+            }
+            return;
+          }
           if (data.success && data.messages) {
             const messages = data.messages;
             // On reconnect/full-history replay, only re-open profile confirmation
@@ -4735,6 +4809,10 @@
       let taskTreeCache = { signature: null, tree: null };
       let profileLoadSignalDepth = 0;
       let profileLoadBadgeSnapshot = null;
+      let profileLoadSignalStartedAt = 0;
+      let profileLoadSignalClearTimer = null;
+      let profilePanelLoadingHold = false;
+      const PROFILE_LOADING_MIN_VISIBLE_MS = 300;
       let profileAutosizeRefreshTimer = null;
       // When a time-split widget is open, this holds the tree it resolved so the
       // profile panel shows the exact same groupings. Cleared when the widget submits.
@@ -4760,8 +4838,33 @@
         }, delayMs);
       }
 
+      function renderProfileLoadingState() {
+        const panel = document.getElementById("profile-panel");
+        const body = document.getElementById("profile-body");
+        if (!panel || !body || !panel.classList.contains("visible")) return;
+        body.innerHTML = `<div class="profile-loading-state">
+          <span class="profile-loading-spinner" aria-hidden="true"></span>
+          <div>Loading profile...</div>
+          <div class="profile-loading-caption">Pulling latest interview details</div>
+        </div>`;
+      }
+
       function beginProfileLoadingSignal() {
         profileLoadSignalDepth += 1;
+        if (profileLoadSignalDepth === 1) {
+          profileLoadSignalStartedAt = Date.now();
+          if (profileLoadSignalClearTimer) {
+            clearTimeout(profileLoadSignalClearTimer);
+            profileLoadSignalClearTimer = null;
+          }
+          const panel = document.getElementById("profile-panel");
+          profilePanelLoadingHold = !!(
+            panel && panel.classList.contains("visible")
+          );
+          if (profilePanelLoadingHold) {
+            renderProfileLoadingState();
+          }
+        }
         const profileBtn = document.getElementById("profile-btn");
         if (profileBtn) profileBtn.classList.add("loading");
         const badge = document.getElementById("profile-badge");
@@ -4775,19 +4878,41 @@
           badge.textContent = "Loading...";
           badge.className = "profile-header-badge loading";
         }
-        return () => {
-          profileLoadSignalDepth = Math.max(0, profileLoadSignalDepth - 1);
+
+        const finalize = () => {
           if (profileLoadSignalDepth > 0) return;
           if (profileBtn) profileBtn.classList.remove("loading");
-          if (
-            badge &&
-            badge.classList.contains("loading") &&
-            profileLoadBadgeSnapshot
-          ) {
+          if (badge && badge.classList.contains("loading")) {
+            const portraitForRender =
+              profileConfirmPending && profileConfirmSnapshot
+                ? profileConfirmSnapshot
+                : lastPortrait;
+            renderProfile(portraitForRender);
+          } else if (badge && profileLoadBadgeSnapshot) {
             badge.textContent = profileLoadBadgeSnapshot.textContent;
             badge.className = profileLoadBadgeSnapshot.className;
           }
+          profilePanelLoadingHold = false;
           profileLoadBadgeSnapshot = null;
+          profileLoadSignalStartedAt = 0;
+        };
+
+        return () => {
+          profileLoadSignalDepth = Math.max(0, profileLoadSignalDepth - 1);
+          if (profileLoadSignalDepth > 0) return;
+          const elapsed = Date.now() - profileLoadSignalStartedAt;
+          const remaining = PROFILE_LOADING_MIN_VISIBLE_MS - elapsed;
+          if (remaining > 0) {
+            if (profileLoadSignalClearTimer) {
+              clearTimeout(profileLoadSignalClearTimer);
+            }
+            profileLoadSignalClearTimer = setTimeout(() => {
+              profileLoadSignalClearTimer = null;
+              finalize();
+            }, remaining);
+            return;
+          }
+          finalize();
         };
       }
 
@@ -5090,6 +5215,7 @@
 
       async function silentProfileLoad() {
         if (!sessionToken) return;
+        const stopLoadingSignal = beginProfileLoadingSignal();
         try {
           const res = await fetch(
             `/api/session-state?session_token=${sessionToken}`,
@@ -5106,7 +5232,10 @@
             }
             profileShown = true;
           }
-        } catch (e) {}
+        } catch (e) {
+        } finally {
+          stopLoadingSignal();
+        }
       }
 
       async function fetchAndRenderProfile(options = {}) {
@@ -5291,9 +5420,25 @@
       }
 
       function renderProfile(portrait) {
+        const panel = document.getElementById("profile-panel");
+        if (
+          profilePanelLoadingHold &&
+          profileLoadSignalDepth > 0 &&
+          panel &&
+          panel.classList.contains("visible")
+        ) {
+          return;
+        }
         const body = document.getElementById("profile-body");
         const badge = document.getElementById("profile-badge");
         const displayPortrait = condensePortraitForDisplay(portrait);
+        const setBadge = (text, className) => {
+          if (!badge) return;
+          if (profileLoadSignalDepth > 0 && badge.classList.contains("loading"))
+            return;
+          badge.textContent = text;
+          badge.className = className;
+        };
 
         const fields = Object.keys(displayPortrait).map((key) => {
           const value = displayPortrait[key];
@@ -5324,8 +5469,7 @@
         if (fields.length === 0) {
           body.innerHTML =
             '<div class="profile-empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg><p>Profile is being built<br>as the interview progresses.</p></div>';
-          badge.textContent = "Building...";
-          badge.className = "profile-header-badge";
+          setBadge("Building...", "profile-header-badge");
           return;
         }
 
@@ -5333,8 +5477,7 @@
         if (!hasAny) {
           body.innerHTML =
             '<div class="profile-empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg><p>Profile is being built<br>as the interview progresses.</p></div>';
-          badge.textContent = "Building...";
-          badge.className = "profile-header-badge";
+          setBadge("Building...", "profile-header-badge");
           return;
         }
 
@@ -5346,8 +5489,10 @@
             f.key !== TASK_GROUPING_FEEDBACK_KEY,
         );
         const filledCount = visibleFields.filter((f) => f.filled).length;
-        badge.textContent = `${filledCount} / ${visibleFields.length} fields`;
-        badge.className = "profile-header-badge live";
+        setBadge(
+          `${filledCount} / ${visibleFields.length} fields`,
+          "profile-header-badge live",
+        );
 
         const priorityRaw = Array.isArray(displayPortrait["Priority Tasks"])
           ? displayPortrait["Priority Tasks"]
@@ -5481,8 +5626,8 @@
           autosizeProfileInput(input);
           input.addEventListener("input", () => autosizeProfileInput(input));
         });
-        const panel = document.getElementById("profile-panel");
-        if (panel && panel.classList.contains("visible")) {
+        const panelEl = document.getElementById("profile-panel");
+        if (panelEl && panelEl.classList.contains("visible")) {
           scheduleProfileInputAutosizeRefresh();
         }
 

@@ -132,8 +132,11 @@
   </head>
   <body>
     <div class="top-header">
+      <span class="username-badge">SparkMe Interviewer</span>
+      {% if require_login %}
       <span class="username-badge">{{ username }}</span>
       <a href="/logout" class="logout-link">Logout</a>
+      {% endif %}
     </div>
 
     <div class="welcome-wrapper">

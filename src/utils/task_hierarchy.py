@@ -21,6 +21,7 @@ appended as a top-level leaf so we never silently drop a screened task.
 import json
 import os
 import re
+from difflib import SequenceMatcher
 from functools import lru_cache
 from typing import List, Dict, Any, Set
 
@@ -37,59 +38,6 @@ _DEFAULT_CRITERIA: List[str] = [
     "Tasks represent the same type of work even if phrased differently by different people",
 ]
 
-_AI_TOOL_HINT_RE = re.compile(
-    r"\b(ai|ai tools?|genai|generative ai|llm|llms|chatgpt|gpt(?:-[\w.]+)?|claude|copilot|gemini|cursor)\b"
-)
-_AI_USAGE_MARKER_RE = re.compile(r"\b(using|with|via|leveraging|utilizing)\b")
-_AI_PREFIX_RE = re.compile(
-    r"^(?:using|leveraging|utilizing)\s+"
-    r"(?:ai|ai tools?|genai|generative ai|llm|llms|chatgpt|gpt(?:-[\w.]+)?|claude|copilot|gemini|cursor)"
-    r"(?:\s+tools?)?\s+to\s+",
-    re.IGNORECASE,
-)
-_AI_INLINE_RE = re.compile(
-    r"\s+(?:using|with|via)\s+"
-    r"(?:ai|ai tools?|genai|generative ai|llm|llms|chatgpt|gpt(?:-[\w.]+)?|claude|copilot|gemini|cursor)"
-    r"(?:\s+tools?)?\b",
-    re.IGNORECASE,
-)
-_BLANK_SLATE_RE = re.compile(
-    r"\b(?:starting from|from)\s+(?:a\s+)?blank\s+slate\b|\bfrom scratch\b",
-    re.IGNORECASE,
-)
-# Trailing adjunct clauses stripped by the core extractor when the remaining
-# stem still reads as a complete action+object. Purpose ("to <rest>"),
-# beneficiary ("for <rest>"), and means ("by/via/through/using <rest>").
-_PURPOSE_TAIL_RE = re.compile(
-    r"\s+(?:to|in order to|so as to)\s+\S.*$",
-    re.IGNORECASE,
-)
-_BENEFICIARY_TAIL_RE = re.compile(r"\s+for\s+\S.*$", re.IGNORECASE)
-_MEANS_TAIL_RE = re.compile(
-    r"\s+(?:by|via|through|using|leveraging|utilizing)\s+\S.*$",
-    re.IGNORECASE,
-)
-# Small curated verb-synonym map. Keys are lowercase phrase prefixes; value is
-# the canonical form. Only includes cases where paraphrase is unambiguous.
-_VERB_SYNONYMS: Dict[str, str] = {
-    "coming up with": "generating",
-    "come up with": "generating",
-    "creating": "generating",
-    "drafting": "writing",
-    "composing": "writing",
-    "authoring": "writing",
-    "having meetings with": "meeting with",
-    "have meetings with": "meeting with",
-    "participating in": "attending",
-    "taking part in": "attending",
-}
-# Drop the particle "for" between a task's verb (first token) and its object,
-# so "<verb> for <X>" collapses to "<verb> <X>" — e.g. "preparing for
-# presentations" ≡ "preparing presentations". This runs only on single-word
-# verbs at the very start of the stem.
-_VERB_FOR_PARTICLE_RE = re.compile(r"^(\S+)\s+for\s+(?=\S)", re.IGNORECASE)
-# Sort longest-first so multi-word phrases win over single-word prefixes.
-_VERB_SYNONYM_KEYS: List[str] = sorted(_VERB_SYNONYMS, key=len, reverse=True)
 _RUN_REFINE_PASS = os.getenv("TASK_HIERARCHY_ENABLE_PASS3", "").strip().lower() in {
     "1",
     "true",
@@ -454,6 +402,153 @@ def _dedup_tasks_llm(tasks: List[str], engine):
         return list(tasks), {}
 
 
+_FUZZY_STOPWORDS = {
+    "the", "a", "an", "and", "or", "to", "for", "with", "by", "via", "using",
+    "in", "on", "of", "at", "from", "as",
+}
+
+
+def _light_stem(token: str) -> str:
+    t = str(token or "").strip().lower()
+    if len(t) > 4 and t.endswith("ies"):
+        t = t[:-3] + "y"
+    elif len(t) > 4 and t.endswith("s") and not t.endswith("ss"):
+        t = t[:-1]
+    if len(t) > 5 and t.endswith("ing"):
+        t = t[:-3]
+    if len(t) > 4 and t.endswith("ed"):
+        t = t[:-2]
+    return t
+
+
+def _tokenize_for_fuzzy(task: str) -> List[str]:
+    raw = re.findall(r"[a-z0-9]+", _norm(task))
+    out: List[str] = []
+    for tok in raw:
+        s = _light_stem(tok)
+        if s and s not in _FUZZY_STOPWORDS:
+            out.append(s)
+    return out
+
+
+def _contains_contiguous_token_subsequence(short_tokens: List[str], long_tokens: List[str]) -> bool:
+    if not short_tokens or len(short_tokens) > len(long_tokens):
+        return False
+    n = len(short_tokens)
+    for i in range(0, len(long_tokens) - n + 1):
+        if long_tokens[i:i + n] == short_tokens:
+            return True
+    return False
+
+
+def _is_near_duplicate_task_name(a: str, b: str) -> bool:
+    na = re.sub(r"\s+", " ", re.sub(r"[^a-z0-9\s]", " ", _norm(a))).strip()
+    nb = re.sub(r"\s+", " ", re.sub(r"[^a-z0-9\s]", " ", _norm(b))).strip()
+    if not na or not nb:
+        return False
+    if na == nb:
+        return True
+
+    ta = _tokenize_for_fuzzy(a)
+    tb = _tokenize_for_fuzzy(b)
+    if not ta or not tb:
+        return False
+
+    short, long_ = (na, nb) if len(na) <= len(nb) else (nb, na)
+    substring_hit = len(short) >= 12 and short in long_
+
+    short_tokens, long_tokens = (ta, tb) if len(ta) <= len(tb) else (tb, ta)
+    contiguous_hit = (
+        len(short_tokens) >= 2
+        and _contains_contiguous_token_subsequence(short_tokens, long_tokens)
+    )
+
+    sa, sb = set(ta), set(tb)
+    inter = len(sa & sb)
+    union = len(sa | sb)
+    min_len = min(len(sa), len(sb))
+    jaccard = (inter / union) if union else 0.0
+    containment = (inter / min_len) if min_len else 0.0
+    seq_ratio = SequenceMatcher(None, na, nb).ratio()
+    same_leading_action = ta[0] == tb[0]
+    cross_leading_action = ta[0] != tb[0] and ta[0] in sb and tb[0] in sa
+    length_extension = abs(len(ta) - len(tb)) >= 1
+
+    # Same leading action + strong token containment catches:
+    # "writing grants" vs "writing grants to secure funding"
+    # "preparing presentations" vs "preparing for presentations"
+    same_action_overlap_hit = (
+        same_leading_action
+        and inter >= 2
+        and containment >= 0.80
+        and jaccard >= 0.40
+    )
+
+    # Cross-leading variants where action/object words are reordered:
+    # "messaging colleagues on Slack" vs "Slack messaging with colleagues ..."
+    cross_order_overlap_hit = (
+        cross_leading_action
+        and inter >= 3
+        and containment >= 0.40
+        and jaccard >= 0.20
+        and (length_extension or contiguous_hit or substring_hit)
+    )
+
+    # Sequence ratio is useful for punctuation/casing noise but guarded to
+    # avoid false merges like "reading papers" vs "writing papers".
+    seq_hit = seq_ratio >= 0.90 and (same_leading_action or cross_leading_action)
+
+    return (
+        substring_hit
+        or contiguous_hit
+        or same_action_overlap_hit
+        or cross_order_overlap_hit
+        or seq_hit
+    )
+
+
+def _dedup_tasks_fuzzy(tasks: List[str]) -> tuple[List[str], Dict[str, List[str]]]:
+    """Cheap lexical backstop when LLM dedup leaves obvious near-duplicates."""
+    if len(tasks) <= 1:
+        return list(tasks), {}
+
+    n = len(tasks)
+    used = [False] * n
+    kept: List[str] = []
+    merge_map: Dict[str, List[str]] = {}
+
+    for i in range(n):
+        if used[i]:
+            continue
+        used[i] = True
+        group = [i]
+        expanded = True
+        while expanded:
+            expanded = False
+            for j in range(n):
+                if used[j]:
+                    continue
+                if any(_is_near_duplicate_task_name(tasks[j], tasks[k]) for k in group):
+                    used[j] = True
+                    group.append(j)
+                    expanded = True
+
+        winner_idx = max(group, key=lambda idx: len(tasks[idx]))
+        winner = tasks[winner_idx]
+        kept.append(winner)
+        absorbed = [tasks[idx] for idx in group if idx != winner_idx]
+        if absorbed:
+            merge_map[winner] = absorbed
+
+    if merge_map:
+        print("[task_hierarchy] DEDUP pass 3 (fuzzy):")
+        for keep_name, merged in merge_map.items():
+            print(f"  kept: {keep_name}")
+            for m in merged:
+                print(f"    ← merged: {m}")
+    return kept, merge_map
+
+
 def _apply_dedup_merges_to_tree(
     tree: List[Dict[str, Any]],
     merge_map: Dict[str, List[str]],
@@ -542,6 +637,11 @@ For each statement, apply these five checks:
    Pass: one meaningful unit (closely related sub-steps like "read and annotate" count as one)
    Fail: "Handle all aspects of onboarding, recruitment, and event planning"
 
+6. **Not just work mode/context?** — Reject statements that only describe *where/how* work happens
+   (e.g., remote/on-site/home/in-office) without naming a concrete work activity and object.
+   Fail: "working from home", "working remotely", "working from home to perform work remotely"
+   Pass: "writing research papers from home", "running experiments remotely"
+
 ## Rewriting
 
 If a statement FAILS one or more checks but describes a real current work activity, fix it:
@@ -578,6 +678,23 @@ def _extract_screen_json(text: str) -> Any:
     payload = m.group(1).strip() if m else text.strip()
     payload = re.sub(r"^```(?:json)?\s*|\s*```$", "", payload, flags=re.DOTALL).strip()
     return json.loads(payload)
+
+
+_CONTEXT_ONLY_WORK_MODE_RE = re.compile(
+    r"^(?:work|working|operate|operating)\s+"
+    r"(?:from\s+home|remotely|remote|on[-\s]?site|in[-\s]?office|in\s+the\s+office)"
+    r"(?:\s+to\s+perform\s+work\s+remotely)?$",
+    re.IGNORECASE,
+)
+
+
+def _is_context_only_work_mode_task(task: str) -> bool:
+    """Return True for context-only work-mode statements (not actionable tasks)."""
+    t = re.sub(r"\s+", " ", str(task or "").strip())
+    if not t:
+        return False
+    t = re.sub(r"[.!?;:,]+$", "", t).strip()
+    return bool(_CONTEXT_ONLY_WORK_MODE_RE.match(t))
 
 
 def _screen_tasks(tasks: List[str], engine) -> List[str]:
@@ -625,8 +742,15 @@ def _screen_tasks(tasks: List[str], engine) -> List[str]:
             suffix = f" — {reason}" if reason else ""
             print(f"  REJECT: {original}{suffix}")
 
+    # Deterministic post-filter: drop context-only work-mode statements even if
+    # the model passes them.
+    filtered = [t for t in kept if not _is_context_only_work_mode_task(t)]
+    removed = [t for t in kept if _is_context_only_work_mode_task(t)]
+    for t in removed:
+        print(f"  REJECT: {t} — context-only work mode, not a discrete task")
+
     # Defensive: if everything got rejected, fall back to originals
-    return kept if kept else list(tasks)
+    return filtered if filtered else list(tasks)
 
 
 def _norm(s: str) -> str:
@@ -669,169 +793,6 @@ def _normalize_grouping_feedback(text: str, max_len: int = 600) -> str:
     return compact[:max_len]
 
 
-def _is_ai_tool_task(name: str) -> bool:
-    n = _norm(name)
-    if not n:
-        return False
-    return bool(_AI_TOOL_HINT_RE.search(n) and _AI_USAGE_MARKER_RE.search(n))
-
-
-def _strip_adjunct_tail(stem: str, pattern: "re.Pattern[str]", min_words: int = 2) -> str:
-    """Strip a trailing adjunct clause only when the remaining stem still has
-    at least `min_words` words — protects against "preparing for X" where the
-    "for X" IS the object, not an adjunct."""
-    candidate = pattern.sub("", stem).strip()
-    if len(candidate.split()) >= min_words:
-        return candidate
-    return stem
-
-
-def _normalize_verb_prefix(stem: str) -> str:
-    """Replace a known verb-synonym prefix with its canonical form."""
-    for key in _VERB_SYNONYM_KEYS:
-        if stem == key:
-            return _VERB_SYNONYMS[key]
-        prefix = key + " "
-        if stem.startswith(prefix):
-            return _VERB_SYNONYMS[key] + " " + stem[len(prefix):]
-    return stem
-
-
-def _tool_agnostic_task_core(name: str) -> str:
-    """Collapse mechanical variants of the same task to a shared canonical key.
-
-    Deterministic transforms (applied in order):
-      1. Lowercase, collapse whitespace.
-      2. Strip leading/inline AI-tool qualifiers ("using Claude to ...").
-      3. Drop "from scratch" / "from a blank slate" filler.
-      4. Strip trailing purpose clause ("... to <X>").
-      5. Strip trailing beneficiary clause ("... for <X>").
-      6. Strip trailing means clause ("... using/via/by/through <X>").
-      7. Normalize a small set of unambiguous verb synonyms.
-
-    Each tail strip is guarded: the remaining stem must keep at least 2 words,
-    so "preparing for presentations" does NOT collapse to "preparing".
-    """
-    n = _norm(name)
-    if not n:
-        return ""
-    n = _AI_PREFIX_RE.sub("", n)
-    n = _AI_INLINE_RE.sub("", n)
-    n = _BLANK_SLATE_RE.sub("", n)
-    n = re.sub(r"\s+", " ", n).strip()
-    # Iterate because a task can have both a "to X" and a "for Y" suffix in
-    # arbitrary order; strip whichever applies until stable.
-    for _ in range(3):
-        prev = n
-        n = _strip_adjunct_tail(n, _PURPOSE_TAIL_RE)
-        n = _strip_adjunct_tail(n, _BENEFICIARY_TAIL_RE)
-        n = _strip_adjunct_tail(n, _MEANS_TAIL_RE)
-        if n == prev:
-            break
-    n = _normalize_verb_prefix(n)
-    # "<verb> for <object>" → "<verb> <object>" (grammatical-particle variant)
-    n = _VERB_FOR_PARTICLE_RE.sub(r"\1 ", n).strip()
-    return n
-
-
-def _pre_dedup_by_core(tasks: List[str]):
-    """Merge exact action+object duplicates deterministically, before any LLM pass.
-
-    For tasks sharing the same tool-agnostic core, keep the longest variant
-    (usually retains the most useful purpose context). Returns
-    `(kept_tasks, merge_map)` where `merge_map[kept]` is the list of raw strings
-    absorbed into it — same shape as `_dedup_tasks_llm`.
-    """
-    if len(tasks) <= 1:
-        return list(tasks), {}
-    groups: Dict[str, List[str]] = {}
-    order: List[str] = []
-    for t in tasks:
-        core = _tool_agnostic_task_core(t) or _norm(t)
-        if core not in groups:
-            groups[core] = []
-            order.append(core)
-        groups[core].append(t)
-    kept: List[str] = []
-    merge_map: Dict[str, List[str]] = {}
-    for core in order:
-        members = groups[core]
-        winner = max(members, key=len)
-        kept.append(winner)
-        dropped = [m for m in members if m is not winner]
-        if dropped:
-            merge_map.setdefault(winner, []).extend(dropped)
-    return kept, merge_map
-
-
-def _compose_merge_maps(
-    first: Dict[str, List[str]],
-    second: Dict[str, List[str]],
-) -> Dict[str, List[str]]:
-    """Compose two sequential merge passes. If `second` absorbs a string that
-    was a winner in `first`, fold `first`'s absorbed list up to the new winner.
-    """
-    result: Dict[str, List[str]] = {k: list(v) for k, v in (first or {}).items()}
-    for keep, dropped in (second or {}).items():
-        bucket = result.setdefault(keep, [])
-        for d in dropped or []:
-            if d not in bucket:
-                bucket.append(d)
-            if d in result and d != keep:
-                for x in result.pop(d):
-                    if x not in bucket:
-                        bucket.append(x)
-    return result
-
-
-def _cores_equivalent(a: str, b: str) -> bool:
-    a = _norm(a)
-    b = _norm(b)
-    if not a or not b:
-        return False
-    if a == b:
-        return True
-    # Conservative containment check (avoid tiny accidental overlaps).
-    if min(len(a), len(b)) >= 10 and (a in b or b in a):
-        return True
-    ta, tb = a.split(), b.split()
-    # Allow simple verb inflection differences ("write"/"writing") when object tail matches.
-    if len(ta) == len(tb) and len(ta) >= 2 and ta[1:] == tb[1:]:
-        return ta[0][:3] == tb[0][:3]
-    return False
-
-
-def _extract_tool_phrase(name: str) -> str:
-    n = _norm(name)
-    labels: List[str] = []
-    if "chatgpt" in n:
-        labels.append("ChatGPT")
-    if "claude" in n:
-        labels.append("Claude")
-    if "copilot" in n:
-        labels.append("GitHub Copilot")
-    if "gemini" in n:
-        labels.append("Gemini")
-    if "cursor" in n:
-        labels.append("Cursor")
-    if "llm" in n or "llms" in n:
-        labels.append("LLMs")
-    if not labels:
-        return "AI tools"
-    # If specific tools were mentioned, keep only specific labels.
-    return " and ".join(dict.fromkeys(labels))
-
-
-def _merge_tool_into_task_name(base_name: str, ai_name: str) -> str:
-    base = str(base_name or "").strip()
-    if not base:
-        return base
-    if _AI_TOOL_HINT_RE.search(_norm(base)):
-        return base
-    tool = _extract_tool_phrase(ai_name)
-    return f"{base} with {tool}"
-
-
 def _dedup_list_preserve_order(items: List[str]) -> List[str]:
     out: List[str] = []
     seen: Set[str] = set()
@@ -843,84 +804,75 @@ def _dedup_list_preserve_order(items: List[str]) -> List[str]:
     return out
 
 
-def _merge_ai_tool_variants(nodes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Collapse AI-as-tool duplicates into a single leaf with tool qualifier.
+def _tool_agnostic_task_core(task: str) -> str:
+    """Legacy compatibility helper.
 
-    Example:
-      - "writing code for experiments to support research"
-      - "using AI tools to write code for experiments from scratch"
-    becomes:
-      - "writing code for experiments to support research with AI tools"
-        merged_from includes both originals.
+    We now rely on the LLM dedup pass for action/object equivalence.
+    This helper returns normalized text only and should not drive dedup logic.
     """
-    if not isinstance(nodes, list) or not nodes:
-        return nodes
+    return _norm(task)
 
-    # Recurse first so children are normalized before sibling-level merges.
-    for n in nodes:
-        if isinstance(n, dict):
-            children = n.get("children")
-            if isinstance(children, list) and children:
-                n["children"] = _merge_ai_tool_variants(children)
 
-    i = 0
-    while i < len(nodes):
-        a = nodes[i]
-        if not isinstance(a, dict) or a.get("is_group"):
-            i += 1
+def _cores_equivalent(a: str, b: str) -> bool:
+    """Legacy compatibility helper for old call-sites."""
+    return _norm(a) == _norm(b)
+
+
+def _pre_dedup_by_core(tasks: List[str]) -> tuple[List[str], Dict[str, List[str]]]:
+    """No-op compatibility shim.
+
+    Deterministic core-rule dedup has been removed from the active path in favor
+    of LLM-only action/object adjudication.
+    """
+    return list(tasks), {}
+
+
+def _compose_merge_maps(
+    first: Dict[str, List[str]],
+    second: Dict[str, List[str]],
+) -> Dict[str, List[str]]:
+    """Compose two merge maps, preserving absorbed originals transitively."""
+    if not first and not second:
+        return {}
+
+    out: Dict[str, List[str]] = {}
+    for keep, merged in (first or {}).items():
+        bucket = _dedup_list_preserve_order([str(x).strip() for x in (merged or []) if str(x).strip()])
+        if bucket:
+            out[keep] = bucket
+
+    for keep, merged in (second or {}).items():
+        keep_name = str(keep).strip()
+        if not keep_name:
             continue
-        j = i + 1
-        while j < len(nodes):
-            b = nodes[j]
-            if not isinstance(b, dict) or b.get("is_group"):
-                j += 1
-                continue
-            name_a = str(a.get("name") or "").strip()
-            name_b = str(b.get("name") or "").strip()
-            ai_a = _is_ai_tool_task(name_a)
-            ai_b = _is_ai_tool_task(name_b)
-            if ai_a == ai_b:
-                j += 1
-                continue
+        absorbed = [str(x).strip() for x in (merged or []) if str(x).strip()]
+        expanded: List[str] = []
+        for m in absorbed:
+            expanded.append(m)
+            expanded.extend(out.pop(m, []))
+        bucket = out.get(keep_name, [])
+        bucket.extend(expanded)
+        bucket = _dedup_list_preserve_order(
+            [x for x in bucket if _norm(x) != _norm(keep_name)]
+        )
+        if bucket:
+            out[keep_name] = bucket
 
-            core_a = _tool_agnostic_task_core(name_a)
-            core_b = _tool_agnostic_task_core(name_b)
-            if not _cores_equivalent(core_a, core_b):
-                j += 1
-                continue
+    return out
 
-            # Keep the non-AI leaf as the canonical base task; absorb the AI phrasing.
-            winner, loser = (b, a) if ai_a else (a, b)
-            winner_name_before = str(winner.get("name") or "").strip()
-            loser_name = str(loser.get("name") or "").strip()
 
-            merged_name = _merge_tool_into_task_name(winner_name_before, loser_name)
-            if merged_name and merged_name != winner_name_before:
-                winner["name"] = merged_name
+def _is_ai_tool_task(_task: str) -> bool:
+    """Compatibility shim: AI-tool pairing is now expected from LLM dedup."""
+    return False
 
-            merged_from = [str(x).strip() for x in (winner.get("merged_from") or []) if str(x).strip()]
-            # Preserve all source phrasings for coverage accounting.
-            if winner_name_before and _norm(winner_name_before) != _norm(str(winner.get("name") or "")):
-                merged_from.append(winner_name_before)
-            if loser_name:
-                merged_from.append(loser_name)
-            merged_from.extend(
-                str(x).strip()
-                for x in (loser.get("merged_from") or [])
-                if str(x).strip()
-            )
-            merged_from = _dedup_list_preserve_order(merged_from)
-            if merged_from:
-                winner["merged_from"] = merged_from
 
-            if loser is a:
-                nodes.pop(i)
-                a = winner
-                j = i + 1
-                continue
-            nodes.pop(j)
-        i += 1
+def _merge_tool_into_task_name(winner_name: str, _loser_name: str) -> str:
+    """Compatibility shim for legacy AI-tool post-pass."""
+    return str(winner_name or "").strip()
 
+
+def _merge_ai_tool_variants(nodes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Legacy no-op: AI/tool variants are handled by the LLM dedup pass."""
     return nodes
 
 
@@ -1067,47 +1019,61 @@ def _collapse_core_duplicates(tree: List[Dict[str, Any]]) -> List[Dict[str, Any]
     relationship instead of merging them. Groups (invented umbrella labels)
     are left alone: their name is intentionally abstract.
     """
+    def _merge_leaf_node_into_winner(winner: Dict[str, Any], other: Dict[str, Any]) -> None:
+        winner_name = str(winner.get("name") or "").strip()
+        winner_key = _norm(winner_name)
+        absorbed: List[str] = list(winner.get("merged_from") or [])
+        other_name = str(other.get("name") or "").strip()
+        if other_name and _norm(other_name) != winner_key:
+            absorbed.append(other_name)
+        absorbed.extend(str(x).strip() for x in (other.get("merged_from") or []) if str(x).strip())
+        absorbed = [
+            x for x in _dedup_list_preserve_order(absorbed)
+            if _norm(x) != winner_key
+        ]
+        if absorbed:
+            winner["merged_from"] = absorbed
+        elif "merged_from" in winner:
+            winner.pop("merged_from", None)
+
+        winner_children = list(winner.get("children") or [])
+        winner_children.extend(other.get("children") or [])
+        if winner_children:
+            winner["children"] = winner_children
+
     def _merge_sibling_bucket(siblings: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        groups: Dict[str, List[Dict[str, Any]]] = {}
-        order: List[str] = []
+        out: List[Dict[str, Any]] = []
         for node in siblings or []:
             if not isinstance(node, dict):
                 continue
             name = str(node.get("name") or "").strip()
             if not name or node.get("is_group"):
-                key = f"__uniq_{id(node)}__"
-            else:
-                key = _tool_agnostic_task_core(name) or _norm(name)
-            if key not in groups:
-                groups[key] = []
-                order.append(key)
-            groups[key].append(node)
-
-        out: List[Dict[str, Any]] = []
-        for key in order:
-            bucket = groups[key]
-            if len(bucket) == 1:
-                out.append(bucket[0])
+                out.append(node)
                 continue
-            winner = max(bucket, key=lambda n: len(str(n.get("name") or "")))
-            absorbed_names: List[str] = list(winner.get("merged_from") or [])
-            winner_children = list(winner.get("children") or [])
-            for node in bucket:
-                if node is winner:
+
+            matched_idx = None
+            for idx, existing in enumerate(out):
+                if existing.get("is_group"):
                     continue
-                n_name = str(node.get("name") or "").strip()
-                if n_name and n_name != winner.get("name") and n_name not in absorbed_names:
-                    absorbed_names.append(n_name)
-                for mf in node.get("merged_from") or []:
-                    s = str(mf).strip()
-                    if s and s != winner.get("name") and s not in absorbed_names:
-                        absorbed_names.append(s)
-                winner_children.extend(node.get("children") or [])
-            if absorbed_names:
-                winner["merged_from"] = absorbed_names
-            if winner_children:
-                winner["children"] = winner_children
-            out.append(winner)
+                existing_name = str(existing.get("name") or "").strip()
+                if not existing_name:
+                    continue
+                if _is_near_duplicate_task_name(name, existing_name):
+                    matched_idx = idx
+                    break
+
+            if matched_idx is None:
+                out.append(node)
+                continue
+
+            winner = out[matched_idx]
+            winner_name = str(winner.get("name") or "").strip()
+            if len(name) > len(winner_name):
+                replacement = node
+                _merge_leaf_node_into_winner(replacement, winner)
+                out[matched_idx] = replacement
+            else:
+                _merge_leaf_node_into_winner(winner, node)
         return out
 
     def _walk(nodes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -1124,7 +1090,6 @@ def _collapse_core_duplicates(tree: List[Dict[str, Any]]) -> List[Dict[str, Any]
 
             parent_name = str(node.get("name") or "").strip()
             if parent_name and not node.get("is_group"):
-                parent_core = _tool_agnostic_task_core(parent_name) or _norm(parent_name)
                 survivors: List[Dict[str, Any]] = []
                 absorbed = list(node.get("merged_from") or [])
                 for child in children:
@@ -1132,8 +1097,7 @@ def _collapse_core_duplicates(tree: List[Dict[str, Any]]) -> List[Dict[str, Any]
                     if child.get("is_group") or not c_name:
                         survivors.append(child)
                         continue
-                    c_core = _tool_agnostic_task_core(c_name) or _norm(c_name)
-                    if c_core == parent_core:
+                    if _is_near_duplicate_task_name(c_name, parent_name):
                         if c_name != parent_name and c_name not in absorbed:
                             absorbed.append(c_name)
                         for mf in child.get("merged_from") or []:
@@ -1335,7 +1299,7 @@ def _invoke_and_parse_hierarchy(
 
 def organize_tasks(
     tasks: List[str],
-    model_name: str = "gpt-5.1",
+    model_name: str = "gpt-5.4",
     screen: bool = False,
     grouping_feedback: str = "",
 ) -> List[Dict[str, Any]]:
@@ -1352,25 +1316,28 @@ def organize_tasks(
     try:
         engine = get_engine(model_name)
     except Exception:
-        return _flat_fallback(cleaned)
+        if model_name != "gpt-5.1":
+            try:
+                print(
+                    f"[task_hierarchy] model '{model_name}' unavailable; falling back to 'gpt-5.1'"
+                )
+                engine = get_engine("gpt-5.1")
+            except Exception:
+                return _flat_fallback(cleaned)
+        else:
+            return _flat_fallback(cleaned)
 
-    # Dedup in two passes. Preserve verbatim strings for all inputs (including
+    if screen:
+        cleaned = _screen_tasks(cleaned, engine)
+        if len(cleaned) <= 1:
+            return _flat_fallback(cleaned)
+
+    # LLM-only dedup. Preserve verbatim strings for all inputs (including
     # dropped) so downstream cache/merged_from still round-trip correctly.
     verbatim = {_norm(t): t for t in cleaned}
-    # Pass 1: deterministic core-based dedup — catches mechanical variants
-    # ("writing grants to secure funding" ≡ "writing grants") without needing
-    # the LLM to cooperate.
-    cleaned, det_merge_map = _pre_dedup_by_core(cleaned)
-    if det_merge_map:
-        print("[task_hierarchy] DEDUP pass 1 (deterministic):")
-        for keep, merged in det_merge_map.items():
-            print(f"  kept: {keep}")
-            for m in merged:
-                print(f"    ← merged: {m}")
-    # Pass 2: LLM dedup — catches true paraphrase cases the deterministic pass
-    # can't reach (synonymous verbs, paraphrased objects).
     cleaned, llm_merge_map = _dedup_tasks_llm(cleaned, engine)
-    dedup_merge_map = _compose_merge_maps(det_merge_map, llm_merge_map)
+    cleaned, fuzzy_merge_map = _dedup_tasks_fuzzy(cleaned)
+    dedup_merge_map = _compose_merge_maps(llm_merge_map, fuzzy_merge_map)
 
     try:
         normalized_feedback = _normalize_grouping_feedback(grouping_feedback)
@@ -1420,6 +1387,8 @@ def organize_tasks(
 
         # Structural cleanup before optional refine.
         tree = _dedupe_leaf_nodes(tree)
+        tree = _collapse_core_duplicates(tree)
+        tree = _dedupe_leaf_nodes(tree)
         tree = _apply_coverage_safety_net(tree, cleaned)
 
         # Optional pass-3 smart repair (disabled by default for latency).
@@ -1434,11 +1403,8 @@ def organize_tasks(
 
         # Final cleanup for AI-tool variants and duplicate leaves.
         tree = _merge_ai_tool_variants(tree)
-        tree = _dedupe_leaf_nodes(tree)
-        # Backstop: collapse parent↔child / sibling↔sibling near-duplicates
-        # that both dedup passes missed (e.g. clustering LLM nested a task
-        # under its own rephrasing).
         tree = _collapse_core_duplicates(tree)
+        tree = _dedupe_leaf_nodes(tree)
         tree = _apply_coverage_safety_net(tree, cleaned)
 
         # Fold pre-dedup drops into the matching leaf's merged_from so the UI

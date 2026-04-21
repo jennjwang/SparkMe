@@ -93,7 +93,7 @@ CORS(app)
 # AUTHENTICATION SETUP
 # =============================================================================
 
-REQUIRE_LOGIN = os.getenv('REQUIRE_LOGIN', 'false').lower() == 'true'
+REQUIRE_LOGIN = os.getenv('REQUIRE_LOGIN', 'true').lower() == 'true'
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -390,7 +390,7 @@ def login():
         login_user(user)
         app.logger.info(f"User logged in: {username} ({user_id})")
 
-        next_page = request.args.get('next')
+        next_page = request.args.get('next') or request.form.get('next')
         return redirect(next_page if next_page else url_for('index'))
 
         # --- password-based login (commented out) ---
@@ -477,7 +477,11 @@ def index():
                         os.path.isdir(os.path.join(user_logs, d))]
         if session_dirs:
             return redirect(url_for('unified_chat'))
-    return render_template('index.html', username=get_current_user().username)
+    return render_template(
+        'index.html',
+        username=get_current_user().username,
+        require_login=REQUIRE_LOGIN,
+    )
 
 @app.route('/chat')
 @login_required  # MUST BE LOGGED IN
@@ -1458,7 +1462,7 @@ try:
     )
 except (TypeError, ValueError):
     _TASK_TREE_INFLIGHT_WAIT_SECONDS = 60.0
-_TASK_HIERARCHY_MODEL_NAME = os.getenv("TASK_HIERARCHY_MODEL_NAME", "gpt-4.1-mini")
+_TASK_HIERARCHY_MODEL_NAME = os.getenv("TASK_HIERARCHY_MODEL_NAME", "gpt-5.4")
 
 
 def _task_tree_signature(
@@ -1570,7 +1574,7 @@ def _organize_tasks_cached(tasks, grouping_feedback: str = ""):
         tree = organize_tasks(
             task_list,
             model_name=model_name,
-            screen=False,
+            screen=True,
             grouping_feedback=feedback,
         )
     except Exception as e:
