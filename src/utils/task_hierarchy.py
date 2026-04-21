@@ -37,6 +37,78 @@ _DEFAULT_CRITERIA: List[str] = [
     "Tasks represent the same type of work even if phrased differently by different people",
 ]
 
+_AI_TOOL_HINT_RE = re.compile(
+    r"\b(ai|ai tools?|genai|generative ai|llm|llms|chatgpt|gpt(?:-[\w.]+)?|claude|copilot|gemini|cursor)\b"
+)
+_AI_USAGE_MARKER_RE = re.compile(r"\b(using|with|via|leveraging|utilizing)\b")
+_AI_PREFIX_RE = re.compile(
+    r"^(?:using|leveraging|utilizing)\s+"
+    r"(?:ai|ai tools?|genai|generative ai|llm|llms|chatgpt|gpt(?:-[\w.]+)?|claude|copilot|gemini|cursor)"
+    r"(?:\s+tools?)?\s+to\s+",
+    re.IGNORECASE,
+)
+_AI_INLINE_RE = re.compile(
+    r"\s+(?:using|with|via)\s+"
+    r"(?:ai|ai tools?|genai|generative ai|llm|llms|chatgpt|gpt(?:-[\w.]+)?|claude|copilot|gemini|cursor)"
+    r"(?:\s+tools?)?\b",
+    re.IGNORECASE,
+)
+_BLANK_SLATE_RE = re.compile(
+    r"\b(?:starting from|from)\s+(?:a\s+)?blank\s+slate\b|\bfrom scratch\b",
+    re.IGNORECASE,
+)
+# Trailing adjunct clauses stripped by the core extractor when the remaining
+# stem still reads as a complete action+object. Purpose ("to <rest>"),
+# beneficiary ("for <rest>"), and means ("by/via/through/using <rest>").
+_PURPOSE_TAIL_RE = re.compile(
+    r"\s+(?:to|in order to|so as to)\s+\S.*$",
+    re.IGNORECASE,
+)
+_BENEFICIARY_TAIL_RE = re.compile(r"\s+for\s+\S.*$", re.IGNORECASE)
+_MEANS_TAIL_RE = re.compile(
+    r"\s+(?:by|via|through|using|leveraging|utilizing)\s+\S.*$",
+    re.IGNORECASE,
+)
+# Small curated verb-synonym map. Keys are lowercase phrase prefixes; value is
+# the canonical form. Only includes cases where paraphrase is unambiguous.
+_VERB_SYNONYMS: Dict[str, str] = {
+    "coming up with": "generating",
+    "come up with": "generating",
+    "creating": "generating",
+    "drafting": "writing",
+    "composing": "writing",
+    "authoring": "writing",
+    "having meetings with": "meeting with",
+    "have meetings with": "meeting with",
+    "participating in": "attending",
+    "taking part in": "attending",
+}
+# Drop the particle "for" between a task's verb (first token) and its object,
+# so "<verb> for <X>" collapses to "<verb> <X>" — e.g. "preparing for
+# presentations" ≡ "preparing presentations". This runs only on single-word
+# verbs at the very start of the stem.
+_VERB_FOR_PARTICLE_RE = re.compile(r"^(\S+)\s+for\s+(?=\S)", re.IGNORECASE)
+# Sort longest-first so multi-word phrases win over single-word prefixes.
+_VERB_SYNONYM_KEYS: List[str] = sorted(_VERB_SYNONYMS, key=len, reverse=True)
+_RUN_REFINE_PASS = os.getenv("TASK_HIERARCHY_ENABLE_PASS3", "").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+_FIRST_PERSON_CONTRACTIONS_RE = re.compile(
+    r"\b(i['’](?:m|ve|d|ll)|we['’](?:re|ve|d|ll))\b",
+    re.IGNORECASE,
+)
+_FIRST_PERSON_PRONOUNS_RE = re.compile(
+    r"\b(i|me|my|mine|myself|we|us|our|ours|ourselves)\b",
+    re.IGNORECASE,
+)
+_LEADING_AUX_RE = re.compile(
+    r"^(?:am|are|is|was|were|have|has|had|being|been)\s+",
+    re.IGNORECASE,
+)
+
 _CRITERIA_FILE = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
     "analysis", "task_clustering", "criteria.txt",
@@ -61,171 +133,356 @@ def _load_criteria() -> List[str]:
         return list(_DEFAULT_CRITERIA)
 
 
-def _build_prompt(tasks: List[str]) -> str:
+def _build_prompt(
+    tasks: List[str],
+    screen: bool = True,
+    grouping_feedback: str = "",
+) -> str:
     task_lines = "\n".join(f"- {t}" for t in tasks)
-    criteria_block = "\n".join(f"- {c}" for c in _load_criteria())
-    return f"""You are organizing a flat list of work tasks into a clean, deduplicated hierarchy.
+    screen_section = """
+**Screen** — for each task, check: does it name a specific recurring action with a concrete object?
+- Rewrite vague verbs ("working on", "handling") to the specific action implied.
+- Split if it bundles 2+ unrelated activities.
+- Reject aspirations, goals, and role descriptions with no specific action.
 
-Do THREE things, in order:
+""" if screen else ""
+    rejected_note = "- Rejected tasks are omitted entirely.\n" if screen else ""
+    feedback = re.sub(r"\s+", " ", str(grouping_feedback or "").strip())
+    feedback_section = (
+        f"""
+**User feedback on grouping** — apply this while clustering:
+- {feedback}
+- Prioritize this guidance when deciding which tasks should be siblings and how to label group nodes.
+- Keep all leaf-task fidelity rules unchanged (no leaf rewrites, no dropped tasks).
+"""
+        if feedback
+        else ""
+    )
+    return f"""Organize this flat list of work tasks into a clean, deduplicated hierarchy.
 
-================================================================
-STEP 0 — IDENTIFY CLUSTERS (do this in the <thinking> block before writing output)
-================================================================
-For each task extract:
-  (a) Primary action verb  ("running", "analyzing", "attending", "writing", …)
-  (b) Object domain        (the general category of thing being acted on:
-                            "experiments/data", "meetings", "documents", …)
+Show your reasoning in <thinking>...</thinking>, then output JSON in <hierarchy>...</hierarchy>.
 
-Then form clusters using this hybrid rule:
+## In <thinking>: {("Screen, " if screen else "")}Cluster, then Deduplicate
 
-  1. Start with action-verb clusters: tasks that share the same verb are candidates
-     for one group.
+{screen_section}**Cluster** — for each task, extract (a) action verb, (b) object domain, and (c) objective (the purpose or outcome). Then group by shared action + object domain:
+- Tasks sharing the same specific object belong together regardless of verb.
+- Tasks sharing the same broad object domain belong together.
+- ALL meeting/talk/seminar/check-in activities → ONE cluster, regardless of verb or audience.
+- Group workflow-lifecycle siblings under one parent when they act on the same artifact class (e.g., running experiments + analyzing experiment results).
+- "reading X" and "writing X" are always separate even if the same object class.
+- For each cluster, derive the shared objective from the extracted (c) values of its members.
+- Name each cluster as a full task statement in the exact shape "<action> <object> to <purpose>".
+- The label MUST contain all three parts: a concrete action verb, a concrete object/domain, and a purpose after "to".
+- Use descriptive labels (typically 8-18 words). Avoid short noun phrases like "Meetings and talks", "Experimentation", or "Writing".
+- Write high-level labels as impersonal task statements: remove personal association words (e.g., "I", "my", "we", "our").
+- Good example: "participating in meetings and talks to exchange updates and feedback".
 
-  2. Merge verb-clusters whose object domains significantly overlap. Two verb-clusters
-     belong together when their objects are different facets of the same underlying
-     thing — not just loosely related. Two triggers for merging:
+**Deduplicate** — merge when tasks share the same action AND the same direct object (the thing being acted on). Trailing clauses — purpose ("to ..."), beneficiary ("for ..."), or tool qualifiers ("using AI ...") — do NOT make tasks distinct. When in doubt, prefer merging; keep the single most informative phrasing.
 
-     (a) Same specific object — tasks that act on the exact same artifact or event
-         belong in one cluster regardless of action verb. The verb does NOT matter
-         when the object is the same: preparing, attending, reviewing, following up,
-         presenting at, debriefing after — all cluster together if they share the
-         same specific object.
-         Example: "running experiments" and "analyzing experimental data"
-         → same underlying artifact (experiments/data) → one cluster.
+Merge patterns (all of these MUST be merged):
+- Same action+object, one has a purpose clause, the other does not:
+  "Writing grants to secure funding" + "Writing grants" → MERGE (keep "Writing grants to secure funding")
+- Same action+object, different purpose clauses:
+  "Running experiments to test hypotheses" + "Running experiments to advance research" → MERGE
+- Same action+object, one uses "for <beneficiary>", the other uses "to <purpose>":
+  "Providing career development guidance for trainees" + "Providing career development guidance to support trainee growth" → MERGE
+- Verb + "for" + object vs verb + object (same activity, stylistic variant):
+  "Preparing for presentations" + "Preparing presentations to communicate work" → MERGE
+- Tool qualifier on one variant only:
+  "Running experiments using AI tools" + "Running experiments" → MERGE. Keep tool context as a trailing qualifier: "<action> <object> to <purpose> with <tool>".
 
-     (b) Same object domain across verbs — tasks whose objects are different instances
-         of the same category belong together.
-         Example: "attending lab meetings", "attending project meetings",
-                  "meeting with peers", "attending research talks"
-         → different specific objects but same broad domain (gatherings/meetings/talks) → one cluster.
-         CRITICAL: meeting-type activities of ANY kind (attending, preparing for, presenting at,
-         following up on — any meeting, seminar, talk, or check-in, regardless of audience:
-         advisor, lab, project, peer, cross-team) ALWAYS form ONE single cluster.
-         Do NOT split meetings by audience or specificity (e.g. do NOT create separate
-         "advisor meetings" and "other meetings" clusters). Rule (a) does NOT override
-         this: even when "attending advisor meetings" + "preparing for advisor meetings"
-         share the same specific object, they belong in the SAME broad meetings cluster
-         as all other meeting-type tasks, not in their own separate cluster.
+Do NOT merge:
+- Different objects (writing grants vs writing papers).
+- Different actions on the same object (reading papers vs writing papers).
+- Different document types (proposal vs manuscript).
+- Preparing for X vs attending X (different actions, not stylistic variants).
 
-     Counter-example: "reading papers" and "writing papers" → same object class but
-     opposite directions of work → keep separate.
-     Counter-example: "writing project proposals" and "writing submission manuscripts"
-     → same action (writing) but DIFFERENT document types (proposal ≠ manuscript) →
-     SEPARATE tasks. They may be grouped in STEP 2 but must remain distinct leaf nodes.
+Pre-flight check before emitting the tree: for every pair of top-level leaves whose first 2–3 words match, verify they are NOT the same action+object with just a trailing clause. If they are, merge them.
 
-  3. For each final cluster, identify three things:
-       - Shared action(s): the verb(s) that cover the cluster
-       - Shared object domain: the general thing being acted on
-       - Shared objective: the common purpose or outcome across all tasks in the cluster
+{feedback_section}
 
-     Name the cluster: "<action> <object domain> to <shared objective>"
-     CRITICAL naming rules:
-       - Use at most ONE or TWO action words. Do NOT list every verb in the cluster.
-         If the cluster has many verbs (preparing, attending, meeting with …), pick the
-         single most representative verb (e.g. "attending") or a short natural blend
-         (e.g. "attending and presenting in"). Never produce "attending and meeting with
-         and preparing for …".
-       - The object domain is a single concise noun phrase (e.g. "meetings", "experiments",
-         "research documents") — NOT a list like "meetings and peers and talks".
-       - The whole label must read as natural English under 10 words.
-     Examples:
-       Verbs: running, analyzing  |  Object: experiments  |  Objective: generate findings
-         → "Running and analyzing experiments to generate findings"
-       Verbs: attending, meeting with, preparing for  |  Object: meetings  |  Objective: exchange updates and feedback
-         → "Attending meetings and talks to exchange updates and feedback"
-       Verbs: writing, drafting  |  Object: research documents  |  Objective: communicate work
-         → "Writing research documents to communicate and plan work"
-     Keep it under 10 words, sentence case.
+## Output format
 
-================================================================
-STEP 1 — DEDUPLICATE
-================================================================
-Merge tasks that describe the same underlying activity. For each merged group,
-keep ONE canonical task (the most descriptive verbatim entry from the input)
-and record the others under `merged_from`.
+Return a JSON array in <hierarchy>...</hierarchy>. Each cluster with 2+ tasks becomes a group node; single-task clusters are top-level leaves. Max 2 levels — no grandchildren.
+Prefer fewer coherent top-level buckets over many flat leaves. If the input has 6+ tasks, aim for roughly 3–6 top-level buckets unless tasks are genuinely unrelated.
 
-CORE MERGE RULE: two tasks are the same activity only when they share BOTH the
-same action AND the same object. Sharing only one is NOT sufficient to merge.
-  - Same action, different object → SEPARATE tasks (keep both).
-    e.g. "attending advisor meetings" vs "attending lab meetings" — both attend,
-    but different objects (advisor meeting vs lab meeting) → DO NOT merge.
-  - Same object, different action → SEPARATE tasks (keep both).
-    e.g. "preparing for advisor meetings" vs "attending advisor meetings" —
-    same object, but preparing ≠ attending → DO NOT merge.
-  - Same action AND same object → merge, keep the more specific phrasing.
+Before finalizing output, do a self-check:
+- If you created multiple meeting-like buckets, merge them into one descriptive meetings bucket.
+- If any invented group label is not in "<action> <object> to <purpose>" form, rewrite it.
+- If you left many near-duplicate top-level leaves, re-cluster them before emitting JSON.
 
-Additional patterns to merge (only when action+object both match):
-  (a) Pure synonyms / rephrasings of the same activity.
-  (b) One task is a sub-aspect or stage of another with the same action+object.
-      Example: "Give presentations" absorbs "Convincingly communicate findings
-      during presentations" — same action (give/present), same object (findings
-      in a presentation).
-  (c) "Use <AI tool> to assist with X" → merge INTO "X" (the tool is a how,
-      not a separate task).
-  (d) Two tasks describe the same action+object at different specificities —
-      keep the more specific verbatim entry.
+Two kinds of parent nodes:
+- **Existing task as umbrella**: use its verbatim wording as `name`, omit `is_group`.
+- **Invented label**: use the cluster name you derived above as `name`, set `"is_group": true`.
 
-Do NOT merge tasks that share a topic or category but have different
-action+object pairs (e.g. "read papers" and "write papers", or "attending
-advisor meetings" and "attending talks"). In particular: preparing for X and
-attending X are ALWAYS different tasks — different actions — never merge them.
-(They can be grouped together in STEP 2 because they share the same object,
-but they must remain separate leaf nodes.)
-Writing different document types is NOT the same task even if both use the verb "write":
-"writing project proposals" and "writing submission manuscripts/papers" have different
-objects (proposal ≠ manuscript) → DO NOT merge. Group them in STEP 2 under an invented
-"Writing research documents …" label, but keep them as separate children.
-
-================================================================
-STEP 2 — GROUP (nest into a hierarchy)
-================================================================
-Use the clusters you identified in STEP 0 directly as groups. Each cluster with
-2+ tasks becomes one group node; single-task clusters stay as top-level leaves.
-
-Group label format:
-  - Use the cluster name derived in STEP 0: "<action(s)> <object domain> to <shared objective>"
-  - Sentence case (only first word capitalised), under 10 words
-  - Must contain action, object domain, and objective — never a pure noun phrase
-
-Two kinds of group parents:
-  (i)  An existing input task that is clearly the umbrella for the cluster.
-       Use its verbatim wording as the parent name.
-  (ii) A NEW invented label when no input task is the natural umbrella.
-       Mark with `"is_group": true`.
-
-Rules:
-- Only create a group when it has at least 2 children.
-- Each leaf must use the verbatim input wording (after dedup).
-- At most 2 levels (group → children). No grandchildren.
-
-================================================================
-OUTPUT FORMAT
-================================================================
-Return ONLY a JSON array of nodes wrapped in <hierarchy>...</hierarchy>.
-Each node has this shape:
-
+Node shape:
 {{
-  "name": "<verbatim input task, OR a short invented group label>",
-  "is_group": <true if this is an invented umbrella label, else omit or false>,
-  "merged_from": ["<other input tasks merged into this one>", ...],
-  "children": [<zero or more nodes, leaves only — no further nesting>]
+  "name": "<verbatim task or invented label>",
+  "is_group": true,       // only for invented labels
+  "merged_from": [...],   // verbatim tasks absorbed into this node (dedup only)
+  "children": [...]       // leaf nodes; omit or leave empty for leaves
 }}
 
-Coverage requirement: every input task must appear EXACTLY ONCE across the
-whole tree, either as some node's `name` or inside some node's `merged_from`.
+Example (illustrative — do not copy task names):
+<hierarchy>
+[
+  {{
+    "name": "Attending meetings to exchange updates and feedback",
+    "is_group": true,
+    "children": [
+      {{"name": "attending advisor meetings to get feedback", "children": []}},
+      {{"name": "attending lab meetings to present work", "children": []}},
+      {{"name": "attending project meetings to sync on status", "children": []}}
+    ]
+  }},
+  {{
+    "name": "running experiments to test hypotheses",
+    "merged_from": ["running experiments for PhD work using AI tools to advance research"],
+    "children": []
+  }},
+  {{
+    "name": "reading papers to track the field",
+    "children": []
+  }}
+]
+</hierarchy>
+
+{rejected_note}Every task must appear exactly once (as a `name` or in `merged_from`).
 
 Input tasks:
-{task_lines}
+{task_lines}"""
 
-Before writing the JSON, show your STEP 0 action-cluster analysis inside
-<thinking>...</thinking> tags, then output the JSON inside <hierarchy>...</hierarchy>."""
+
+def _json_parse_candidates(payload: str) -> List[str]:
+    """Generate progressively more forgiving JSON payload candidates."""
+    seen: Set[str] = set()
+    out: List[str] = []
+
+    def _add(candidate: str):
+        cand = str(candidate or "").strip()
+        if not cand or cand in seen:
+            return
+        seen.add(cand)
+        out.append(cand)
+
+    _add(payload)
+
+    # Common case: model wrapped JSON with extra prose.
+    m_arr = re.search(r"(\[[\s\S]*\])", payload)
+    if m_arr:
+        _add(m_arr.group(1))
+    m_obj = re.search(r"(\{[\s\S]*\})", payload)
+    if m_obj:
+        _add(m_obj.group(1))
+
+    # Best-effort slice from first JSON opener to last closer.
+    starts = [idx for idx in (payload.find("["), payload.find("{")) if idx != -1]
+    end = max(payload.rfind("]"), payload.rfind("}"))
+    if starts and end != -1 and end > min(starts):
+        _add(payload[min(starts):end + 1])
+
+    # Remove trailing commas before closing braces/brackets.
+    for candidate in list(out):
+        _add(re.sub(r",(\s*[}\]])", r"\1", candidate))
+
+    return out
 
 
 def _extract_json(text: str) -> Any:
     m = re.search(r"<hierarchy>(.*?)</hierarchy>", text, re.DOTALL)
     payload = m.group(1).strip() if m else text.strip()
     payload = re.sub(r"^```(?:json)?\s*|\s*```$", "", payload, flags=re.DOTALL).strip()
+
+    last_error: Exception | None = None
+    for candidate in _json_parse_candidates(payload):
+        try:
+            return json.loads(candidate)
+        except Exception as e:
+            last_error = e
+            continue
+    if last_error:
+        raise last_error
+    raise ValueError("No JSON payload found")
+
+
+def _build_json_repair_prompt(raw_output: str, tasks: List[str]) -> str:
+    """Ask the model to repair malformed hierarchy output into strict JSON."""
+    task_lines = "\n".join(f"- {t}" for t in tasks)
+    clipped_raw = str(raw_output or "").strip()
+    if len(clipped_raw) > 12000:
+        clipped_raw = clipped_raw[:12000] + "\n...[truncated]..."
+
+    return f"""Fix the malformed hierarchy output below and return valid JSON only.
+
+Output requirements:
+- Return ONLY a JSON array wrapped in <hierarchy>...</hierarchy>.
+- Max depth 2: group -> children.
+- Keep leaf task wording exactly as given in the original tasks.
+- Keep every original task exactly once, either as a leaf `name` or in `merged_from`.
+- Keep `is_group: true` only for invented umbrella labels.
+- Do not add commentary or markdown fences.
+
+Original tasks:
+{task_lines}
+
+Malformed output:
+<raw_output>
+{clipped_raw}
+</raw_output>
+"""
+
+
+# =============================================================================
+# Dedicated LLM dedup pass (runs before the combined cluster+group pass)
+# =============================================================================
+
+def _build_dedup_prompt(tasks: List[str]) -> str:
+    task_lines = "\n".join(f"{i}. {t}" for i, t in enumerate(tasks))
+    return f"""You are a job analyst reviewing a worker's self-reported task statements.
+
+## Tasks ({len(tasks)} total)
+{task_lines}
+
+---
+
+## Your Job
+Identify tasks that describe the **same core work activity** and should be merged.
+
+Merge tasks when:
+- They share the same action verb AND object domain (e.g. both are about writing grants)
+- One is a specific instance of the other (attending standups IS sharing progress updates)
+- Trailing purpose ("to <X>"), beneficiary ("for <X>"), or tool qualifiers ("using AI") do not make them distinct
+- Separating them would not be meaningful to a job analyst or worker
+
+Do NOT merge tasks that:
+- Differ substantially in object (e.g. "review code" vs "review documentation")
+- Use different core actions (e.g. "reading papers" vs "writing papers")
+- Serve different audiences or have substantially different outcomes
+
+For merged tasks, write a NEW statement that covers all merged sources without losing specificity.
+Use the structure: <Action> <object> to <immediate outcome>.
+
+## Output
+
+Return ONLY a JSON array in <duplicates>...</duplicates>. One entry per OUTPUT task:
+- Single (no merge):  {{"indices": [i]}}
+- Merged group:       {{"indices": [i, j, ...], "merged_statement": "<new statement>", "merge_reason": "<brief>"}}
+
+Indices are 0-based. Every input index must appear in exactly one entry. If there are no duplicates, list every task as its own singleton entry.
+
+<duplicates>
+[
+  {{"indices": [0]}},
+  {{"indices": [1, 4], "merged_statement": "Writing grants to secure research funding", "merge_reason": "bare form vs. 'to <purpose>'"}}
+]
+</duplicates>
+
+No commentary outside the tags."""
+
+
+def _extract_dedup_json(text: str) -> Any:
+    m = re.search(r"<duplicates>(.*?)</duplicates>", text, re.DOTALL)
+    payload = m.group(1).strip() if m else text.strip()
+    payload = re.sub(r"^```(?:json)?\s*|\s*```$", "", payload, flags=re.DOTALL).strip()
     return json.loads(payload)
+
+
+def _dedup_tasks_llm(tasks: List[str], engine):
+    """Run an LLM dedup pass using the 3b-style grouping format.
+
+    The model returns one entry per OUTPUT task: singleton `{"indices":[i]}`
+    or merged `{"indices":[i,j,...], "merged_statement": "..."}` — in the
+    merged case the winner is a newly-synthesized canonical statement rather
+    than picking the longest input. Returns `(kept_tasks, merge_map)` with the
+    same shape as `_pre_dedup_by_core` so the maps compose cleanly.
+
+    On any failure, returns the input unchanged and an empty map so downstream
+    grouping still runs.
+    """
+    if len(tasks) <= 1:
+        return list(tasks), {}
+    try:
+        response = invoke_engine(engine, _build_dedup_prompt(tasks))
+        text = response.content if hasattr(response, "content") else str(response)
+        groups = _extract_dedup_json(text)
+        if not isinstance(groups, list):
+            return list(tasks), {}
+
+        kept: List[str] = []
+        merge_map: Dict[str, List[str]] = {}
+        seen_indices: Set[int] = set()
+
+        for g in groups:
+            if not isinstance(g, dict):
+                continue
+            raw_indices = g.get("indices") or []
+            indices = [int(i) for i in raw_indices if isinstance(i, (int, float))]
+            indices = [i for i in indices if 0 <= i < len(tasks) and i not in seen_indices]
+            if not indices:
+                continue
+
+            if len(indices) == 1:
+                kept.append(tasks[indices[0]])
+                seen_indices.add(indices[0])
+                continue
+
+            merged_statement = str(g.get("merged_statement") or "").strip()
+            if not merged_statement:
+                # Model returned a merge group without a new statement —
+                # fall back to the longest input variant in that group.
+                merged_statement = max((tasks[i] for i in indices), key=len)
+            kept.append(merged_statement)
+            absorbed = [tasks[i] for i in indices if tasks[i] != merged_statement]
+            if absorbed:
+                merge_map.setdefault(merged_statement, []).extend(absorbed)
+            seen_indices.update(indices)
+
+        # Safety net: any input index the model omitted — treat as singleton.
+        for i, t in enumerate(tasks):
+            if i not in seen_indices:
+                kept.append(t)
+
+        if merge_map:
+            print("[task_hierarchy] DEDUP pass 2 (LLM):")
+            for keep_name, merged in merge_map.items():
+                print(f"  kept: {keep_name}")
+                for m in merged:
+                    print(f"    ← merged: {m}")
+        return kept, merge_map
+    except Exception as e:
+        print(f"[task_hierarchy] dedup pass failed: {e}")
+        return list(tasks), {}
+
+
+def _apply_dedup_merges_to_tree(
+    tree: List[Dict[str, Any]],
+    merge_map: Dict[str, List[str]],
+) -> List[Dict[str, Any]]:
+    """Inject pre-dedup merges into each matching leaf's `merged_from` list
+    so the UI still shows what was absorbed."""
+    if not merge_map or not isinstance(tree, list):
+        return tree
+    norm_map = {_norm(k): v for k, v in merge_map.items()}
+    for node in tree:
+        if not isinstance(node, dict):
+            continue
+        children = node.get("children") or []
+        if children:
+            _apply_dedup_merges_to_tree(children, merge_map)
+        if node.get("is_group"):
+            continue
+        dropped = norm_map.get(_norm(str(node.get("name") or "")))
+        if not dropped:
+            continue
+        existing = list(node.get("merged_from") or [])
+        existing_norm = {_norm(m) for m in existing}
+        for d in dropped:
+            if _norm(d) not in existing_norm:
+                existing.append(d)
+                existing_norm.add(_norm(d))
+        if existing:
+            node["merged_from"] = existing
+    return tree
 
 
 # =============================================================================
@@ -376,6 +633,297 @@ def _norm(s: str) -> str:
     return re.sub(r"\s+", " ", str(s or "").strip().lower())
 
 
+def _to_impersonal_task_statement(name: str) -> str:
+    """Rewrite a task string into an impersonal statement (no first-person words)."""
+    original = re.sub(r"\s+", " ", str(name or "").strip())
+    if not original:
+        return ""
+    s = original
+    s = _FIRST_PERSON_CONTRACTIONS_RE.sub("", s)
+    s = _FIRST_PERSON_PRONOUNS_RE.sub("", s)
+    s = _LEADING_AUX_RE.sub("", s)
+    s = re.sub(r"\s+([,.;:!?])", r"\1", s)
+    s = re.sub(r"\(\s+", "(", s)
+    s = re.sub(r"\s+\)", ")", s)
+    s = re.sub(r"\s+", " ", s).strip(" ,.;:-")
+    return s if s else original
+
+
+def _rewrite_high_level_task_names(tree: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Normalize only top-level node names to impersonal task statements."""
+    if not isinstance(tree, list):
+        return tree
+    for node in tree:
+        if not isinstance(node, dict):
+            continue
+        raw_name = str(node.get("name") or "").strip()
+        if not raw_name:
+            continue
+        node["name"] = _to_impersonal_task_statement(raw_name)
+    return tree
+
+
+def _normalize_grouping_feedback(text: str, max_len: int = 600) -> str:
+    """Normalize free-text regrouping guidance to a compact prompt snippet."""
+    compact = re.sub(r"\s+", " ", str(text or "").strip())
+    return compact[:max_len]
+
+
+def _is_ai_tool_task(name: str) -> bool:
+    n = _norm(name)
+    if not n:
+        return False
+    return bool(_AI_TOOL_HINT_RE.search(n) and _AI_USAGE_MARKER_RE.search(n))
+
+
+def _strip_adjunct_tail(stem: str, pattern: "re.Pattern[str]", min_words: int = 2) -> str:
+    """Strip a trailing adjunct clause only when the remaining stem still has
+    at least `min_words` words — protects against "preparing for X" where the
+    "for X" IS the object, not an adjunct."""
+    candidate = pattern.sub("", stem).strip()
+    if len(candidate.split()) >= min_words:
+        return candidate
+    return stem
+
+
+def _normalize_verb_prefix(stem: str) -> str:
+    """Replace a known verb-synonym prefix with its canonical form."""
+    for key in _VERB_SYNONYM_KEYS:
+        if stem == key:
+            return _VERB_SYNONYMS[key]
+        prefix = key + " "
+        if stem.startswith(prefix):
+            return _VERB_SYNONYMS[key] + " " + stem[len(prefix):]
+    return stem
+
+
+def _tool_agnostic_task_core(name: str) -> str:
+    """Collapse mechanical variants of the same task to a shared canonical key.
+
+    Deterministic transforms (applied in order):
+      1. Lowercase, collapse whitespace.
+      2. Strip leading/inline AI-tool qualifiers ("using Claude to ...").
+      3. Drop "from scratch" / "from a blank slate" filler.
+      4. Strip trailing purpose clause ("... to <X>").
+      5. Strip trailing beneficiary clause ("... for <X>").
+      6. Strip trailing means clause ("... using/via/by/through <X>").
+      7. Normalize a small set of unambiguous verb synonyms.
+
+    Each tail strip is guarded: the remaining stem must keep at least 2 words,
+    so "preparing for presentations" does NOT collapse to "preparing".
+    """
+    n = _norm(name)
+    if not n:
+        return ""
+    n = _AI_PREFIX_RE.sub("", n)
+    n = _AI_INLINE_RE.sub("", n)
+    n = _BLANK_SLATE_RE.sub("", n)
+    n = re.sub(r"\s+", " ", n).strip()
+    # Iterate because a task can have both a "to X" and a "for Y" suffix in
+    # arbitrary order; strip whichever applies until stable.
+    for _ in range(3):
+        prev = n
+        n = _strip_adjunct_tail(n, _PURPOSE_TAIL_RE)
+        n = _strip_adjunct_tail(n, _BENEFICIARY_TAIL_RE)
+        n = _strip_adjunct_tail(n, _MEANS_TAIL_RE)
+        if n == prev:
+            break
+    n = _normalize_verb_prefix(n)
+    # "<verb> for <object>" → "<verb> <object>" (grammatical-particle variant)
+    n = _VERB_FOR_PARTICLE_RE.sub(r"\1 ", n).strip()
+    return n
+
+
+def _pre_dedup_by_core(tasks: List[str]):
+    """Merge exact action+object duplicates deterministically, before any LLM pass.
+
+    For tasks sharing the same tool-agnostic core, keep the longest variant
+    (usually retains the most useful purpose context). Returns
+    `(kept_tasks, merge_map)` where `merge_map[kept]` is the list of raw strings
+    absorbed into it — same shape as `_dedup_tasks_llm`.
+    """
+    if len(tasks) <= 1:
+        return list(tasks), {}
+    groups: Dict[str, List[str]] = {}
+    order: List[str] = []
+    for t in tasks:
+        core = _tool_agnostic_task_core(t) or _norm(t)
+        if core not in groups:
+            groups[core] = []
+            order.append(core)
+        groups[core].append(t)
+    kept: List[str] = []
+    merge_map: Dict[str, List[str]] = {}
+    for core in order:
+        members = groups[core]
+        winner = max(members, key=len)
+        kept.append(winner)
+        dropped = [m for m in members if m is not winner]
+        if dropped:
+            merge_map.setdefault(winner, []).extend(dropped)
+    return kept, merge_map
+
+
+def _compose_merge_maps(
+    first: Dict[str, List[str]],
+    second: Dict[str, List[str]],
+) -> Dict[str, List[str]]:
+    """Compose two sequential merge passes. If `second` absorbs a string that
+    was a winner in `first`, fold `first`'s absorbed list up to the new winner.
+    """
+    result: Dict[str, List[str]] = {k: list(v) for k, v in (first or {}).items()}
+    for keep, dropped in (second or {}).items():
+        bucket = result.setdefault(keep, [])
+        for d in dropped or []:
+            if d not in bucket:
+                bucket.append(d)
+            if d in result and d != keep:
+                for x in result.pop(d):
+                    if x not in bucket:
+                        bucket.append(x)
+    return result
+
+
+def _cores_equivalent(a: str, b: str) -> bool:
+    a = _norm(a)
+    b = _norm(b)
+    if not a or not b:
+        return False
+    if a == b:
+        return True
+    # Conservative containment check (avoid tiny accidental overlaps).
+    if min(len(a), len(b)) >= 10 and (a in b or b in a):
+        return True
+    ta, tb = a.split(), b.split()
+    # Allow simple verb inflection differences ("write"/"writing") when object tail matches.
+    if len(ta) == len(tb) and len(ta) >= 2 and ta[1:] == tb[1:]:
+        return ta[0][:3] == tb[0][:3]
+    return False
+
+
+def _extract_tool_phrase(name: str) -> str:
+    n = _norm(name)
+    labels: List[str] = []
+    if "chatgpt" in n:
+        labels.append("ChatGPT")
+    if "claude" in n:
+        labels.append("Claude")
+    if "copilot" in n:
+        labels.append("GitHub Copilot")
+    if "gemini" in n:
+        labels.append("Gemini")
+    if "cursor" in n:
+        labels.append("Cursor")
+    if "llm" in n or "llms" in n:
+        labels.append("LLMs")
+    if not labels:
+        return "AI tools"
+    # If specific tools were mentioned, keep only specific labels.
+    return " and ".join(dict.fromkeys(labels))
+
+
+def _merge_tool_into_task_name(base_name: str, ai_name: str) -> str:
+    base = str(base_name or "").strip()
+    if not base:
+        return base
+    if _AI_TOOL_HINT_RE.search(_norm(base)):
+        return base
+    tool = _extract_tool_phrase(ai_name)
+    return f"{base} with {tool}"
+
+
+def _dedup_list_preserve_order(items: List[str]) -> List[str]:
+    out: List[str] = []
+    seen: Set[str] = set()
+    for it in items:
+        key = _norm(it)
+        if key and key not in seen:
+            seen.add(key)
+            out.append(it)
+    return out
+
+
+def _merge_ai_tool_variants(nodes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Collapse AI-as-tool duplicates into a single leaf with tool qualifier.
+
+    Example:
+      - "writing code for experiments to support research"
+      - "using AI tools to write code for experiments from scratch"
+    becomes:
+      - "writing code for experiments to support research with AI tools"
+        merged_from includes both originals.
+    """
+    if not isinstance(nodes, list) or not nodes:
+        return nodes
+
+    # Recurse first so children are normalized before sibling-level merges.
+    for n in nodes:
+        if isinstance(n, dict):
+            children = n.get("children")
+            if isinstance(children, list) and children:
+                n["children"] = _merge_ai_tool_variants(children)
+
+    i = 0
+    while i < len(nodes):
+        a = nodes[i]
+        if not isinstance(a, dict) or a.get("is_group"):
+            i += 1
+            continue
+        j = i + 1
+        while j < len(nodes):
+            b = nodes[j]
+            if not isinstance(b, dict) or b.get("is_group"):
+                j += 1
+                continue
+            name_a = str(a.get("name") or "").strip()
+            name_b = str(b.get("name") or "").strip()
+            ai_a = _is_ai_tool_task(name_a)
+            ai_b = _is_ai_tool_task(name_b)
+            if ai_a == ai_b:
+                j += 1
+                continue
+
+            core_a = _tool_agnostic_task_core(name_a)
+            core_b = _tool_agnostic_task_core(name_b)
+            if not _cores_equivalent(core_a, core_b):
+                j += 1
+                continue
+
+            # Keep the non-AI leaf as the canonical base task; absorb the AI phrasing.
+            winner, loser = (b, a) if ai_a else (a, b)
+            winner_name_before = str(winner.get("name") or "").strip()
+            loser_name = str(loser.get("name") or "").strip()
+
+            merged_name = _merge_tool_into_task_name(winner_name_before, loser_name)
+            if merged_name and merged_name != winner_name_before:
+                winner["name"] = merged_name
+
+            merged_from = [str(x).strip() for x in (winner.get("merged_from") or []) if str(x).strip()]
+            # Preserve all source phrasings for coverage accounting.
+            if winner_name_before and _norm(winner_name_before) != _norm(str(winner.get("name") or "")):
+                merged_from.append(winner_name_before)
+            if loser_name:
+                merged_from.append(loser_name)
+            merged_from.extend(
+                str(x).strip()
+                for x in (loser.get("merged_from") or [])
+                if str(x).strip()
+            )
+            merged_from = _dedup_list_preserve_order(merged_from)
+            if merged_from:
+                winner["merged_from"] = merged_from
+
+            if loser is a:
+                nodes.pop(i)
+                a = winner
+                j = i + 1
+                continue
+            nodes.pop(j)
+        i += 1
+
+    return nodes
+
+
 def _collect_covered(nodes: List[Dict[str, Any]]) -> Set[str]:
     """Return the set of normalized input-task strings the tree claims to cover.
 
@@ -397,7 +945,11 @@ def _collect_covered(nodes: List[Dict[str, Any]]) -> Set[str]:
     return covered
 
 
-def _sanitize(nodes: Any, verbatim: Dict[str, str] = None) -> List[Dict[str, Any]]:
+def _sanitize(
+    nodes: Any,
+    verbatim: Dict[str, str] = None,
+    depth: int = 0,
+) -> List[Dict[str, Any]]:
     """Coerce LLM output into the shape the frontend expects.
 
     - Restores verbatim casing on leaf names using the `verbatim` lookup
@@ -418,7 +970,8 @@ def _sanitize(nodes: Any, verbatim: Dict[str, str] = None) -> List[Dict[str, Any
             continue
 
         is_group = bool(n.get("is_group"))
-        children = _sanitize(n.get("children"), verbatim)
+        # Enforce max depth of 2 (root -> children). Any deeper structure is flattened.
+        children = [] if depth >= 1 else _sanitize(n.get("children"), verbatim, depth + 1)
 
         # Demote single-child invented groups — promote the child to top level
         if is_group and len(children) < 2:
@@ -438,6 +991,7 @@ def _sanitize(nodes: Any, verbatim: Dict[str, str] = None) -> List[Dict[str, Any
                 verbatim.get(_norm(str(m).strip()), str(m).strip())
                 for m in merged if str(m).strip()
             ]
+            cleaned_merged = _dedup_list_preserve_order(cleaned_merged)
             if cleaned_merged:
                 node["merged_from"] = cleaned_merged
         out.append(node)
@@ -448,12 +1002,348 @@ def _flat_fallback(tasks: List[str]) -> List[Dict[str, Any]]:
     return [{"name": t, "children": []} for t in tasks]
 
 
-def organize_tasks(tasks: List[str], model_name: str = "gpt-4.1-mini", skip_screen: bool = False) -> List[Dict[str, Any]]:
-    """Return a tree of nodes.
+def _dedupe_leaf_nodes(tree: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Deduplicate identical leaves globally while preserving first occurrence."""
+    seen: Dict[str, Dict[str, Any]] = {}
 
-    Pipeline: ONET-style validity screen → dedup + group via single LLM call.
-    Pass skip_screen=True when the caller has already screened the task list.
-    On any failure, returns the (screened) input as a flat list of leaves.
+    def _walk(nodes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        out: List[Dict[str, Any]] = []
+        for node in nodes or []:
+            if not isinstance(node, dict):
+                continue
+            if node.get("is_group"):
+                children = _walk(node.get("children") or [])
+                if len(children) >= 2:
+                    node["children"] = children
+                    out.append(node)
+                else:
+                    out.extend(children)
+                continue
+
+            name = str(node.get("name") or "").strip()
+            key = _norm(name)
+            if not key:
+                continue
+            merged = [
+                str(x).strip()
+                for x in (node.get("merged_from") or [])
+                if str(x).strip() and _norm(str(x)) != key
+            ]
+            merged = _dedup_list_preserve_order(merged)
+            if merged:
+                node["merged_from"] = merged
+            elif "merged_from" in node:
+                node.pop("merged_from", None)
+
+            winner = seen.get(key)
+            if winner is None:
+                seen[key] = node
+                out.append(node)
+                continue
+
+            winner_merged = [
+                str(x).strip() for x in (winner.get("merged_from") or []) if str(x).strip()
+            ]
+            winner_merged.append(name)
+            winner_merged.extend(merged)
+            winner_merged = [
+                x for x in _dedup_list_preserve_order(winner_merged)
+                if _norm(x) != key
+            ]
+            if winner_merged:
+                winner["merged_from"] = winner_merged
+        return out
+
+    return _walk(tree)
+
+
+def _collapse_core_duplicates(tree: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Post-clustering backstop: collapse parent↔child and sibling↔sibling
+    near-duplicates detected by core equivalence (same action+object after
+    stripping purpose/beneficiary/means clauses).
+
+    Catches cases both dedup passes missed — e.g. when the clustering LLM puts
+    "writing grants to secure funding" and "writing grants" into a parent/child
+    relationship instead of merging them. Groups (invented umbrella labels)
+    are left alone: their name is intentionally abstract.
+    """
+    def _merge_sibling_bucket(siblings: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        groups: Dict[str, List[Dict[str, Any]]] = {}
+        order: List[str] = []
+        for node in siblings or []:
+            if not isinstance(node, dict):
+                continue
+            name = str(node.get("name") or "").strip()
+            if not name or node.get("is_group"):
+                key = f"__uniq_{id(node)}__"
+            else:
+                key = _tool_agnostic_task_core(name) or _norm(name)
+            if key not in groups:
+                groups[key] = []
+                order.append(key)
+            groups[key].append(node)
+
+        out: List[Dict[str, Any]] = []
+        for key in order:
+            bucket = groups[key]
+            if len(bucket) == 1:
+                out.append(bucket[0])
+                continue
+            winner = max(bucket, key=lambda n: len(str(n.get("name") or "")))
+            absorbed_names: List[str] = list(winner.get("merged_from") or [])
+            winner_children = list(winner.get("children") or [])
+            for node in bucket:
+                if node is winner:
+                    continue
+                n_name = str(node.get("name") or "").strip()
+                if n_name and n_name != winner.get("name") and n_name not in absorbed_names:
+                    absorbed_names.append(n_name)
+                for mf in node.get("merged_from") or []:
+                    s = str(mf).strip()
+                    if s and s != winner.get("name") and s not in absorbed_names:
+                        absorbed_names.append(s)
+                winner_children.extend(node.get("children") or [])
+            if absorbed_names:
+                winner["merged_from"] = absorbed_names
+            if winner_children:
+                winner["children"] = winner_children
+            out.append(winner)
+        return out
+
+    def _walk(nodes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        if not isinstance(nodes, list):
+            return nodes
+        nodes = _merge_sibling_bucket(nodes)
+        for node in nodes:
+            if not isinstance(node, dict):
+                continue
+            children = node.get("children") or []
+            if not children:
+                continue
+            children = _walk(children)
+
+            parent_name = str(node.get("name") or "").strip()
+            if parent_name and not node.get("is_group"):
+                parent_core = _tool_agnostic_task_core(parent_name) or _norm(parent_name)
+                survivors: List[Dict[str, Any]] = []
+                absorbed = list(node.get("merged_from") or [])
+                for child in children:
+                    c_name = str(child.get("name") or "").strip()
+                    if child.get("is_group") or not c_name:
+                        survivors.append(child)
+                        continue
+                    c_core = _tool_agnostic_task_core(c_name) or _norm(c_name)
+                    if c_core == parent_core:
+                        if c_name != parent_name and c_name not in absorbed:
+                            absorbed.append(c_name)
+                        for mf in child.get("merged_from") or []:
+                            s = str(mf).strip()
+                            if s and s != parent_name and s not in absorbed:
+                                absorbed.append(s)
+                        for gc in child.get("children") or []:
+                            survivors.append(gc)
+                    else:
+                        survivors.append(child)
+                if absorbed:
+                    node["merged_from"] = absorbed
+                children = survivors
+            node["children"] = children
+        return nodes
+
+    return _walk(tree)
+
+
+def _apply_coverage_safety_net(tree: List[Dict[str, Any]], tasks: List[str]) -> List[Dict[str, Any]]:
+    covered = _collect_covered(tree)
+    for task in tasks:
+        if _norm(task) not in covered:
+            tree.append({"name": task, "children": []})
+            covered.add(_norm(task))
+    return tree
+
+
+def _grouping_quality_score(tree: List[Dict[str, Any]]) -> float:
+    """Simple structural score to compare two candidate hierarchies."""
+    if not isinstance(tree, list):
+        return -1.0
+    groups = [
+        n for n in tree
+        if isinstance(n, dict) and n.get("is_group") and len(n.get("children") or []) >= 2
+    ]
+    top_level_leaves = [
+        n for n in tree if isinstance(n, dict) and not n.get("is_group")
+    ]
+    # Prefer meaningful grouping and avoid too many top-level loose leaves.
+    return float(len(groups) * 3 - max(0, len(top_level_leaves) - 4))
+
+
+def _is_descriptive_group_label(name: str) -> bool:
+    """Heuristic quality check for invented group labels.
+
+    Group labels should read like task statements with action+object+purpose.
+    """
+    label = _norm(name)
+    if not label:
+        return False
+    if " to " not in label:
+        return False
+    left, right = label.split(" to ", 1)
+    if not left.strip() or not right.strip():
+        return False
+    # Avoid very short noun-phrase labels (e.g., "meetings and talks").
+    if len(label.split()) < 6:
+        return False
+    # Require at least one action-like token before the purpose clause.
+    left_tokens = left.split()
+    if not any(t.endswith("ing") for t in left_tokens):
+        return False
+    return True
+
+
+def _has_underspecified_group_labels(tree: List[Dict[str, Any]]) -> bool:
+    for n in tree:
+        if not isinstance(n, dict):
+            continue
+        if n.get("is_group") and not _is_descriptive_group_label(str(n.get("name") or "")):
+            return True
+    return False
+
+
+def _needs_smart_refine(tree: List[Dict[str, Any]], tasks: List[str]) -> bool:
+    """Decide when to run an extra smart regrouping pass."""
+    if not isinstance(tree, list):
+        return False
+    # Always attempt one repair pass for vague group labels.
+    if _has_underspecified_group_labels(tree):
+        return True
+    if len(tasks) < 5:
+        return False
+    groups = sum(1 for n in tree if isinstance(n, dict) and n.get("is_group"))
+    top_level_leaves = sum(1 for n in tree if isinstance(n, dict) and not n.get("is_group"))
+    # Trigger only when the result looks under-grouped.
+    return top_level_leaves >= 5 or (groups <= 1 and top_level_leaves >= 3)
+
+
+def _build_refine_prompt(
+    tasks: List[str],
+    tree: List[Dict[str, Any]],
+    grouping_feedback: str = "",
+) -> str:
+    task_lines = "\n".join(f"- {t}" for t in tasks)
+    tree_json = json.dumps(tree, ensure_ascii=False, indent=2)
+    feedback = _normalize_grouping_feedback(grouping_feedback)
+    feedback_section = (
+        f"""
+User regrouping feedback:
+- {feedback}
+- Respect this feedback when reclustering and naming groups.
+"""
+        if feedback
+        else ""
+    )
+    return f"""Improve this task hierarchy for better bucket quality while preserving task fidelity.
+
+Return ONLY JSON wrapped in <hierarchy>...</hierarchy>.
+
+Rules:
+- Keep every original task exactly once (as a node `name` or in `merged_from`).
+- Do NOT invent new leaf tasks and do NOT rewrite leaf wording.
+- Max depth 2 (group -> children). No grandchildren.
+- Create groups only when they have at least 2 children.
+- Prefer coherent top-level buckets over many flat leaves.
+- Group same-workflow lifecycle siblings (e.g., running experiments + analyzing experiment results).
+- Meeting/talk activities, including meeting preparation, should generally share one meetings bucket unless clearly unrelated.
+- Different document types (proposal vs submission) remain separate leaves, but can share a parent writing bucket.
+- Every invented group label (`is_group: true`) MUST be a descriptive task statement with action + object + purpose in this exact format: "<action> <object> to <purpose>".
+- Group labels must be specific and readable (typically 8-18 words) and must not be short noun phrases like "Meetings and talks", "Experimentation", or "Writing".
+- High-level labels must be impersonal task statements with no first-person wording (remove "I", "my", "we", "our").
+- You may rewrite group labels to satisfy the rule above, but do not rewrite leaf task wording.
+- For AI-tool variants of the same underlying work, keep ONE task and encode tool usage as a suffix qualifier: "<action> <object> to <purpose> with <tool>".
+
+{feedback_section}
+
+Original tasks:
+{task_lines}
+
+Current hierarchy:
+<current_hierarchy>
+{tree_json}
+</current_hierarchy>"""
+
+
+def _smart_refine_grouping(
+    tree: List[Dict[str, Any]],
+    tasks: List[str],
+    engine,
+    verbatim: Dict[str, str],
+    grouping_feedback: str = "",
+) -> List[Dict[str, Any]]:
+    """Ask the model to repair under-grouped structures and keep the better tree."""
+    try:
+        response = invoke_engine(
+            engine,
+            _build_refine_prompt(tasks, tree, grouping_feedback=grouping_feedback),
+        )
+        text = response.content if hasattr(response, "content") else str(response)
+        refined = _sanitize(_extract_json(text), verbatim)
+        if not refined:
+            return tree
+
+        # Same cleanup used on first-pass output.
+        child_names = {
+            _norm(c["name"])
+            for n in refined if n.get("is_group")
+            for c in n.get("children") or []
+        }
+        refined = [
+            n for n in refined
+            if n.get("is_group") or _norm(n["name"]) not in child_names
+        ]
+
+        covered = _collect_covered(refined)
+        for task in tasks:
+            if _norm(task) not in covered:
+                refined.append({"name": task, "children": []})
+
+        return refined if _grouping_quality_score(refined) >= _grouping_quality_score(tree) else tree
+    except Exception:
+        return tree
+
+
+def _invoke_and_parse_hierarchy(
+    engine,
+    prompt: str,
+    tasks: List[str],
+) -> Any:
+    """Invoke hierarchy model and repair once if initial JSON is malformed."""
+    response = invoke_engine(engine, prompt)
+    text = response.content if hasattr(response, "content") else str(response)
+    try:
+        return _extract_json(text)
+    except Exception:
+        repair_response = invoke_engine(
+            engine,
+            _build_json_repair_prompt(text, tasks),
+        )
+        repair_text = (
+            repair_response.content
+            if hasattr(repair_response, "content")
+            else str(repair_response)
+        )
+        return _extract_json(repair_text)
+
+
+def organize_tasks(
+    tasks: List[str],
+    model_name: str = "gpt-5.1",
+    screen: bool = False,
+    grouping_feedback: str = "",
+) -> List[Dict[str, Any]]:
+    """Return a tree of nodes (dedup + group, optionally with screening in a single LLM call).
+
+    screen=False (default): tasks are assumed already clean (e.g. from portrait generation).
+    screen=True: adds an O*NET-style validity/rewrite pass before grouping.
+    On any failure, returns the input as a flat list of leaves.
     """
     cleaned = [str(t).strip() for t in tasks if str(t).strip()]
     if len(cleaned) <= 1:
@@ -464,49 +1354,114 @@ def organize_tasks(tasks: List[str], model_name: str = "gpt-4.1-mini", skip_scre
     except Exception:
         return _flat_fallback(cleaned)
 
-    if skip_screen:
-        screened = cleaned
-    else:
-        screened = _screen_tasks(cleaned, engine)
-    if len(screened) <= 1:
-        return _flat_fallback(screened)
+    # Dedup in two passes. Preserve verbatim strings for all inputs (including
+    # dropped) so downstream cache/merged_from still round-trip correctly.
+    verbatim = {_norm(t): t for t in cleaned}
+    # Pass 1: deterministic core-based dedup — catches mechanical variants
+    # ("writing grants to secure funding" ≡ "writing grants") without needing
+    # the LLM to cooperate.
+    cleaned, det_merge_map = _pre_dedup_by_core(cleaned)
+    if det_merge_map:
+        print("[task_hierarchy] DEDUP pass 1 (deterministic):")
+        for keep, merged in det_merge_map.items():
+            print(f"  kept: {keep}")
+            for m in merged:
+                print(f"    ← merged: {m}")
+    # Pass 2: LLM dedup — catches true paraphrase cases the deterministic pass
+    # can't reach (synonymous verbs, paraphrased objects).
+    cleaned, llm_merge_map = _dedup_tasks_llm(cleaned, engine)
+    dedup_merge_map = _compose_merge_maps(det_merge_map, llm_merge_map)
 
     try:
-        verbatim = {_norm(t): t for t in screened}
-        response = invoke_engine(engine, _build_prompt(screened))
-        text = response.content if hasattr(response, 'content') else str(response)
-        tree = _sanitize(_extract_json(text), verbatim)
+        normalized_feedback = _normalize_grouping_feedback(grouping_feedback)
+        if len(cleaned) <= 1:
+            tree = _flat_fallback(cleaned)
+            tree = _apply_dedup_merges_to_tree(tree, dedup_merge_map)
+            return tree
+        tree = _sanitize(
+            _invoke_and_parse_hierarchy(
+                engine,
+                _build_prompt(
+                    cleaned,
+                    screen=screen,
+                    grouping_feedback=normalized_feedback,
+                ),
+                cleaned,
+            ),
+            verbatim,
+        )
         if not tree:
-            return _flat_fallback(screened)
+            # Model-first fallback: ask for a clean regroup starting from a flat seed.
+            flat_seed = _flat_fallback(cleaned)
+            tree = _sanitize(
+                _invoke_and_parse_hierarchy(
+                    engine,
+                    _build_refine_prompt(
+                        cleaned,
+                        flat_seed,
+                        grouping_feedback=normalized_feedback,
+                    ),
+                    cleaned,
+                ),
+                verbatim,
+            )
+        if not tree:
+            return _flat_fallback(cleaned)
 
-        # Remove top-level leaves already present as children of a group node
+        # Remove top-level leaves already present as children of a group node.
         child_names = {
             _norm(c["name"])
             for n in tree if n.get("is_group")
             for c in n.get("children") or []
         }
-        tree = [n for n in tree if n.get("is_group") or _norm(n["name"]) not in child_names]
+        tree = [
+            n for n in tree if n.get("is_group") or _norm(n["name"]) not in child_names
+        ]
 
-        covered = _collect_covered(tree)
-        appended = []
-        for task in screened:
-            if _norm(task) not in covered:
-                tree.append({"name": task, "children": []})
-                appended.append(task)
+        # Structural cleanup before optional refine.
+        tree = _dedupe_leaf_nodes(tree)
+        tree = _apply_coverage_safety_net(tree, cleaned)
+
+        # Optional pass-3 smart repair (disabled by default for latency).
+        if _RUN_REFINE_PASS and _needs_smart_refine(tree, cleaned):
+            tree = _smart_refine_grouping(
+                tree=tree,
+                tasks=cleaned,
+                engine=engine,
+                verbatim=verbatim,
+                grouping_feedback=normalized_feedback,
+            )
+
+        # Final cleanup for AI-tool variants and duplicate leaves.
+        tree = _merge_ai_tool_variants(tree)
+        tree = _dedupe_leaf_nodes(tree)
+        # Backstop: collapse parent↔child / sibling↔sibling near-duplicates
+        # that both dedup passes missed (e.g. clustering LLM nested a task
+        # under its own rephrasing).
+        tree = _collapse_core_duplicates(tree)
+        tree = _apply_coverage_safety_net(tree, cleaned)
+
+        # Fold pre-dedup drops into the matching leaf's merged_from so the UI
+        # still reflects what was absorbed.
+        tree = _apply_dedup_merges_to_tree(tree, dedup_merge_map)
+
+        # Presentation normalization: top-level nodes should be written as
+        # impersonal task statements (no first-person phrasing).
+        tree = _rewrite_high_level_task_names(tree)
 
         print("[task_hierarchy] GROUP pass:")
-        def _print_tree(nodes, indent=0):
-            for n in nodes:
-                prefix = "  " * indent
-                label = f"[group] {n['name']}" if n.get("is_group") else n["name"]
-                merged = n.get("merged_from")
-                merged_str = f"  ← merged: {merged}" if merged else ""
-                print(f"{prefix}  {label}{merged_str}")
-                _print_tree(n.get("children") or [], indent + 1)
-        _print_tree(tree)
-        if appended:
-            print(f"[task_hierarchy] Appended as uncovered leaves: {appended}")
+        for n in tree:
+            if n.get("is_group"):
+                print(f"  [group] {n['name']}")
+                for c in n.get("children") or []:
+                    merged = c.get("merged_from") or []
+                    suffix = f"  ← merged: {merged}" if merged else ""
+                    print(f"    {c['name']}{suffix}")
+            else:
+                merged = n.get("merged_from") or []
+                suffix = f"  ← merged: {merged}" if merged else ""
+                print(f"  {n['name']}{suffix}")
 
         return tree
     except Exception:
-        return _flat_fallback(screened)
+        return _flat_fallback(cleaned)

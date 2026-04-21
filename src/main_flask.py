@@ -9,6 +9,7 @@ from flask_login import LoginManager, UserMixin, login_user, logout_user, login_
 from functools import wraps
 import traceback
 import asyncio
+import concurrent.futures
 import threading
 from collections import OrderedDict
 import os
@@ -18,6 +19,7 @@ import argparse
 import time
 import logging
 import secrets
+from datetime import datetime, timezone
 # import hashlib  # unused when name-only login is active
 import json
 from logging.handlers import RotatingFileHandler
@@ -46,6 +48,7 @@ load_dotenv(override=True)
 from src.utils.speech.text_to_speech import TextToSpeechBase, create_tts_engine
 from src.utils.speech.audio_player import AudioPlayerBase, create_audio_player
 from src.utils.speech.speech_to_text import create_stt_engine
+from src.utils.logger.evaluation_logger import EvaluationLogger
 from src.interview_session.interview_session import InterviewSession
 from src.content.session_agenda.session_agenda import normalize_user_portrait
 
@@ -90,7 +93,7 @@ CORS(app)
 # AUTHENTICATION SETUP
 # =============================================================================
 
-REQUIRE_LOGIN = os.getenv('REQUIRE_LOGIN', 'true').lower() == 'true'
+REQUIRE_LOGIN = os.getenv('REQUIRE_LOGIN', 'false').lower() == 'true'
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -113,6 +116,25 @@ def load_users():
         except:
             return {}
     return {}
+
+
+def _generate_random_numeric_string(digits: int = 8) -> str:
+    """Generate a fixed-length random numeric string."""
+    digits = max(1, int(digits))
+    if digits == 1:
+        return str(secrets.randbelow(10))
+    lower = 10 ** (digits - 1)
+    span = 9 * lower
+    return str(lower + secrets.randbelow(span))
+
+
+def _generate_unique_user_id(users: dict, digits: int = 10) -> str:
+    """Generate a numeric user_id not present in users."""
+    for _ in range(64):
+        candidate = _generate_random_numeric_string(digits)
+        if candidate not in users:
+            return candidate
+    return secrets.token_urlsafe(16)
 
 def save_users(users):
     """Save users to JSON file"""
@@ -200,6 +222,37 @@ last_messages_by_session: Dict[str, Dict[str, str]] = {}
 session_audio_cache: Dict[str, Dict[str, object]] = {}
 # Tracks how many chat_history entries have been delivered for agent-mode sessions
 chat_history_offsets: Dict[str, int] = {}
+# Pending turn metadata keyed by session token -> turn id.
+pending_turns_by_session: Dict[str, OrderedDict[str, Dict[str, object]]] = {}
+# Guards against duplicate latency rows when messages are replayed.
+delivered_turn_messages_by_session: Dict[str, set[str]] = {}
+
+
+def _parse_iso_datetime(value: Optional[object]) -> Optional[datetime]:
+    """Parse ISO timestamps into timezone-aware datetimes."""
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    try:
+        if text.endswith("Z"):
+            text = text[:-1] + "+00:00"
+        parsed = datetime.fromisoformat(text)
+        if parsed.tzinfo is not None:
+            parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
+        return parsed
+    except Exception:
+        return None
+
+
+def _register_pending_turn(session_token: str, turn_id: str, payload: Dict[str, object]) -> None:
+    """Track a user turn until at least one assistant response is delivered."""
+    turns = pending_turns_by_session.setdefault(session_token, OrderedDict())
+    turns[turn_id] = payload
+    # Keep bounded state per session.
+    while len(turns) > 500:
+        turns.popitem(last=False)
 
 def create_interview_session(user_id: str, session_type: str = "intake",
                              interaction_mode: str = 'api',
@@ -245,6 +298,14 @@ def create_interview_session(user_id: str, session_type: str = "intake",
         },
         max_turns=config.max_turns
     )
+    # Inject cache prewarm hook so portrait updates can seed organize-tasks cache.
+    def _prewarm_callback(tasks, grouping_feedback: str = ""):
+        _, cached = _organize_tasks_cached(
+            tasks,
+            grouping_feedback=grouping_feedback,
+        )
+        return cached
+    interview_session._task_tree_prewarm_callback = _prewarm_callback
     
     wrapper = SessionWrapper(
         session_token=session_token,
@@ -302,14 +363,12 @@ def login():
     
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
-
         if not username:
-            flash('Please enter your Stanford ID', 'error')
-            return render_template('login.html')
+            username = _generate_random_numeric_string(8)
 
         users = load_users()
 
-        # Find existing user by Stanford ID, or create a new one
+        # Find existing user by entered/generated ID, or create a new one
         user_id = None
         for uid, user_data in users.items():
             if user_data['username'] == username:
@@ -317,7 +376,7 @@ def login():
                 break
 
         if not user_id:
-            user_id = secrets.token_urlsafe(16)
+            user_id = _generate_unique_user_id(users, digits=10)
             users[user_id] = {
                 'username': username,
                 'created_at': time.time()
@@ -345,7 +404,10 @@ def login():
         # else:
         #     flash('Invalid username or password', 'error')
 
-    return render_template('login.html')
+    return render_template(
+        'login.html',
+        suggested_username=_generate_random_numeric_string(8),
+    )
 
 # --- /register route (commented out — superseded by name-only login) ---
 # @app.route('/register', methods=['GET', 'POST'])
@@ -409,7 +471,7 @@ def index():
     If the user already has a prior session (intake completed), skip to chat."""
     logs_dir = os.getenv("LOGS_DIR", "logs")
     user_logs = os.path.join(logs_dir, get_current_user().id, "execution_logs")
-    if os.path.isdir(user_logs):
+    if REQUIRE_LOGIN and os.path.isdir(user_logs):
         session_dirs = [d for d in os.listdir(user_logs)
                         if d.startswith('session_') and
                         os.path.isdir(os.path.join(user_logs, d))]
@@ -657,17 +719,37 @@ def send_message():
             'session_completed': True
         }), 400
 
+    turn_id = uuid.uuid4().hex
+    api_received_at = datetime.now()
+    metadata = {
+        "turn_id": turn_id,
+        "api_received_at": api_received_at.isoformat(),
+        "transport": "text",
+    }
+    _register_pending_turn(
+        session_token,
+        turn_id,
+        {
+            "api_received_at": api_received_at.isoformat(),
+            "user_message_length": len(str(user_message or "")),
+            "transport": "text",
+        },
+    )
+
     wrapper = get_session_wrapper(session_token)
     if wrapper and hasattr(wrapper, 'loop'):
-        wrapper.loop.call_soon_threadsafe(wrapper.interview_session.user.add_user_message, user_message)
+        wrapper.loop.call_soon_threadsafe(
+            wrapper.interview_session.user.add_user_message,
+            user_message,
+            metadata,
+        )
     else:
-        session.user.add_user_message(user_message)
-
-    bot_reply = wait_for_agent_response(session)
+        session.user.add_user_message(user_message, metadata=metadata)
 
     return jsonify({
         'success': True,
-        'message': 'Message sent successfully'
+        'message': 'Message queued successfully',
+        'turn_id': turn_id,
     })
 
 @app.route('/api/send-voice', methods=['POST'])
@@ -700,11 +782,31 @@ def send_voice():
 
         transcribe_only = request.form.get('transcribe_only', 'false').lower() == 'true'
         if not transcribe_only:
+            turn_id = uuid.uuid4().hex
+            api_received_at = datetime.now()
+            metadata = {
+                "turn_id": turn_id,
+                "api_received_at": api_received_at.isoformat(),
+                "transport": "voice",
+            }
+            _register_pending_turn(
+                session_token,
+                turn_id,
+                {
+                    "api_received_at": api_received_at.isoformat(),
+                    "user_message_length": len(str(transcribed_text or "")),
+                    "transport": "voice",
+                },
+            )
             wrapper = get_session_wrapper(session_token)
             if wrapper and hasattr(wrapper, 'loop'):
-                wrapper.loop.call_soon_threadsafe(wrapper.interview_session.user.add_user_message, transcribed_text)
+                wrapper.loop.call_soon_threadsafe(
+                    wrapper.interview_session.user.add_user_message,
+                    transcribed_text,
+                    metadata,
+                )
             else:
-                session.user.add_user_message(transcribed_text)
+                session.user.add_user_message(transcribed_text, metadata=metadata)
 
         return jsonify({
             'success': True,
@@ -767,10 +869,17 @@ def get_messages():
         hasattr(session.user, '_message_buffer') or
         hasattr(session.user, 'get_and_clear_messages')
     )
-    _deliverable_types = {'conversation', 'time_split_widget', 'feedback_widget'}
+    _deliverable_types = {
+        'conversation',
+        'time_split_widget',
+        'ai_usage_widget',
+        'feedback_widget',
+        'profile_confirm_widget',
+    }
     if has_user_buffer and full_history:
-        # Reconnect: replay full chat_history so the client can re-render everything
-        # Skip time_split_widget on reconnect — the widget was already submitted
+        # Reconnect: replay deliverable messages from full chat_history so the
+        # client can restore its current state.
+        # Keep feedback/profile/AI-usage widget triggers; skip time-split on reconnect.
         messages = [
             {
                 'id': m.id,
@@ -778,9 +887,10 @@ def get_messages():
                 'content': m.content,
                 'type': m.type,
                 'timestamp': m.timestamp.isoformat(),
+                'metadata': getattr(m, "metadata", {}) if isinstance(getattr(m, "metadata", {}), dict) else {},
             }
             for m in session.chat_history
-            if m.type == 'conversation'
+            if m.type in _deliverable_types and m.type != 'time_split_widget'
         ]
     elif has_user_buffer:
         if hasattr(session.user, 'get_new_messages'):
@@ -810,6 +920,7 @@ def get_messages():
                 'content': m.content,
                 'type': m.type,
                 'timestamp': m.timestamp.isoformat(),
+                'metadata': getattr(m, "metadata", {}) if isinstance(getattr(m, "metadata", {}), dict) else {},
             }
             for m in new_msgs
             if m.type in _deliverable_types
@@ -827,6 +938,85 @@ def get_messages():
 
     # Session completion is signaled via data.session_completed in the JSON response;
     # the frontend renders its own end-of-session banner.
+
+    # Log per-turn delivery latency once an interviewer conversation message is
+    # actually delivered to a polling client.
+    if messages:
+        delivered_at = datetime.now()
+        history_by_id = {
+            getattr(m, "id", None): m for m in session.chat_history if getattr(m, "id", None)
+        }
+        delivered_keys = delivered_turn_messages_by_session.setdefault(session_token, set())
+        pending_turns = pending_turns_by_session.setdefault(session_token, OrderedDict())
+        session_user_id = getattr(session, "user_id", None)
+        session_id = getattr(session, "session_id", None)
+        eval_logger = None
+        if session_user_id is not None and session_id is not None:
+            eval_logger = EvaluationLogger(user_id=session_user_id, session_id=session_id)
+
+        for msg in messages:
+            if eval_logger is None:
+                break
+            if msg.get("role") not in {"Interviewer", "assistant"}:
+                continue
+            if str(msg.get("type")) != "conversation":
+                continue
+
+            message_id = str(msg.get("id") or "").strip()
+            if not message_id:
+                continue
+            source_msg = history_by_id.get(message_id)
+            if source_msg is None:
+                continue
+
+            source_meta = getattr(source_msg, "metadata", {})
+            meta = source_meta if isinstance(source_meta, dict) else {}
+            turn_id = str(meta.get("turn_id", "")).strip()
+            if not turn_id:
+                continue
+
+            delivered_key = f"{turn_id}:{message_id}"
+            if delivered_key in delivered_keys:
+                continue
+            delivered_keys.add(delivered_key)
+
+            user_message_id = str(meta.get("paired_user_message_id", "")).strip()
+            user_chat_history_at = _parse_iso_datetime(meta.get("paired_user_timestamp"))
+            if user_chat_history_at is None and user_message_id:
+                user_msg = history_by_id.get(user_message_id)
+                if user_msg is not None:
+                    user_chat_history_at = user_msg.timestamp
+            if user_chat_history_at is None:
+                continue
+
+            api_received_at = _parse_iso_datetime(meta.get("api_received_at"))
+            if api_received_at is None:
+                pending = pending_turns.get(turn_id, {})
+                api_received_at = _parse_iso_datetime(pending.get("api_received_at"))
+
+            user_len = int(meta.get("user_message_length", 0) or 0)
+            if user_len <= 0:
+                pending = pending_turns.get(turn_id, {})
+                user_len = int(pending.get("user_message_length", 0) or 0)
+
+            transport = str(meta.get("transport", "")).strip() or "text"
+            if transport == "text":
+                pending = pending_turns.get(turn_id, {})
+                transport = str(pending.get("transport", "text"))
+
+            eval_logger.log_turn_latency_breakdown(
+                turn_id=turn_id,
+                user_message_id=user_message_id,
+                assistant_message_id=message_id,
+                user_api_received_at=api_received_at,
+                user_chat_history_at=user_chat_history_at,
+                assistant_generated_at=source_msg.timestamp,
+                assistant_delivered_at=delivered_at,
+                user_message_length=user_len,
+                assistant_message_length=len(str(source_msg.content or "")),
+                transport=transport,
+            )
+            pending_turns.pop(turn_id, None)
 
     # Pre-start TTS generation for interviewer messages as soon as they are delivered,
     # so audio is ready (or nearly ready) by the time the client explicitly requests it.
@@ -1260,9 +1450,22 @@ def session_state():
 _TASK_TREE_CACHE: "OrderedDict[tuple, list]" = OrderedDict()
 _TASK_TREE_CACHE_MAX = 256
 _TASK_TREE_CACHE_LOCK = threading.Lock()
+_TASK_TREE_INFLIGHT: "Dict[tuple, concurrent.futures.Future]" = {}
+try:
+    _TASK_TREE_INFLIGHT_WAIT_SECONDS = max(
+        1.0,
+        float(os.getenv("TASK_TREE_INFLIGHT_WAIT_SECONDS", "60")),
+    )
+except (TypeError, ValueError):
+    _TASK_TREE_INFLIGHT_WAIT_SECONDS = 60.0
+_TASK_HIERARCHY_MODEL_NAME = os.getenv("TASK_HIERARCHY_MODEL_NAME", "gpt-4.1-mini")
 
 
-def _task_tree_signature(tasks):
+def _task_tree_signature(
+    tasks,
+    model_name: str = "",
+    grouping_feedback: str = "",
+):
     """Canonicalize task list → tuple key (case/whitespace/order-insensitive)."""
     seen = set()
     norm = []
@@ -1272,7 +1475,147 @@ def _task_tree_signature(tasks):
             seen.add(s)
             norm.append(s)
     norm.sort()
-    return tuple(norm)
+    model_key = ' '.join(str(model_name or '').strip().lower().split())
+    feedback_key = ' '.join(str(grouping_feedback or '').strip().lower().split())
+    return (model_key, feedback_key, *norm)
+
+
+def _saved_grouping_tree_if_matches(portrait, tasks):
+    """Return portrait['Task Grouping Tree'] iff its leaves match the current task set.
+
+    Lets a user-authored hierarchy (including drag-and-drop regroupings saved via
+    /api/update-portrait) override the LLM organizer whenever the underlying
+    inventory is unchanged. Returns None otherwise so the caller falls back to
+    _organize_tasks_cached.
+    """
+    if not isinstance(portrait, dict):
+        return None
+    saved = portrait.get('Task Grouping Tree')
+    if not isinstance(saved, list) or not saved:
+        return None
+
+    def _collect_leaves(nodes):
+        out = []
+        for n in nodes or []:
+            if not isinstance(n, dict):
+                continue
+            children = n.get('children') or []
+            if isinstance(children, list) and children:
+                out.extend(_collect_leaves(children))
+            else:
+                name = str(n.get('name') or '').strip()
+                if name:
+                    out.append(name)
+        return out
+
+    def _norm(s):
+        return ' '.join(str(s or '').strip().lower().split())
+
+    leaf_keys = {_norm(t) for t in _collect_leaves(saved) if _norm(t)}
+    want_keys = {_norm(t) for t in (tasks or []) if _norm(t)}
+    if leaf_keys and leaf_keys == want_keys:
+        return saved
+    return None
+
+
+def _organize_tasks_cached(tasks, grouping_feedback: str = ""):
+    """Organize tasks with process-wide cache shared across all callers."""
+    from src.utils.task_hierarchy import organize_tasks
+
+    seen = set()
+    task_list = []
+    for t in tasks:
+        s = " ".join(str(t).strip().split())
+        if not s:
+            continue
+        key = s.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        task_list.append(s)
+    feedback = ' '.join(str(grouping_feedback or '').strip().split())[:600]
+    model_name = _TASK_HIERARCHY_MODEL_NAME
+    sig = _task_tree_signature(
+        task_list,
+        model_name=model_name,
+        grouping_feedback=feedback,
+    )
+    inflight = None
+    leader = False
+    if sig:
+        with _TASK_TREE_CACHE_LOCK:
+            cached = _TASK_TREE_CACHE.get(sig)
+            if cached is not None:
+                _TASK_TREE_CACHE.move_to_end(sig)
+                return cached, True
+            inflight = _TASK_TREE_INFLIGHT.get(sig)
+            if inflight is None:
+                inflight = concurrent.futures.Future()
+                _TASK_TREE_INFLIGHT[sig] = inflight
+                leader = True
+
+    if sig and inflight is not None and not leader:
+        try:
+            shared_tree = inflight.result(timeout=_TASK_TREE_INFLIGHT_WAIT_SECONDS)
+            return shared_tree, True
+        except Exception:
+            # If the shared compute failed or timed out, clear stale inflight
+            # marker and compute locally as a fallback.
+            with _TASK_TREE_CACHE_LOCK:
+                if _TASK_TREE_INFLIGHT.get(sig) is inflight and not inflight.done():
+                    _TASK_TREE_INFLIGHT.pop(sig, None)
+            inflight = None
+
+    try:
+        tree = organize_tasks(
+            task_list,
+            model_name=model_name,
+            screen=False,
+            grouping_feedback=feedback,
+        )
+    except Exception as e:
+        if sig and leader and inflight is not None and not inflight.done():
+            with _TASK_TREE_CACHE_LOCK:
+                _TASK_TREE_INFLIGHT.pop(sig, None)
+            inflight.set_exception(e)
+        raise
+
+    if sig:
+        leader_inflight = None
+        with _TASK_TREE_CACHE_LOCK:
+            _TASK_TREE_CACHE[sig] = tree
+            _TASK_TREE_CACHE.move_to_end(sig)
+            while len(_TASK_TREE_CACHE) > _TASK_TREE_CACHE_MAX:
+                _TASK_TREE_CACHE.popitem(last=False)
+            if leader:
+                leader_inflight = _TASK_TREE_INFLIGHT.pop(sig, None)
+        if leader and leader_inflight is not None and not leader_inflight.done():
+            leader_inflight.set_result(tree)
+
+    return tree, False
+
+
+def _prewarm_task_tree_cache_async(tasks, grouping_feedback: str = ""):
+    """Seed task-tree cache in a background thread."""
+    task_list = [str(t).strip() for t in (tasks or []) if str(t).strip()]
+    if len(task_list) < 2:
+        return
+
+    def _run():
+        try:
+            _, cached = _organize_tasks_cached(
+                task_list,
+                grouping_feedback=grouping_feedback,
+            )
+            app.logger.info(
+                "[task_tree_prewarm] tasks=%d cached_hit=%s",
+                len(task_list),
+                cached,
+            )
+        except Exception as e:
+            app.logger.error(f"[task_tree_prewarm] failed: {e}", exc_info=True)
+
+    threading.Thread(target=_run, daemon=True, name="TaskTreePrewarm").start()
 
 
 @app.route('/api/organize-tasks', methods=['POST'])
@@ -1283,31 +1626,148 @@ def organize_tasks_route():
     Results are cached process-wide by the canonical signature of the input
     list so that the time-split widget, feedback widget, and profile panel all
     see the same tree for the same set of tasks.
+    Optional `grouping_feedback` lets callers request a feedback-guided regroup.
     """
-    from src.utils.task_hierarchy import organize_tasks
     data = request.get_json(silent=True) or {}
     tasks = data.get('tasks') or []
     if not isinstance(tasks, list):
         return jsonify({'success': False, 'error': 'tasks must be a list'}), 400
 
-    sig = _task_tree_signature(tasks)
-    if sig:
-        with _TASK_TREE_CACHE_LOCK:
-            cached = _TASK_TREE_CACHE.get(sig)
-            if cached is not None:
-                _TASK_TREE_CACHE.move_to_end(sig)
-                return jsonify({'success': True, 'tree': cached, 'cached': True})
+    grouping_feedback = data.get('grouping_feedback') or ""
+    if not isinstance(grouping_feedback, str):
+        return jsonify({'success': False, 'error': 'grouping_feedback must be a string'}), 400
 
-    tree = organize_tasks([str(t) for t in tasks], skip_screen=True)
+    tree, cached = _organize_tasks_cached(
+        tasks,
+        grouping_feedback=grouping_feedback,
+    )
+    feedback_applied = bool(grouping_feedback.strip())
+    acknowledgement = (
+        'Thanks - I regrouped the subtasks using your feedback.'
+        if feedback_applied
+        else 'Thanks - I organized your subtasks.'
+    )
+    return jsonify({
+        'success': True,
+        'tree': tree,
+        'cached': cached,
+        'grouping_feedback_applied': feedback_applied,
+        'acknowledgement': acknowledgement,
+        'message': acknowledgement,
+    })
 
-    if sig:
-        with _TASK_TREE_CACHE_LOCK:
-            _TASK_TREE_CACHE[sig] = tree
-            _TASK_TREE_CACHE.move_to_end(sig)
-            while len(_TASK_TREE_CACHE) > _TASK_TREE_CACHE_MAX:
-                _TASK_TREE_CACHE.popitem(last=False)
 
-    return jsonify({'success': True, 'tree': tree})
+@app.route('/api/time-split-ready', methods=['POST'])
+@agent_or_login_required
+def time_split_ready():
+    """Return a freshness-gated payload for the time-split widget.
+
+    Waits for scribe processing to settle, ensures portrait freshness through
+    the latest memory count, then returns both portrait and organized task tree.
+    """
+    data = request.get_json(silent=True) or {}
+    session_token = data.get('session_token')
+    if not session_token:
+        return jsonify({'success': False, 'error': 'session_token required'}), 400
+
+    wrapper = get_session_wrapper(session_token)
+    if not wrapper:
+        return jsonify({'success': False, 'error': 'Invalid or expired session'}), 400
+
+    try:
+        timeout_seconds = float(data.get('timeout_seconds', 35))
+    except (TypeError, ValueError):
+        timeout_seconds = 35.0
+    timeout_seconds = max(1.0, min(timeout_seconds, 120.0))
+
+    iv = wrapper.interview_session
+
+    async def _build_payload():
+        loop = asyncio.get_running_loop()
+        scribe = getattr(iv, 'session_scribe', None)
+
+        wait_start = loop.time()
+        while scribe is not None and getattr(scribe, 'processing_in_progress', False):
+            if loop.time() - wait_start >= timeout_seconds:
+                return {'ready': False}
+            await asyncio.sleep(0.1)
+        scribe_wait_s = loop.time() - wait_start
+
+        target_memory_count = len(getattr(iv.memory_bank, 'memories', []))
+        portrait_start = loop.time()
+        refreshed = await iv.ensure_user_portrait_fresh(
+            min_memory_count=target_memory_count,
+            wait_for_inflight=True,
+        )
+        portrait_wait_s = loop.time() - portrait_start
+
+        agenda = getattr(iv, 'session_agenda', None)
+        portrait = agenda.user_portrait if agenda and isinstance(agenda.user_portrait, dict) else {}
+        raw_tasks = portrait.get('Task Inventory') if isinstance(portrait, dict) else []
+        tasks = [str(t).strip() for t in (raw_tasks or []) if str(t).strip()]
+        grouping_feedback = str(
+            portrait.get('Task Grouping Feedback', '')
+            if isinstance(portrait, dict)
+            else ''
+        )
+
+        tree = []
+        cached = False
+        saved_tree = _saved_grouping_tree_if_matches(portrait, tasks)
+        if saved_tree is not None:
+            tree = saved_tree
+            cached = True
+        elif len(tasks) >= 2:
+            tree, cached = await asyncio.to_thread(
+                _organize_tasks_cached,
+                tasks,
+                grouping_feedback,
+            )
+        elif tasks:
+            tree = [{'name': t, 'children': []} for t in tasks]
+
+        app.logger.info(
+            "[time_split_ready] scribe_wait=%.2fs portrait_wait=%.2fs refreshed=%s tasks=%d cached=%s",
+            scribe_wait_s,
+            portrait_wait_s,
+            refreshed,
+            len(tasks),
+            cached,
+        )
+        return {
+            'ready': True,
+            'user_portrait': portrait,
+            'tree': tree,
+            'cached': cached,
+            'task_count': len(tasks),
+        }
+
+    future = asyncio.run_coroutine_threadsafe(_build_payload(), wrapper.loop)
+    try:
+        payload = future.result(timeout=timeout_seconds + 10.0)
+    except concurrent.futures.TimeoutError:
+        future.cancel()
+        return jsonify({
+            'success': False,
+            'error': 'Timed out waiting for fresh portrait and task tree',
+        }), 504
+    except Exception as e:
+        app.logger.error(f"[time_split_ready] Failed: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': 'Failed to build time-split data'}), 500
+
+    if not payload.get('ready'):
+        return jsonify({
+            'success': False,
+            'error': 'Timed out waiting for fresh portrait and task tree',
+        }), 504
+
+    return jsonify({
+        'success': True,
+        'user_portrait': payload.get('user_portrait', {}),
+        'tree': payload.get('tree', []),
+        'cached': bool(payload.get('cached', False)),
+        'task_count': int(payload.get('task_count', 0)),
+    })
 
 
 @app.route('/api/update-portrait', methods=['POST'])
@@ -1330,6 +1790,10 @@ def update_portrait():
         os.makedirs(os.path.dirname(portrait_path), exist_ok=True)
         with open(portrait_path, 'w') as f:
             json.dump(portrait, f, indent=2)
+        _prewarm_task_tree_cache_async(
+            portrait.get('Task Inventory') or [],
+            grouping_feedback=str(portrait.get('Task Grouping Feedback', '') or ''),
+        )
     return jsonify({'success': True})
 
 @app.route('/api/debug-session', methods=['GET'])
@@ -1402,14 +1866,31 @@ def process_audio():
 
     try:
         transcribed_text = transcribe_audio_to_text(temp_audio_path)
+        turn_id = uuid.uuid4().hex
+        api_received_at = datetime.now()
+        metadata = {
+            "turn_id": turn_id,
+            "api_received_at": api_received_at.isoformat(),
+            "transport": "voice",
+        }
+        _register_pending_turn(
+            session_token,
+            turn_id,
+            {
+                "api_received_at": api_received_at.isoformat(),
+                "user_message_length": len(str(transcribed_text or "")),
+                "transport": "voice",
+            },
+        )
         wrapper = get_session_wrapper(session_token)
         if wrapper and hasattr(wrapper, 'loop'):
             wrapper.loop.call_soon_threadsafe(
                 wrapper.interview_session.user.add_user_message, 
-                transcribed_text
+                transcribed_text,
+                metadata,
             )
         else:
-            interview_session.user.add_user_message(transcribed_text)
+            interview_session.user.add_user_message(transcribed_text, metadata=metadata)
 
         bot_reply = wait_for_agent_response(interview_session, timeout=15.0)
         
@@ -1532,6 +2013,8 @@ def cleanup_old_sessions():
             to_remove.append(token)
             session_audio_cache.pop(token, None)
             last_messages_by_session.pop(token, None)
+            pending_turns_by_session.pop(token, None)
+            delivered_turn_messages_by_session.pop(token, None)
 
     for token in to_remove:
         wrapper = active_sessions.pop(token, None)

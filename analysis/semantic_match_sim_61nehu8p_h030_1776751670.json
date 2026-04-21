@@ -1,0 +1,55 @@
+{
+  "matched_pairs": [
+    {
+      "original": "reading academic papers to track the field",
+      "simulated": "Reading research papers to understand problem definitions, methods, key findings, and limitations",
+      "rationale_short": "Both involve reading papers to understand and track research."
+    },
+    {
+      "original": "searching for relevant papers to find literature using Google Scholar, Claude, and ChatGPT",
+      "simulated": "reviewing thesis sections to clarify arguments and align with latest results and literature",
+      "rationale_short": "Indirectly related through literature alignment, but no direct search task; partial overlap."
+    },
+    {
+      "original": "writing reports to document research findings",
+      "simulated": "Writing reports and scientific papers to turn analysis results into publishable arguments",
+      "rationale_short": "Simulated task explicitly includes writing reports."
+    },
+    {
+      "original": "writing scientific papers to publish research results",
+      "simulated": "Writing reports and scientific papers to turn analysis results into publishable arguments",
+      "rationale_short": "Simulated task explicitly includes writing scientific papers."
+    },
+    {
+      "original": "writing code to analyze data",
+      "simulated": "Writing code to analyze data and validate results to answer research questions",
+      "rationale_short": "Both involve coding for data analysis."
+    },
+    {
+      "original": "building presentations to communicate research publicly",
+      "simulated": "Preparing presentations to communicate research findings",
+      "rationale_short": "Both involve preparing presentations for communication."
+    },
+    {
+      "original": "Communicate research results with the team",
+      "simulated": "Meeting with supervisor or team to communicate research progress and results",
+      "rationale_short": "Both involve communication of research results within team."
+    },
+    {
+      "original": "Explain research problems",
+      "simulated": "Mentoring junior students by helping them with coding and explaining research problems",
+      "rationale_short": "Simulated task includes explaining research problems."
+    }
+  ],
+  "missing_original": [
+    "searching for relevant papers to find literature using Google Scholar, Claude, and ChatGPT"
+  ],
+  "extra_simulated": [
+    "reviewing thesis sections to clarify arguments and align with latest results and literature",
+    "rewriting thesis sections to clarify arguments and align with latest results and literature",
+    "Organizing code and data for own projects",
+    "Mentoring junior students by helping them with coding and explaining research problems"
+  ],
+  "semantic_recall": 0.875,
+  "semantic_precision": 0.5
+}

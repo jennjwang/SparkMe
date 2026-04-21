@@ -58,8 +58,9 @@ class User(Participant):
     def show_last_message_history(self, message: Message):
         print(f"{message.role}: {message.content}")
 
-    def add_user_message(self, text: str):
+    def add_user_message(self, text: str, metadata: dict | None = None):
         self.interview_session.add_message_to_chat_history(
             role="User",
-            content=text
+            content=text,
+            metadata=metadata or {}
         )

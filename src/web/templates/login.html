@@ -43,32 +43,72 @@
         font-size: 24px;
         font-weight: 600;
         color: #111827;
-        margin-bottom: 32px;
+        margin-bottom: 10px;
       }
-      .card input {
-        width: 100%;
-        padding: 14px 16px;
-        margin-bottom: 16px;
-        background: #f9fafb;
-        border: 1px solid #e5e7eb;
-        border-radius: 10px;
-        color: #111827;
-        font-size: 15px;
-        font-family: inherit;
-        outline: none;
-        transition: border-color 0.15s;
+      .subtext {
+        text-align: center;
+        color: #6b7280;
+        font-size: 14px;
+        margin-bottom: 24px;
       }
-      .card input::placeholder {
+      .card form {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .id-preview {
+        background:
+          linear-gradient(#fff, #fff) padding-box,
+          linear-gradient(120deg, #6366f1, #22c55e) border-box;
+        border: 1.5px solid transparent;
+        border-radius: 12px;
+        padding: 14px 16px 12px;
+      }
+      .id-label {
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
         color: #9ca3af;
+        font-weight: 700;
+        margin-bottom: 6px;
       }
-      .card input:focus {
-        border-color: #6366f1;
-        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.08);
+      .id-value {
+        font-family:
+          "SF Mono",
+          "Menlo",
+          "Consolas",
+          "Liberation Mono",
+          "Courier New",
+          monospace;
+        font-size: 24px;
+        letter-spacing: 0.06em;
+        color: #111827;
+        font-weight: 700;
       }
-      .card button {
+      .id-generate-btn {
+        align-self: flex-end;
+        padding: 8px 11px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        background: #fff;
+        color: #4b5563;
+        font-size: 12px;
+        font-weight: 600;
+        font-family: inherit;
+        cursor: pointer;
+        transition:
+          background 0.15s,
+          border-color 0.15s,
+          color 0.15s;
+      }
+      .id-generate-btn:hover {
+        background: #f9fafb;
+        border-color: #9ca3af;
+        color: #1f2937;
+      }
+      .continue-btn {
         width: 100%;
         padding: 14px;
-        margin-top: 8px;
         background: #111827;
         color: #fff;
         border: none;
@@ -79,7 +119,7 @@
         cursor: pointer;
         transition: background 0.15s;
       }
-      .card button:hover {
+      .continue-btn:hover {
         background: #374151;
       }
       .card .link {
@@ -111,21 +151,54 @@
   </head>
   <body>
     <div class="card">
-      <h2>What's your SUNet ID?</h2>
+      <h2>Continue with a random ID</h2>
+      <div class="subtext">We generated one for you automatically.</div>
       {% with messages = get_flashed_messages(with_categories=true) %} {% if
       messages %} {% for category, message in messages %}
       <div class="alert">{{ message }}</div>
       {% endfor %} {% endif %} {% endwith %}
       <form method="POST" action="/login">
         <input
-          type="text"
+          id="username-input"
+          type="hidden"
           name="username"
-          placeholder="Your SUNet ID"
-          required
-          autofocus
+          value="{{ suggested_username or '' }}"
         />
-        <button type="submit">Continue</button>
+        <div class="id-preview">
+          <div class="id-label">Participant ID</div>
+          <div class="id-value" id="id-value">{{ suggested_username or "" }}</div>
+        </div>
+        <button
+          type="button"
+          class="id-generate-btn"
+          id="generate-id-btn"
+          title="Generate a new random ID"
+        >
+          Generate another
+        </button>
+        <button type="submit" class="continue-btn">Continue</button>
       </form>
     </div>
+    <script>
+      (function () {
+        function randomNumericId() {
+          return String(Math.floor(10000000 + Math.random() * 90000000));
+        }
+        const input = document.getElementById("username-input");
+        const valueEl = document.getElementById("id-value");
+        const btn = document.getElementById("generate-id-btn");
+        function syncId(nextId) {
+          if (!input) return;
+          input.value = nextId;
+          if (valueEl) valueEl.textContent = nextId;
+        }
+        if (input && !input.value.trim()) syncId(randomNumericId());
+        if (btn && input) {
+          btn.addEventListener("click", function () {
+            syncId(randomNumericId());
+          });
+        }
+      })();
+    </script>
   </body>
 </html>

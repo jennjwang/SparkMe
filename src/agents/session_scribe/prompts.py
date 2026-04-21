@@ -695,14 +695,15 @@ UPDATE_SUBTOPIC_COVERAGE_INSTRUCTIONS = """
 </task_deep_dive_block>
 
 6. **Widget Task Validation (only when `<widget_task_context>` is present)**
-   - When the `<widget_task_context>` section lists task names submitted via the time-allocation widget, check each task name for the **action + object + objective** format:
+   - When the `<widget_task_context>` section lists task names submitted via the time-allocation widget, check each task name for the **action + object** format (objective is optional):
      * **action**: a concrete verb describing what the person does (e.g., "reviewing", "drafting", "presenting")
      * **object**: what they act on (e.g., "reports", "proposals", "clients")
-     * **objective**: the purpose or goal — WHY they do it (e.g., "to ensure quality", "to secure approval")
-   - A task name like "reviewing reports to ensure quality" ✅ passes.
-   - A task name like "reports" or "writing" or "meetings" ❌ fails — it's a bare noun or bare verb with no objective.
-   - For each task that **fails** (is a bare verb, bare noun, or lacks a clear purpose), call `add_snapshot_subtopic` with `topic_id` matching the Task Inventory topic (typically "2") and a description asking the interviewer to clarify that task's purpose. Example: `"Clarify task 'experiments': ask what specifically they do and what it's for, since it currently lacks an objective."`
-   - Do NOT flag tasks that already have a clear purpose embedded in the name.
+     * **objective (optional)**: the purpose or goal — WHY they do it (e.g., "to ensure quality", "to secure approval")
+   - A task name like "reviewing reports" ✅ passes.
+   - A task name like "reviewing reports to ensure quality" ✅ also passes.
+   - A task name like "reports" or "writing" or "meetings" ❌ fails — it's a bare noun/verb and does not clearly state both action and object.
+   - For each task that **fails** (bare noun/verb, or missing clear object), call `add_snapshot_subtopic` with `topic_id` matching the Task Inventory topic (typically "2") and a description asking the interviewer to clarify what the participant actually does. Example: `"Clarify task 'experiments': ask what specific action they do on experiments."`
+   - Do NOT flag a task just because it lacks an explicit objective if action+object are already clear.
 
 7. **Tool Invocation**
    - For subtopics WITH coverage criteria: always call `update_criteria_coverage` first (even if not all criteria are met yet).
@@ -724,7 +725,7 @@ For each subtopic, you should:
 2. Evaluate overall completeness.
 <task_deep_dive_block>3. If this subtopic is the **Priority tasks** subtopic, check its notes for tasks the participant named as most important. For each such task not yet having a Task Deep Dive topic, plan to call `add_task_deep_dive_topic`.
 </task_deep_dive_block>3. For fully covered subtopics, aggregate the notes and call `update_subtopic_coverage`.
-4. If `<widget_task_context>` is present, check each listed task name for action+object+objective and call `add_snapshot_subtopic` for any that lack a clear objective.
+4. If `<widget_task_context>` is present, check each listed task name for action+object (objective optional) and call `add_snapshot_subtopic` for bare noun/verb or missing-object entries.
 </thinking>
 
 <tool_calls>
@@ -735,10 +736,10 @@ For each subtopic, you should:
     </add_task_deep_dive_topic>
     ...
     </task_deep_dive_block>
-    <!-- If widget_task_context is present and a task lacks action+object+objective: -->
+    <!-- If widget_task_context is present and a task lacks clear action+object: -->
     <!-- <add_snapshot_subtopic>
         <topic_id>2</topic_id>
-        <description>Clarify task '[name]': ask what specifically they do and what it's for.</description>
+        <description>Clarify task '[name]': ask what specific action/object they mean.</description>
     </add_snapshot_subtopic> -->
     <!-- One update_subtopic_coverage call per subtopic id, ONLY when the subtopic is considered fully covered -->
     <update_subtopic_coverage>
@@ -1190,20 +1191,31 @@ Decision rules:
 # =============================================================================
 
 EXTRACT_USER_PORTRAIT_PROMPT = """
-You are synthesizing a structured user work profile from memories collected during an intake interview.
-Read all the memories below and fill in the user portrait schema as completely as possible.
+You are synthesizing a structured user work profile from an intake interview.
+You have two sources: (1) structured memories extracted by a note-taker, and (2) the raw conversation transcript.
+**Treat the transcript as the primary source.** The memories are a helpful summary but may be incomplete — use them to prioritize, but scan the transcript directly for any tasks or facts the memories missed.
 
 Session memories (extracted insights from the conversation):
 <memories>
 {memories}
 </memories>
 
-Current user portrait (may be partially filled — overwrite earlier/less-specific values with later refinements from the memories; do not blindly preserve stale entries):
+Full conversation transcript (use this to catch anything the memories missed):
+<transcript>
+{transcript}
+</transcript>
+
+Tasks already confirmed by the user (from a prior session or from the user's direct widget edits this session). **These are authoritative: treat each entry as the user's canonical phrasing for that activity. Do NOT rename, rephrase, or refine these entries.**
+<prior_tasks>
+{prior_tasks}
+</prior_tasks>
+
+Current user portrait (other fields only — Task Inventory is rebuilt below):
 <current_user_portrait>
 {user_portrait}
 </current_user_portrait>
 
-Return a JSON object with exactly these fields. Use only information from the memories — do not invent details.
+Return a JSON object with exactly these fields. Use only information the user explicitly stated — do not invent details.
 
 {{
   "Role": "Job title and primary responsibilities in 1-2 sentences",
@@ -1217,13 +1229,17 @@ Rules:
 - Use the user's own language and phrasing where possible
 - Lists should contain specific, concrete items — not vague categories
 - Task Inventory must contain only discrete tasks — do NOT include sentences that describe how time is split across tasks (e.g. "spends 65% on X and 35% on Y"). Those belong in Time Allocation.
-- **Task Inventory must ONLY contain tasks the user has explicitly described in the conversation.** Do NOT infer, hallucinate, or add tasks based on the user's role or domain — even if those tasks are common for that profession. If the user has only mentioned their job title or field and nothing about specific activities, return an empty list. A task exists in the inventory only if the user named it or clearly described doing it.
+- **Task Inventory must ONLY contain tasks the user has explicitly described** — either in this session's transcript or in the prior_tasks list. Do NOT add tasks based on inferred role or domain. A task exists in the inventory only if the user named it or clearly described doing it.
+- **prior_tasks is the authoritative base for Task Inventory.** Start by copying EVERY entry from prior_tasks VERBATIM (character-for-character, same wording, same punctuation). Only then consider whether the transcript adds new activities.
+- **Never rename, rephrase, or "refine" an entry that came from prior_tasks.** The user's canonical phrasing wins even if the transcript contains a longer or more specific version of the same activity. Do not merge a prior_tasks entry with a transcript phrasing by picking the "more specific" one — keep the prior_tasks phrasing as-is.
+- **Only DROP a prior_tasks entry if this session's conversation explicitly indicates the task no longer applies** (e.g. the user said they stopped doing it). Being unmentioned is NOT grounds to drop.
+- **Only ADD a task from the transcript if it is a genuinely new activity not already covered by any prior_tasks entry.** Use action+object identity to decide: if a transcript mention shares action AND object with an existing prior_tasks entry, it is the SAME task — do NOT add a separate entry, even if the phrasing differs or the transcript version is more specific. Prior_tasks wins.
 - **Do NOT put research mission statements or role descriptions in Task Inventory.** Phrases like "conducting research on X", "working on Y research", "advancing the field of Z", "investigating problems related to X" describe the user's ROLE, not a discrete task — they belong in the Role field. Task Inventory should contain only specific recurring activities the user explicitly mentioned performing. If the memories only describe what the user researches (their domain/topic) rather than what they specifically DO, return an empty Task Inventory.
-- **Every task must follow action+object+objective format.** Each entry must state WHAT the user does (action+object) AND WHY they do it (objective = the purpose or goal). Use the user's own words for the purpose wherever they stated one. Only infer the purpose if the user's own statement makes it unambiguous. Do NOT invent a purpose the user did not express — if no genuine purpose is recoverable from the user's words, record the task as action+object alone rather than fabricating one.
-- **Strip cadence/frequency from task names.** Do NOT embed scheduling phrases like "on a roughly monthly cadence", "every few weeks", "quarterly", "weekly", "a few times a year", "occasionally" inside the task description. Record only the bare action+object+objective. Example: write "writing up project proposals", NOT "working on writeups for project proposals on a roughly monthly cadence". Cadence belongs in Time Allocation or is captured separately — never in the Task Inventory entry itself.
-- **Dedup Task Inventory using action+object identity.** Two tasks are the same task ONLY if they share the same action AND the same object — one entry is just a less-specific way of saying the same thing (e.g. "reading books" vs "reading nonfiction books" — same action=reading, same object=books). In that case, keep ONLY the most specific version. Tasks that differ in either action OR object are DISTINCT tasks and must both be included. Example: "preparing for advisor meetings" (action=preparing, object=advisor meetings) and "attending lab meetings" (action=attending, object=lab meetings) are two different tasks — different action, different object. When in doubt, keep both.
-- **Split compound "X to Y" tasks when Y is itself a distinct activity.** If a task is phrased as "doing X to do Y" and Y is a separate action the user also performs (not just the purpose), list X and Y as two tasks. Example: "reading nonfiction books to write reviews" implies TWO tasks — "reading nonfiction books" AND "writing book reviews" — because writing reviews is itself a distinct activity consuming time, not merely the motivation for reading. Keep only the most specific phrasing of each.
-- **Prefer later refinements over earlier generic entries.** If the current portrait has "reading books" and later memories refine it to "reading nonfiction books to write reviews", REPLACE the earlier entry — do not keep both.
+- **Every task must follow action+object format; objective is optional.** Each entry must clearly state WHAT the user does (action+object). Include WHY they do it (objective = purpose/goal) when the user stated it clearly. Only infer purpose when the user's own statement makes it unambiguous. Do NOT invent a purpose the user did not express.
+- **Strip cadence/frequency from task names.** Do NOT embed scheduling phrases like "on a roughly monthly cadence", "every few weeks", "quarterly", "weekly", "a few times a year", "occasionally" inside the task description. Record only the bare action+object (+objective when clearly present). Example: write "writing up project proposals", NOT "working on writeups for project proposals on a roughly monthly cadence". Cadence belongs in Time Allocation or is captured separately — never in the Task Inventory entry itself.
+- **Dedup Task Inventory using action+object identity** — applies ONLY among new transcript-derived entries (prior_tasks entries are already authoritative and must not be rewritten). Two tasks are the same task ONLY if they share the same action AND the same object (e.g. "reading books" vs "reading nonfiction books" — same action=reading, same object=books). Among duplicates within the new transcript entries, keep ONLY the most specific version. Tasks that differ in either action OR object are DISTINCT tasks and must both be included.
+- **Split compound "X to Y" tasks when Y is itself a distinct activity** — applies ONLY to new transcript-derived entries. If a task is phrased as "doing X to do Y" and Y is a separate action the user also performs, list X and Y as two tasks. Do NOT apply this split to prior_tasks entries — keep them verbatim.
+- **Prefer later refinements over earlier generic entries** — applies ONLY among new transcript-derived entries. Do NOT use this rule to rewrite a prior_tasks entry.
 - Time Allocation is a dict mapping each task name to its percentage-of-work-week string (e.g. {{"reading books": "65%", "administrative tasks": "35%"}}). Leave it as an empty object if the user did not quantify time allocation.
 - Priority Tasks should be a subset of (or at least consistent with) the Task Inventory — only the tasks the user flagged as most important or central. A task can be a priority even if it is low-frequency but high-stakes.
 - Leave a field as empty string, empty list, or empty object if there is genuinely no information for it

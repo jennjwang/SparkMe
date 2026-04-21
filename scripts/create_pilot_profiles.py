@@ -38,6 +38,10 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(_root, ".env"), override=True)
 
 from openai import OpenAI
+from src.utils.transcript_task_derivation import (
+    derive_tasks_from_latest_valid_transcript,
+    load_chat_history_messages,
+)
 
 PILOT_DIR = os.path.join(_root, "pilot")
 PROFILES_DIR = os.path.join(_root, "data", "sample_user_profiles")
@@ -56,7 +60,7 @@ def _get_client() -> OpenAI:
 # Chat log parsing
 # ---------------------------------------------------------------------------
 
-_LOG_RE = re.compile(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d+ - INFO - (Interviewer|User): (.*)")
+_SESSION_RE = re.compile(r"^session_(\d+)$")
 
 
 def _extract_user_utterances(pilot_dir: str, user_id: str) -> list[str]:
@@ -66,24 +70,27 @@ def _extract_user_utterances(pilot_dir: str, user_id: str) -> list[str]:
         return []
 
     utterances = []
-    for session in sorted(os.listdir(logs_dir)):
+    sessions = []
+    for session in os.listdir(logs_dir):
+        match = _SESSION_RE.match(session)
+        if not match:
+            continue
+        sessions.append((int(match.group(1)), session))
+    sessions.sort(key=lambda x: x[0])
+
+    for _, session in sessions:
         log_path = os.path.join(logs_dir, session, "chat_history.log")
         if not os.path.exists(log_path):
             continue
-        current_role = None
-        current_text = []
-        with open(log_path) as f:
-            for line in f:
-                m = _LOG_RE.match(line)
-                if m:
-                    if current_role == "User" and current_text:
-                        utterances.append(" ".join(current_text).strip())
-                    current_role = m.group(1)
-                    current_text = [m.group(2).rstrip()]
-                elif current_role:
-                    current_text.append(line.rstrip())
-        if current_role == "User" and current_text:
-            utterances.append(" ".join(current_text).strip())
+        try:
+            messages = load_chat_history_messages(log_path)
+        except OSError:
+            continue
+        for msg in messages:
+            if msg.get("speaker") == "User":
+                text = str(msg.get("content", "")).strip()
+                if text:
+                    utterances.append(text)
 
     return [u for u in utterances if u]
 
@@ -195,11 +202,19 @@ def _generate_bio_notes(portrait: dict, utterances: list[str], model: str = "gpt
 # topics_filled.json (no LLM needed — straight from portrait)
 # ---------------------------------------------------------------------------
 
-def _portrait_to_topics_filled(portrait: dict) -> list:
+def _clean_task_list(tasks: list[str]) -> list[str]:
+    return [t for t in tasks if isinstance(t, str) and t.strip()]
+
+
+def _portrait_to_topics_filled(
+    portrait: dict,
+    task_inventory_notes: list[str] | None = None,
+) -> list:
     role = portrait.get("Functional Role", "")
     seniority = portrait.get("Seniority", "")
     rhythm = portrait.get("Work Rhythm", "")
-    tasks = [t for t in portrait.get("Task Inventory", []) if t and t.strip()]
+    tasks = _clean_task_list(portrait.get("Task Inventory", []))
+    seeded_tasks = _clean_task_list(task_inventory_notes if task_inventory_notes is not None else tasks)
     motivations = [m for m in portrait.get("Motivations and Goals", []) if m and m.strip()]
 
     time_notes = [rhythm] if rhythm else ["Time allocation not specified in detail."]
@@ -232,7 +247,7 @@ def _portrait_to_topics_filled(portrait: dict) -> list:
                 {
                     "subtopic_id": "2.1",
                     "subtopic_description": "Breadth: the list of tasks performed in a typical week",
-                    "notes": tasks if tasks else ["Not specified."],
+                    "notes": seeded_tasks if seeded_tasks else ["Not specified."],
                 },
                 {
                     "subtopic_id": "2.2",
@@ -260,6 +275,8 @@ def create_profile(
     dry_run: bool = False,
     force: bool = False,
     model: str = "gpt-4.1-mini",
+    task_source: str = "transcript",
+    task_derivation_model: str = "gpt-4.1-mini",
 ) -> bool:
     portrait_path = os.path.join(pilot_dir, user_id, "user_portrait.json")
     if not os.path.exists(portrait_path):
@@ -270,7 +287,8 @@ def create_profile(
         portrait = json.load(f)
 
     utterances = _extract_user_utterances(pilot_dir, user_id)
-    task_count = len([t for t in portrait.get("Task Inventory", []) if t and t.strip()])
+    portrait_tasks = _clean_task_list(portrait.get("Task Inventory", []))
+    task_count = len(portrait_tasks)
     out_dir = os.path.join(profiles_dir, user_id)
 
     if dry_run:
@@ -285,9 +303,42 @@ def create_profile(
     with open(os.path.join(out_dir, f"{user_id}_bio_notes.md"), "w") as f:
         f.write(bio_notes)
 
-    topics_filled = _portrait_to_topics_filled(portrait)
+    transcript_task_artifact = None
+    seeded_tasks = portrait_tasks
+    if task_source == "transcript":
+        transcript_task_artifact = derive_tasks_from_latest_valid_transcript(
+            pilot_dir=pilot_dir,
+            user_id=user_id,
+            client=_get_client(),
+            derivation_model=task_derivation_model,
+            organizer_model=task_derivation_model,
+        )
+        derived_tasks = _clean_task_list(transcript_task_artifact.get("derived_tasks", []))
+        if derived_tasks:
+            seeded_tasks = derived_tasks
+        else:
+            reason = transcript_task_artifact.get("reason") or "unknown"
+            print(
+                f"  [WARN] Transcript task derivation failed for {user_id} "
+                f"({reason}); using portrait Task Inventory."
+            )
+
+        transcript_task_artifact = {
+            **transcript_task_artifact,
+            "task_source": task_source,
+            "fallback_to_portrait": not bool(derived_tasks),
+            "portrait_task_count": len(portrait_tasks),
+            "seeded_task_count": len(seeded_tasks),
+        }
+
+    topics_filled = _portrait_to_topics_filled(portrait, task_inventory_notes=seeded_tasks)
     with open(os.path.join(out_dir, f"{user_id}_topics_filled.json"), "w") as f:
         json.dump(topics_filled, f, indent=2)
+
+    if transcript_task_artifact is not None:
+        artifact_path = os.path.join(out_dir, f"{user_id}_derived_tasks_from_transcript.json")
+        with open(artifact_path, "w", encoding="utf-8") as f:
+            json.dump(transcript_task_artifact, f, indent=2, sort_keys=True)
 
     # Regenerate conversation.md if missing or --force
     conv_path = os.path.join(out_dir, "conversation.md")
@@ -299,7 +350,10 @@ def create_profile(
     else:
         print(f"  Skipping conversation.md (already exists; use --force to regenerate)")
 
-    print(f"  [OK] {user_id}  ({task_count} tasks, {len(utterances)} utterances)")
+    print(
+        f"  [OK] {user_id}  ({len(seeded_tasks)} seeded tasks from {task_source}, "
+        f"{len(utterances)} utterances)"
+    )
     return True
 
 
@@ -329,6 +383,17 @@ def main():
                         help="Regenerate conversation.md even if it already exists")
     parser.add_argument("--model", default="gpt-4.1-mini",
                         help="OpenAI model for style generation (default: gpt-4.1-mini)")
+    parser.add_argument(
+        "--task-source",
+        choices=["transcript", "portrait"],
+        default="transcript",
+        help="Seed Task Inventory from transcript-derived tasks or portrait tasks (default: transcript)",
+    )
+    parser.add_argument(
+        "--task-derivation-model",
+        default="gpt-4.1-mini",
+        help="OpenAI model for transcript task derivation (default: gpt-4.1-mini)",
+    )
     args = parser.parse_args()
 
     user_ids = args.user_ids or list_pilot_users(args.pilot_dir)
@@ -340,7 +405,9 @@ def main():
     ok = 0
     for uid in user_ids:
         if create_profile(uid, args.pilot_dir, args.profiles_dir,
-                          dry_run=args.dry_run, force=args.force, model=args.model):
+                          dry_run=args.dry_run, force=args.force, model=args.model,
+                          task_source=args.task_source,
+                          task_derivation_model=args.task_derivation_model):
             ok += 1
 
     print(f"\nDone: {ok}/{len(user_ids)} profiles {'(dry-run)' if args.dry_run else 'written'}.")

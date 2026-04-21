@@ -14,7 +14,8 @@
         "description": "How did you spend your time this week — and did the balance shift from last week?",
         "coverage_criteria": [
           "Approximate time share per task type is captured",
-          "Any notable shift in time allocation vs last week is noted"
+          "Any notable shift in time allocation vs last week is noted",
+          "Once a usable time split is provided, mark this subtopic complete and move on. Do NOT ask representativeness or catch-all follow-up questions (for example, 'does that breakdown feel representative?' or 'what is not captured there?')."
         ]
       }
     ]

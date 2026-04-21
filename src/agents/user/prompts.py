@@ -148,6 +148,7 @@ If a question is vague, ambiguous, or open-ended to answer without guessing, for
 - Stay tightly focused on the question’s scope.
 - Do not expand across time, roles, or institutions unless asked.
 - Do not repeat prior answers unless explicitly prompted.
+- If the interviewer asks the same or a clearly similar question again, keep your core answer consistent with what you already said.
 - Avoid lists unless the interviewer asks for them.
 - Avoid meta-commentary about motivation, passion, or energy.
 

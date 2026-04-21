@@ -60,6 +60,10 @@ class SessionScribe(BaseAgent, Participant):
         # Locks and processing flags
         self.processing_in_progress = False # If processing is in progress
         self._pending_tasks = 0             # Track number of pending tasks
+        # Coverage-specific progress flag: interviewer topic selection only
+        # depends on this, not on memory-writing tail work.
+        self.coverage_processing_in_progress = False
+        self._coverage_pending_tasks = 0
         self._notes_lock = asyncio.Lock()   # Lock for _write_notes_and_questions
         self._session_agenda_lock = asyncio.Lock()  # Lock for session agenda
         self._snapshot_lock = asyncio.Lock()  # Lock for snapshot comparison findings
@@ -140,11 +144,23 @@ class SessionScribe(BaseAgent, Participant):
             asyncio.create_task(self._add_question_to_session_agenda_async())
         elif message.role == "User":
             if self._last_interviewer_message:
-                asyncio.create_task(self._process_qa_pair(
-                    interviewer_message=self._last_interviewer_message,
-                    user_message=message
-                ))
+                interviewer_message = self._last_interviewer_message
                 self._last_interviewer_message = None
+                # Set the processing flag before scheduling the background
+                # task so other subscribers (e.g., Interviewer) can observe
+                # that scribe work is pending on this user turn.
+                await self._increment_pending_tasks()
+                await self._increment_pending_coverage_tasks()
+                try:
+                    asyncio.create_task(self._process_qa_pair(
+                        interviewer_message=interviewer_message,
+                        user_message=message
+                    ))
+                except Exception:
+                    # If scheduling fails, release the pending-task counter.
+                    await self._decrement_pending_coverage_tasks()
+                    await self._decrement_pending_tasks()
+                    raise
      
     async def augment_session_agenda(self, additional_context_path: Optional[str] = None):
         # If there is existing user profile, we load them
@@ -346,7 +362,6 @@ class SessionScribe(BaseAgent, Participant):
 
     async def _process_qa_pair(self, interviewer_message: Message, user_message: Message):
         """Process a Q&A pair with task tracking"""
-        await self._increment_pending_tasks()
         try:
             # 1. Update notes and questions given the repsonse to ALL Subtopic
             # 2. Update to memory bank as well, but this has already been done since it's only tied to question id
@@ -382,7 +397,7 @@ class SessionScribe(BaseAgent, Participant):
             async def _portrait_task():
                 # Skip portrait re-extraction when no new memories were added since
                 # the last update — the LLM would produce a near-identical portrait
-                # (modulo phrasing noise) and needlessly trigger another screen pass.
+                # (modulo phrasing noise).
                 current_count = len(self.interview_session.memory_bank.memories)
                 if current_count <= self.interview_session._portrait_update_memory_count:
                     return
@@ -391,44 +406,6 @@ class SessionScribe(BaseAgent, Participant):
                 except Exception as e:
                     SessionLogger.log_to_file(
                         "execution_log", f"[PORTRAIT] Error updating user portrait: {e}"
-                    )
-                # Screen tasks after portrait is saved so the widget gets a
-                # clean list.  Runs in a separate task so it doesn't race with
-                # the interviewer.
-                asyncio.create_task(_screen_portrait_tasks(self.interview_session))
-
-            async def _screen_portrait_tasks(session):
-                try:
-                    from src.utils.task_hierarchy import _screen_tasks
-                    from src.utils.llm.engines import get_engine
-                    portrait = session.session_agenda.user_portrait
-                    if not isinstance(portrait, dict):
-                        return
-                    raw_tasks = portrait.get("Task Inventory", [])
-                    if not raw_tasks:
-                        return
-                    sig = "||".join(sorted(str(t) for t in raw_tasks))
-                    if getattr(session, '_last_screened_task_sig', None) == sig:
-                        return
-                    session._last_screened_task_sig = sig
-                    engine = get_engine("gpt-4.1-mini")
-                    screened = await asyncio.to_thread(_screen_tasks, raw_tasks, engine)
-                    if screened:
-                        portrait["Task Inventory"] = screened
-                        session.session_agenda.user_portrait = portrait
-                        import os, json
-                        portrait_path = os.path.join(
-                            os.getenv("LOGS_DIR"), session.user_id, "user_portrait.json"
-                        )
-                        with open(portrait_path, "w") as f:
-                            json.dump(portrait, f, indent=2)
-                        SessionLogger.log_to_file(
-                            "execution_log",
-                            f"[PORTRAIT] Task screen pass complete ({len(screened)} tasks kept)"
-                        )
-                except Exception as e:
-                    SessionLogger.log_to_file(
-                        "execution_log", f"[PORTRAIT] Task screen pass failed: {e}"
                     )
 
             asyncio.create_task(_portrait_task())
@@ -446,39 +423,42 @@ class SessionScribe(BaseAgent, Participant):
             
     async def _locked_update_subtopic_coverage(self, interviewer_message: Message, user_message: Message) -> None:
         """Wrapper to handle update_subtopic_coverage with lock"""
-        async with self._session_agenda_lock:
-            self.add_event(sender=interviewer_message.role,
-                        tag="agenda_lock_message",
-                        content=interviewer_message.content)
-            self.add_event(sender=user_message.role,
-                        tag="agenda_lock_message",
-                        content=user_message.content)
+        try:
+            async with self._session_agenda_lock:
+                self.add_event(sender=interviewer_message.role,
+                            tag="agenda_lock_message",
+                            content=interviewer_message.content)
+                self.add_event(sender=user_message.role,
+                            tag="agenda_lock_message",
+                            content=user_message.content)
 
-            # Detect widget submission: interviewer set a pending subtopic_id when the
-            # time-split widget was shown. Consume the flag here and extract task names
-            # from the user's formatted allocation string for downstream validation.
-            widget_subtopic_id = getattr(
-                self.interview_session, '_widget_pending_subtopic_id', None
-            )
-            if widget_subtopic_id:
-                self.interview_session._widget_pending_subtopic_id = None
-                self._pending_widget_subtopic_id = widget_subtopic_id
-                # Extract leaf task names: "Task Name: XX%" or "Parent › Child: XX%"
-                # Take only the part after the last "›" to get the leaf name.
-                raw_names = re.findall(
-                    r'([^,\n]+?):\s*\d+(?:\.\d+)?%',
-                    user_message.content
+                # Detect widget submission: interviewer set a pending subtopic_id when the
+                # time-split widget was shown. Consume the flag here and extract task names
+                # from the user's formatted allocation string for downstream validation.
+                widget_subtopic_id = getattr(
+                    self.interview_session, '_widget_pending_subtopic_id', None
                 )
-                self._pending_widget_task_names = [
-                    name.split('›')[-1].strip()
-                    for name in raw_names
-                    if name.strip()
-                ]
-            else:
-                self._pending_widget_subtopic_id = None
-                self._pending_widget_task_names = None
+                if widget_subtopic_id:
+                    self.interview_session._widget_pending_subtopic_id = None
+                    self._pending_widget_subtopic_id = widget_subtopic_id
+                    # Extract leaf task names: "Task Name: XX%" or "Parent › Child: XX%"
+                    # Take only the part after the last "›" to get the leaf name.
+                    raw_names = re.findall(
+                        r'([^,\n]+?):\s*\d+(?:\.\d+)?%',
+                        user_message.content
+                    )
+                    self._pending_widget_task_names = [
+                        name.split('›')[-1].strip()
+                        for name in raw_names
+                        if name.strip()
+                    ]
+                else:
+                    self._pending_widget_subtopic_id = None
+                    self._pending_widget_task_names = None
 
-            await self._update_subtopic_coverage()
+                await self._update_subtopic_coverage()
+        finally:
+            await self._decrement_pending_coverage_tasks()
             
     async def _locked_update_list_of_subtopics(self, interviewer_message: Message, user_message: Message) -> None:
         """Wrapper to handle update_subtopic_coverage with lock"""
@@ -1009,9 +989,9 @@ class SessionScribe(BaseAgent, Participant):
                     f"\n<widget_task_context>\n"
                     f"The participant just submitted the time-allocation widget. "
                     f"The following task names were included in the submission — "
-                    f"check each one for action+object+objective format and call "
-                    f"`add_snapshot_subtopic` for any that are bare verbs, bare nouns, "
-                    f"or lack a clear purpose/objective:\n"
+                    f"check each one for clear action+object format (objective optional) "
+                    f"and call `add_snapshot_subtopic` for any that are bare verbs, "
+                    f"bare nouns, or missing a clear object:\n"
                     f"{names_list}\n"
                     f"\n⚠️ SCOPE RESTRICTION: In this evaluation round, ONLY assess "
                     f"subtopic {widget_subtopic_id} (time allocation). "
@@ -1230,6 +1210,12 @@ class SessionScribe(BaseAgent, Participant):
             self._pending_tasks += 1
             self.processing_in_progress = True
 
+    async def _increment_pending_coverage_tasks(self):
+        """Increment the pending coverage-task counter."""
+        async with self._tasks_lock:
+            self._coverage_pending_tasks += 1
+            self.coverage_processing_in_progress = True
+
     async def _decrement_pending_tasks(self):
         """Decrement the pending tasks counter"""
         async with self._tasks_lock:
@@ -1237,6 +1223,14 @@ class SessionScribe(BaseAgent, Participant):
             if self._pending_tasks <= 0:
                 self._pending_tasks = 0
                 self.processing_in_progress = False
+
+    async def _decrement_pending_coverage_tasks(self):
+        """Decrement the pending coverage-task counter."""
+        async with self._tasks_lock:
+            self._coverage_pending_tasks -= 1
+            if self._coverage_pending_tasks <= 0:
+                self._coverage_pending_tasks = 0
+                self.coverage_processing_in_progress = False
 
     def _get_recent_qa(self) -> str:
         """Safely get the current user response, with error handling."""

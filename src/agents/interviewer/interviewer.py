@@ -15,6 +15,7 @@ from src.utils.llm.xml_formatter import parse_rubric_call
 from src.utils.logger.session_logger import SessionLogger
 from src.utils.constants.colors import GREEN, RESET
 from src.content.question_bank.question import Rubric
+from src.utils.llm.engines import invoke_engine
 
 if TYPE_CHECKING:
     from src.interview_session.interview_session import InterviewSession
@@ -53,6 +54,17 @@ class Interviewer(BaseAgent, Participant):
         self._time_split_widget_shown = False
         self._response_lock = asyncio.Lock()
         self._turn_start: float | None = None
+        self._last_sent_message_text: str = ""
+        self._inferability_mode = str(
+            os.getenv("INTERVIEWER_INFERABILITY_MODE", "auto")
+        ).strip().lower()
+        try:
+            self._inferability_threshold = float(
+                os.getenv("INTERVIEWER_INFERABILITY_THRESHOLD", "0.80")
+            )
+        except (TypeError, ValueError):
+            self._inferability_threshold = 0.80
+        self._inferability_threshold = max(0.50, min(0.99, self._inferability_threshold))
 
         self.tools = {
             "recall": Recall(memory_bank=self.interview_session.memory_bank),
@@ -123,7 +135,9 @@ class Interviewer(BaseAgent, Participant):
             )
             return response
         self._message_sent_this_turn = True
-        return await self._handle_response(response, subtopic_id)
+        delivered = await self._handle_response(response, subtopic_id)
+        self._last_sent_message_text = delivered
+        return delivered
 
     def _guarded_send_goodbye(self, goodbye: str) -> None:
         """Gate: only the first message per turn reaches the user (for end_conversation)."""
@@ -139,9 +153,620 @@ class Interviewer(BaseAgent, Participant):
         # Mark session ending immediately so concurrent on_message tasks don't
         # start new turns during the 1-second sleep in EndConversation._run.
         self.interview_session._session_ending = True
+        self._last_sent_message_text = goodbye
         self.add_event(sender=self.name, tag="goodbye", content=goodbye)
         self.interview_session.add_message_to_chat_history(
             role=self.title, content=goodbye)
+
+    def _last_sent_message_is_question(self) -> bool:
+        """Return True when the interviewer's last delivered message is a question."""
+        return "?" in str(self._last_sent_message_text or "")
+
+    def _looks_like_closing_goodbye(self, text: str) -> bool:
+        """Heuristic for goodbye text when the model used respond_to_user."""
+        t = self._normalize_text(text).lower()
+        if not t or "?" in t:
+            return False
+        markers = (
+            "we're all set",
+            "were all set",
+            "all set here",
+            "all wrapped up",
+            "that covers what i needed",
+            "that's everything i needed",
+            "thats everything i needed",
+            "we'll wrap here",
+            "we will wrap here",
+            "let's wrap here",
+            "lets wrap here",
+            "we can wrap here",
+            "we can end here",
+            "we'll end here",
+            "we will end here",
+        )
+        return any(m in t for m in markers)
+
+    def _no_active_topics_remaining(self) -> bool:
+        """Return True when agenda has no active or incomplete topics.
+
+        This corresponds to the edge case where prompt topic blocks become empty.
+        """
+        topic_manager = self.interview_session.session_agenda.interview_topic_manager
+        return (
+            len(topic_manager.active_topic_id_list) == 0
+            and len(topic_manager.get_all_incomplete_core_topic()) == 0
+        )
+
+    def _default_completion_goodbye(self) -> str:
+        """Deterministic close used when agenda is complete before an LLM turn."""
+        if getattr(self.interview_session, "session_type", "intake") == "weekly":
+            return (
+                "Thanks for walking me through this week. "
+                "That gives me what I needed, so we’ll wrap here."
+            )
+        return (
+            "Thanks for walking through your role and workload. "
+            "That covers what I needed for this intake, so we’ll wrap here."
+        )
+
+    def _normalize_text(self, text: str) -> str:
+        return re.sub(r"\s+", " ", str(text or "")).strip()
+
+    def _is_breadth_probe_question(self, text: str) -> bool:
+        """Detect broad catch-all questions that often become repetitive."""
+        t = self._normalize_text(text).lower()
+        if "?" not in t:
+            return False
+        if "anything else" in t or "what else" in t:
+            return True
+        if "anything not captured" in t or "anything not mentioned" in t:
+            return True
+        if ("besides" in t or "outside of" in t) and "anything" in t:
+            return True
+        return False
+
+    def _is_repetition_signal(self, text: str) -> bool:
+        t = self._normalize_text(text).lower()
+        markers = (
+            "you keep asking",
+            "already answered",
+            "am i not providing enough",
+            "i don't really understand",
+            "dont really understand",
+            "same question",
+        )
+        return any(m in t for m in markers)
+
+    def _content_tokens(self, text: str) -> set[str]:
+        """Lightweight tokenization for overlap-based duplicate-risk gating."""
+        raw = re.findall(r"[a-z0-9]+", self._normalize_text(text).lower())
+        stop = {
+            "the", "a", "an", "and", "or", "to", "of", "in", "on", "for", "with",
+            "is", "are", "do", "did", "does", "you", "your", "it", "that", "this",
+            "what", "which", "how", "when", "where", "why", "can", "could", "would",
+            "should", "about", "from", "into", "over", "under", "at", "by", "as",
+            "have", "has", "had", "been", "be", "i", "we", "they", "he", "she",
+        }
+        out: set[str] = set()
+        for tok in raw:
+            if tok in stop:
+                continue
+            if tok.endswith("ies") and len(tok) > 4:
+                tok = tok[:-3] + "y"
+            elif tok.endswith("ing") and len(tok) > 5:
+                tok = tok[:-3]
+            elif tok.endswith("ed") and len(tok) > 4:
+                tok = tok[:-2]
+            elif tok.endswith("s") and len(tok) > 3:
+                tok = tok[:-1]
+            if tok and tok not in stop:
+                out.add(tok)
+        return out
+
+    def _question_overlap_score(self, a: str, b: str) -> float:
+        ta = self._content_tokens(a)
+        tb = self._content_tokens(b)
+        if not ta or not tb:
+            return 0.0
+        inter = len(ta & tb)
+        denom = min(len(ta), len(tb))
+        return inter / denom if denom > 0 else 0.0
+
+    def _extract_json_dict(self, raw: str) -> dict | None:
+        """Best-effort parse for generic JSON dictionary payloads."""
+        text = str(raw or "").strip()
+        if not text:
+            return None
+
+        try:
+            parsed = json.loads(text)
+            if isinstance(parsed, dict):
+                return parsed
+        except Exception:
+            pass
+
+        for line in (ln.strip() for ln in text.splitlines() if ln.strip()):
+            if not line.startswith("{"):
+                continue
+            try:
+                parsed = json.loads(line)
+                if isinstance(parsed, dict):
+                    return parsed
+            except Exception:
+                continue
+
+        m = re.search(r"\{.*\}", text, re.DOTALL)
+        if not m:
+            return None
+        try:
+            parsed = json.loads(m.group(0))
+            return parsed if isinstance(parsed, dict) else None
+        except Exception:
+            return None
+
+    def _get_subtopic(self, subtopic_id: str):
+        sid = str(subtopic_id or "").strip()
+        if not sid:
+            return None
+        agenda = self.interview_session.session_agenda
+        if not agenda or not agenda.interview_topic_manager:
+            return None
+        topic_id = sid.split(".", 1)[0]
+        core_topic = agenda.interview_topic_manager.get_core_topic(topic_id)
+        if core_topic is None:
+            return None
+        return core_topic.get_subtopic(sid)
+
+    def _get_subtopic_inference_context(self, subtopic_id: str) -> str:
+        """Return compact subtopic context for inferability checks."""
+        subtopic = self._get_subtopic(subtopic_id)
+        if subtopic is None:
+            return "(unknown subtopic)"
+
+        criteria = list(getattr(subtopic, "coverage_criteria", []) or [])
+        statuses = list(getattr(subtopic, "criteria_coverage", []) or [])
+        if len(criteria) == len(statuses) and criteria:
+            unmet = [c for c, covered in zip(criteria, statuses) if not covered]
+        else:
+            unmet = criteria
+        if not unmet:
+            unmet = criteria
+
+        notes = list(getattr(subtopic, "notes", []) or [])
+        note_block = "\n".join(f"- {n}" for n in notes[-6:]) if notes else "(none)"
+        unmet_block = "\n".join(f"- {c}" for c in unmet[:6]) if unmet else "(none)"
+        return (
+            f"Subtopic description: {subtopic.description}\n"
+            f"Unmet coverage criteria:\n{unmet_block}\n"
+            f"Recent subtopic notes:\n{note_block}"
+        )
+
+    def _should_run_inferability_llm(self, proposed_question: str, subtopic_id: str = "") -> bool:
+        """Gate inferability checks to avoid asking answerable questions."""
+        mode = self._inferability_mode
+        if mode == "off":
+            return False
+
+        q = self._normalize_text(proposed_question)
+        if not q or "?" not in q:
+            return False
+
+        recent_answers = self._get_recent_user_answers(limit=8)
+        if not recent_answers:
+            return False
+
+        if mode == "always":
+            return True
+
+        if self._is_task_list_collection_subtopic(subtopic_id):
+            return True
+        if self._is_breadth_probe_question(q):
+            return True
+
+        q_l = q.lower()
+        inferable_markers = (
+            "main thing",
+            "actually producing",
+            "working on most",
+            "what are you actually",
+            "main outcome",
+            "what's the output",
+        )
+        if any(marker in q_l for marker in inferable_markers):
+            return True
+
+        for ans in recent_answers[-3:]:
+            if self._question_overlap_score(q, ans) >= 0.75:
+                return True
+        return False
+
+    async def _check_inferable_question(
+        self,
+        proposed_question: str,
+        subtopic_id: str = "",
+    ) -> tuple[bool, str]:
+        """LLM judge: determine if question answer is already inferable from context."""
+        recent_answers = self._get_recent_user_answers(limit=10)
+        recent_qs = self._get_recent_interviewer_questions(limit=8)
+        subtopic_context = self._get_subtopic_inference_context(subtopic_id)
+
+        judge_prompt = (
+            "You are a strict interview quality gate.\n"
+            "Policy: only ask questions whose answer cannot be reasonably and confidently inferred from known context.\n\n"
+            f"Candidate question:\n{proposed_question}\n\n"
+            f"Current subtopic id: {subtopic_id or '(none)'}\n"
+            f"{subtopic_context}\n\n"
+            "Recent interviewer questions (oldest -> newest):\n"
+            + "\n".join(f"- {q}" for q in recent_qs)
+            + "\n\nRecent user answers (oldest -> newest):\n"
+            + "\n".join(f"- {a}" for a in recent_answers)
+            + "\n\nDecision rule:\n"
+              "- inferable=true when a reasonable interviewer can answer the question from existing context with high confidence.\n"
+              "- If inferable=true, provide ONE replacement question that targets genuinely missing information.\n"
+              "- Replacement must be one sentence, non-leading, no examples/options, and exactly one question mark.\n\n"
+              "Return JSON only:\n"
+              "{\n"
+              "  \"inferable\": true or false,\n"
+              "  \"confidence\": 0.0 to 1.0,\n"
+              "  \"reason\": \"short reason\",\n"
+              "  \"replacement_question\": \"question text or empty\"\n"
+              "}\n"
+        )
+
+        try:
+            response = await asyncio.to_thread(invoke_engine, self.engine, judge_prompt)
+            raw = response.content if hasattr(response, "content") else str(response)
+        except Exception as e:
+            SessionLogger.log_to_file(
+                "execution_log",
+                f"[GUARD] inferability_check LLM call failed: {e}",
+                log_level="warning",
+            )
+            return False, ""
+
+        parsed = self._extract_json_dict(raw)
+        if not isinstance(parsed, dict):
+            return False, ""
+
+        inferable = bool(parsed.get("inferable"))
+        replacement = self._normalize_text(parsed.get("replacement_question", ""))
+        confidence_raw = parsed.get("confidence", 0.0)
+        try:
+            confidence = float(confidence_raw)
+        except (TypeError, ValueError):
+            confidence = 0.0
+
+        triggered = inferable or confidence >= self._inferability_threshold
+        if triggered and replacement and "?" in replacement:
+            SessionLogger.log_to_file(
+                "execution_log",
+                f"[GUARD] inferability flagged: confidence={confidence:.2f} "
+                f"original={proposed_question[:120]!r} "
+                f"replacement={replacement[:120]!r}"
+            )
+            return True, replacement
+        if triggered:
+            SessionLogger.log_to_file(
+                "execution_log",
+                f"[GUARD] inferability flagged without usable rewrite: confidence={confidence:.2f} "
+                f"original={proposed_question[:120]!r}",
+                log_level="warning",
+            )
+        return False, ""
+
+    def _is_task_list_collection_subtopic(self, subtopic_id: str) -> bool:
+        """Return True for Task Inventory list-collection subtopics (not priority/time)."""
+        sid = str(subtopic_id or "").strip()
+        if not sid:
+            return False
+        agenda = self.interview_session.session_agenda
+        if not agenda or not agenda.interview_topic_manager:
+            return False
+
+        for topic in agenda.interview_topic_manager:
+            topic_desc = str(getattr(topic, "description", "")).lower()
+            for st in topic.required_subtopics.values():
+                if str(st.subtopic_id) != sid:
+                    continue
+
+                desc = str(getattr(st, "description", "")).lower()
+                if "task inventory" not in topic_desc and "task inventory" not in desc:
+                    return False
+                if "time allocation" in desc or "priority task" in desc:
+                    return False
+                return any(
+                    marker in desc for marker in (
+                        "typical week",
+                        "task list completion",
+                        "breadth",
+                        "list of tasks",
+                        "base task list",
+                    )
+                )
+        return False
+
+    def _should_run_semantic_duplicate_llm(self, proposed_question: str, subtopic_id: str = "") -> bool:
+        """Gate expensive semantic-duplicate checks behind cheap local risk signals."""
+        mode = str(os.getenv("INTERVIEWER_SEMANTIC_DUP_MODE", "auto")).strip().lower()
+        if mode == "off":
+            return False
+        if mode == "always":
+            return True
+
+        q = self._normalize_text(proposed_question)
+        if not q or "?" not in q:
+            return False
+
+        # Task list collection benefits from stronger duplicate guarding because
+        # generic "anything else" variants are common and user-visible.
+        if self._is_task_list_collection_subtopic(subtopic_id):
+            return True
+
+        # Broad catch-all probes are the most common repeat source.
+        if self._is_breadth_probe_question(q):
+            return True
+
+        recent_qs = self._get_recent_interviewer_questions(limit=8)
+        if len(recent_qs) < 2:
+            return False
+
+        # Only run the LLM judge when lexical overlap is already high.
+        for prev in recent_qs[-4:]:
+            if self._question_overlap_score(q, prev) >= 0.80:
+                return True
+
+        return False
+
+    def _get_recent_interviewer_questions(self, limit: int = 6) -> list[str]:
+        questions = [
+            str(event.content).strip()
+            for event in self.event_stream
+            if event.sender == "Interviewer"
+            and event.tag == "message"
+            and "?" in str(event.content)
+        ]
+        if limit <= 0:
+            return questions
+        return questions[-limit:]
+
+    def _extract_anchor_clause(self, text: str, max_words: int = 14) -> str:
+        """Extract a concrete clause from a user answer to anchor a specific follow-up."""
+        raw = self._normalize_text(text)
+        if not raw:
+            return ""
+        chunks = re.split(r"[.?!;,\n]|(?:\s[—-]\s)", raw)
+        for chunk in chunks:
+            c = self._normalize_text(chunk)
+            if not c or self._is_repetition_signal(c):
+                continue
+            c = re.sub(r"^(sure|yeah|yea|yes|well|so|and|i mean)\b[ ,:-]*", "", c, flags=re.I)
+            c = re.sub(r"^i('m| am)\s+", "", c, flags=re.I)
+            c = re.sub(r"^i\s+", "", c, flags=re.I)
+            words = c.split()
+            if len(words) < 3:
+                continue
+            if len(words) > max_words:
+                c = " ".join(words[:max_words])
+            return c.strip(" ,;-")
+        return ""
+
+    async def _check_semantic_duplicate(self, proposed_question: str) -> tuple[bool, str]:
+        """LLM judge: is proposed_question a semantic duplicate of any recent interviewer question?
+
+        Returns (is_duplicate, replacement_question). If is_duplicate is True and a
+        valid replacement was produced, the caller should send the replacement instead.
+        """
+        recent_qs = self._get_recent_interviewer_questions(limit=8)
+        if not recent_qs:
+            return False, ""
+        recent_answers = self._get_recent_user_answers(limit=3)
+        last_answer = recent_answers[-1] if recent_answers else ""
+
+        recent_qs_block = "\n".join(f"- {q}" for q in recent_qs)
+        judge_prompt = (
+            "You are judging whether a proposed interview question is a semantic "
+            "duplicate of any recent interviewer question already asked in this session.\n\n"
+            "A question is a DUPLICATE if its core information goal overlaps with a "
+            "prior question's — even when:\n"
+            "- The wording is different\n"
+            "- The time scope is narrower or broader (week vs day, a specific instance "
+            "vs a typical one)\n"
+            "- It \"zooms in\" or \"zooms out\" from the prior framing\n"
+            "- It rephrases the same abstract ask (e.g. \"what are you aiming for\" vs "
+            "\"what's the goal in your mind\")\n\n"
+            "A question is NOT a duplicate if it targets a genuinely different dimension: "
+            "a number, a frequency, a recent specific instance, a named tool, an "
+            "assessment/outcome, a collaborator, or a concrete artifact.\n\n"
+            f"Recent interviewer questions (oldest → newest):\n{recent_qs_block}\n\n"
+            f"User's most recent answer:\n{last_answer or '(none)'}\n\n"
+            f"Proposed next question:\n{proposed_question}\n\n"
+            "Respond with JSON only, no prose:\n"
+            "{\n"
+            "  \"is_duplicate\": true or false,\n"
+            "  \"matches\": \"the prior question it duplicates, verbatim, or empty string\",\n"
+            "  \"reason\": \"one short sentence\",\n"
+            "  \"replacement\": \"if is_duplicate is true, a specific replacement question that "
+            "(a) anchors on a concrete noun from the user's last answer, "
+            "(b) targets a DIFFERENT dimension (quantity, frequency, recent instance, "
+            "artifact, tool, outcome, collaborator), and (c) is NOT a reworded abstract "
+            "question. Otherwise empty string.\"\n"
+            "}\n"
+        )
+
+        try:
+            raw = await self.call_engine_async(judge_prompt)
+        except Exception as e:
+            SessionLogger.log_to_file(
+                "execution_log",
+                f"[GUARD] semantic_duplicate_check LLM call failed: {e}",
+                log_level="warning",
+            )
+            return False, ""
+
+        parsed = self._extract_tool_json_dict(raw)
+        if not isinstance(parsed, dict):
+            try:
+                parsed = json.loads(str(raw).strip())
+            except Exception:
+                m = re.search(r"\{.*\}", str(raw), re.DOTALL)
+                if not m:
+                    return False, ""
+                try:
+                    parsed = json.loads(m.group(0))
+                except Exception:
+                    return False, ""
+
+        if not isinstance(parsed, dict):
+            return False, ""
+
+        is_dup = bool(parsed.get("is_duplicate"))
+        replacement = str(parsed.get("replacement") or "").strip()
+        matches = str(parsed.get("matches") or "").strip()
+
+        # Only act when the judge both flags a duplicate AND produces a usable
+        # replacement question. Guards against false positives with no rewrite.
+        if is_dup and replacement and "?" in replacement:
+            SessionLogger.log_to_file(
+                "execution_log",
+                f"[GUARD] semantic_duplicate flagged: reason={parsed.get('reason', '')!r} "
+                f"matches={matches[:120]!r} "
+                f"original={proposed_question[:120]!r} "
+                f"replacement={replacement[:120]!r}"
+            )
+            return True, replacement
+        return False, ""
+
+    def _rewrite_repetitive_breadth_probe(self, question: str) -> str:
+        """Rewrite repeated broad probes into a specific, differentiated follow-up."""
+        q = self._normalize_text(question)
+        if not self._is_breadth_probe_question(q):
+            return q
+
+        recent_questions = self._get_recent_interviewer_questions(limit=6)
+        prior_breadth = [x for x in recent_questions if self._is_breadth_probe_question(x)]
+        if not prior_breadth:
+            return q
+
+        anchor = ""
+        recent_answers = self._get_recent_user_answers(limit=6)
+        for ans in reversed(recent_answers):
+            if self._is_repetition_signal(ans):
+                continue
+            anchor = self._extract_anchor_clause(ans)
+            if anchor:
+                break
+
+        if anchor:
+            return f"You mentioned {anchor}. What's the main outcome you're aiming for there?"
+        return "To keep this specific, which single task you mentioned takes the biggest share of your week right now?"
+
+    def _extract_tool_json_dict(self, raw: str) -> dict | None:
+        """Best-effort extraction of tool JSON from raw model output.
+
+        Handles:
+        - pure JSON object output
+        - mixed text + trailing JSON object
+        - line-delimited JSON fragments
+        - malformed JSON with unescaped quotes in string values
+        """
+        text = str(raw or "").strip()
+        if not text:
+            return None
+
+        def _is_tool_payload(obj: object) -> bool:
+            return isinstance(obj, dict) and any(
+                k in obj for k in ("response", "goodbye", "subtopic_id")
+            )
+
+        def _choose_payload(candidates: list[dict]) -> dict | None:
+            """Prefer terminal goodbye payloads when multiple tool JSON objects exist."""
+            if not candidates:
+                return None
+            for payload in candidates:
+                if "goodbye" in payload:
+                    return payload
+            return candidates[0]
+
+        candidates: list[dict] = []
+
+        # 1) Full-string parse
+        try:
+            parsed = json.loads(text)
+            if _is_tool_payload(parsed):
+                candidates.append(parsed)
+        except Exception:
+            pass
+
+        # 2) Line-delimited parse (common with leaked JSON on a new line)
+        for line in (ln.strip() for ln in text.splitlines() if ln.strip()):
+            if not line.startswith("{"):
+                continue
+            try:
+                parsed = json.loads(line)
+                if _is_tool_payload(parsed):
+                    candidates.append(parsed)
+            except Exception:
+                continue
+
+        # 3) Scan for any embedded JSON object starting at a '{'
+        decoder = json.JSONDecoder()
+        for m in re.finditer(r"\{", text):
+            snippet = text[m.start():]
+            try:
+                parsed, _ = decoder.raw_decode(snippet)
+            except Exception:
+                continue
+            if _is_tool_payload(parsed):
+                candidates.append(parsed)
+
+        chosen = _choose_payload(candidates)
+        if chosen is not None:
+            return chosen
+
+        # 4) Regex fallback for malformed JSON values with unescaped quotes
+        goodbye_m = re.search(r'"goodbye"\s*:\s*"(.*)"', text, re.DOTALL)
+        if goodbye_m:
+            return {"goodbye": goodbye_m.group(1).rstrip("}").rstrip()}
+
+        sid_m = re.search(r'"subtopic_id"\s*:\s*"([^"]*)"', text)
+        resp_m = re.search(r'"response"\s*:\s*"(.*)"', text, re.DOTALL)
+        if resp_m:
+            parsed = {"response": resp_m.group(1).rstrip("}").rstrip()}
+            if sid_m:
+                parsed["subtopic_id"] = sid_m.group(1)
+            return parsed
+
+        return None
+
+    def _tool_json_to_xml(self, parsed: dict | None) -> str | None:
+        """Convert extracted JSON tool payload into expected XML tool-call format."""
+        if not isinstance(parsed, dict):
+            return None
+
+        if "goodbye" in parsed:
+            goodbye = str(parsed.get("goodbye", ""))
+            for ch, esc in [("&", "&amp;"), ("<", "&lt;"), (">", "&gt;")]:
+                goodbye = goodbye.replace(ch, esc)
+            return (
+                f"<tool_calls><end_conversation>"
+                f"<goodbye>{goodbye}</goodbye>"
+                f"</end_conversation></tool_calls>"
+            )
+
+        if "response" in parsed:
+            subtopic_id = str(parsed.get("subtopic_id", ""))
+            resp_text = str(parsed.get("response", ""))
+            for ch, esc in [("&", "&amp;"), ("<", "&lt;"), (">", "&gt;")]:
+                resp_text = resp_text.replace(ch, esc)
+                subtopic_id = subtopic_id.replace(ch, esc)
+            return (
+                f"<tool_calls><respond_to_user>"
+                f"<subtopic_id>{subtopic_id}</subtopic_id>"
+                f"<response>{resp_text}</response>"
+                f"</respond_to_user></tool_calls>"
+            )
+
+        return None
 
     async def _handle_response(self, response: str, subtopic_id: str = "") -> str:
         """Handle responses from the RespondToUser tool by quantifying it and adding them to chat history.
@@ -163,6 +788,53 @@ class Interviewer(BaseAgent, Participant):
         quantified_question = response
         rubric = None
 
+        rewritten_question = self._rewrite_repetitive_breadth_probe(quantified_question)
+        if rewritten_question != quantified_question:
+            SessionLogger.log_to_file(
+                "execution_log",
+                "[GUARD] Rewrote repetitive breadth probe into a specific follow-up."
+            )
+            quantified_question = rewritten_question
+        elif self._should_run_semantic_duplicate_llm(quantified_question, subtopic_id=subtopic_id):
+            # Only run the LLM judge when the cheap regex guard didn't already fire.
+            try:
+                is_dup, replacement = await self._check_semantic_duplicate(quantified_question)
+            except Exception as e:
+                SessionLogger.log_to_file(
+                    "execution_log",
+                    f"[GUARD] semantic_duplicate_check errored: {e}",
+                    log_level="warning",
+                )
+                is_dup, replacement = False, ""
+            if is_dup and replacement:
+                quantified_question = replacement
+        else:
+            SessionLogger.log_to_file(
+                "execution_log",
+                "[LATENCY] semantic_duplicate_check skipped (low-risk turn)."
+            )
+
+        if self._should_run_inferability_llm(quantified_question, subtopic_id=subtopic_id):
+            try:
+                inferable, replacement = await self._check_inferable_question(
+                    quantified_question,
+                    subtopic_id=subtopic_id,
+                )
+            except Exception as e:
+                SessionLogger.log_to_file(
+                    "execution_log",
+                    f"[GUARD] inferability_check errored: {e}",
+                    log_level="warning",
+                )
+                inferable, replacement = False, ""
+            if inferable and replacement:
+                quantified_question = replacement
+        else:
+            SessionLogger.log_to_file(
+                "execution_log",
+                "[LATENCY] inferability_check skipped (low-risk turn)."
+            )
+
         # Don't send a question if the session is already ending gracefully
         if getattr(self.interview_session, '_session_ending', False):
             self._turn_to_respond = False
@@ -175,6 +847,25 @@ class Interviewer(BaseAgent, Participant):
                 "execution_log",
                 f"[LATENCY] total_wait={total_wait_s:.2f}s"
                 f" response_preview={quantified_question[:60].replace(chr(10), ' ')!r}"
+            )
+
+        # Emit the profile confirm widget before the first non-first-topic question
+        # (intake sessions only; only fires once via the _profile_confirm_widget_sent flag).
+        # Coverage can lag briefly while scribe processing finishes, so also trigger
+        # when the selected subtopic is already outside the first topic.
+        outgoing_topic_index = self._topic_index_for_subtopic(subtopic_id)
+        if (getattr(self.interview_session, 'session_type', 'intake') == 'intake'
+                and not getattr(self.interview_session, '_profile_confirm_widget_sent', False)
+                and (
+                    self._is_first_topic_covered()
+                    or (outgoing_topic_index is not None and outgoing_topic_index > 0)
+                )):
+            self.interview_session.trigger_profile_confirm_widget()
+            asyncio.create_task(
+                self._refresh_portrait_before_widget(
+                    widget_context="profile_confirm",
+                    max_scribe_wait_s=2.0,
+                )
             )
 
         self.interview_session.add_message_to_chat_history(
@@ -200,34 +891,42 @@ class Interviewer(BaseAgent, Participant):
                 content="",
                 message_type=MessageType.TIME_SPLIT_WIDGET,
             )
-            asyncio.create_task(self._refresh_portrait_before_widget())
+            asyncio.create_task(
+                self._refresh_portrait_before_widget(
+                    widget_context="time_split",
+                    max_scribe_wait_s=30.0,
+                )
+            )
 
         return quantified_question
 
-    async def _refresh_portrait_before_widget(self) -> None:
-        """Refresh portrait with latest memories, then emit the time-split widget.
-        Emitting AFTER portrait is ready means the frontend's /api/session-state
-        call on render always sees a populated Task Inventory."""
+    async def _refresh_portrait_before_widget(
+        self,
+        widget_context: str = "widget",
+        max_scribe_wait_s: float = 30.0,
+    ) -> None:
+        """Refresh portrait for the widget path without duplicating in-flight work."""
         scribe = getattr(self.interview_session, 'session_scribe', None)
         _scribe_wait_start = asyncio.get_event_loop().time()
         if scribe is not None:
             start = asyncio.get_event_loop().time()
             while getattr(scribe, 'processing_in_progress', False):
                 await asyncio.sleep(0.1)
-                if asyncio.get_event_loop().time() - start > 30:
+                if asyncio.get_event_loop().time() - start > max(0.0, float(max_scribe_wait_s)):
                     SessionLogger.log_to_file(
                         "execution_log",
-                        "[WIDGET] Timed out waiting for scribe before portrait refresh"
+                        f"[WIDGET] {widget_context}: timed out waiting for scribe before portrait refresh"
                     )
                     break
         _scribe_wait_s = asyncio.get_event_loop().time() - _scribe_wait_start
+        _target_memory_count = len(getattr(self.interview_session.memory_bank, "memories", []))
         _portrait_start = asyncio.get_event_loop().time()
+        _portrait_refreshed = False
         try:
-            # Acquire the lock (wait, don't skip) so we run AFTER any concurrent
-            # portrait update finishes, then force a fresh extraction with all
-            # current memories — the widget needs a populated Task Inventory.
-            async with self.interview_session._portrait_update_lock:
-                await self.interview_session._generate_and_save_user_portrait_inner()
+            _portrait_refreshed = await self.interview_session.ensure_user_portrait_fresh(
+                min_memory_count=_target_memory_count,
+                wait_for_inflight=True,
+            )
         except Exception as e:
             SessionLogger.log_to_file(
                 "execution_log",
@@ -236,39 +935,73 @@ class Interviewer(BaseAgent, Participant):
         _portrait_s = asyncio.get_event_loop().time() - _portrait_start
         SessionLogger.log_to_file(
             "execution_log",
-            f"[LATENCY] widget_portrait_refresh: scribe_wait={_scribe_wait_s:.2f}s"
+            f"[LATENCY] widget_portrait_refresh: context={widget_context}"
+            f" scribe_wait={_scribe_wait_s:.2f}s"
             f" portrait_llm={_portrait_s:.2f}s"
+            f" refreshed={_portrait_refreshed}"
+            f" target_memories={_target_memory_count}"
+            f" portrait_memories={getattr(self.interview_session, '_portrait_update_memory_count', 0)}"
         )
-        # Pre-warm the task-tree cache so the widget's first /api/organize-tasks
-        # request is served instantly from cache rather than triggering a fresh
-        # GROUP-pass LLM call at render time.
-        asyncio.create_task(self._prewarm_task_tree_cache())
+    def _is_first_topic_covered(self) -> bool:
+        """Return True when every required subtopic in the first topic is covered."""
+        topic_manager = self.interview_session.session_agenda.interview_topic_manager
+        topics = list(topic_manager)
+        if not topics:
+            return False
+        return all(st.is_covered for st in topics[0].required_subtopics.values())
 
-    async def _prewarm_task_tree_cache(self) -> None:
-        """Run organize-tasks server-side and populate the backend cache so the
-        widget's first GET /api/organize-tasks is a cache hit, not a 7-second LLM call."""
-        try:
-            from src.utils.task_hierarchy import organize_tasks as _organize_tasks
-            from src.main_flask import _TASK_TREE_CACHE, _TASK_TREE_CACHE_LOCK, _task_tree_signature, _TASK_TREE_CACHE_MAX
-            portrait = self.interview_session.session_agenda.user_portrait
-            tasks = portrait.get("Task Inventory", []) if isinstance(portrait, dict) else []
-            if len(tasks) < 2:
-                return
-            sig = _task_tree_signature(tasks)
-            if not sig:
-                return
-            with _TASK_TREE_CACHE_LOCK:
-                if sig in _TASK_TREE_CACHE:
-                    return  # already cached
-            tree = await asyncio.to_thread(_organize_tasks, [str(t) for t in tasks], "gpt-4.1-mini", True)
-            with _TASK_TREE_CACHE_LOCK:
-                _TASK_TREE_CACHE[sig] = tree
-                _TASK_TREE_CACHE.move_to_end(sig)
-                while len(_TASK_TREE_CACHE) > _TASK_TREE_CACHE_MAX:
-                    _TASK_TREE_CACHE.popitem(last=False)
-            SessionLogger.log_to_file("execution_log", "[WIDGET] Task tree pre-warmed in cache")
-        except Exception as e:
-            SessionLogger.log_to_file("execution_log", f"[WIDGET] Task tree pre-warm failed: {e}")
+    def _topic_index_for_subtopic(self, subtopic_id: str) -> int | None:
+        """Return 0-based topic index for a subtopic id, or None if unknown."""
+        sid = str(subtopic_id or "").strip()
+        if not sid:
+            return None
+        topic_manager = self.interview_session.session_agenda.interview_topic_manager
+        for idx, topic in enumerate(topic_manager):
+            for st in topic.required_subtopics.values():
+                if str(st.subtopic_id) == sid:
+                    return idx
+        return None
+
+    def _is_subtopic_currently_covered(self, subtopic_id: str) -> bool:
+        """Return True if the given subtopic_id is currently marked covered."""
+        sid = str(subtopic_id or "").strip()
+        if not sid:
+            return False
+        agenda = self.interview_session.session_agenda
+        if not agenda or not agenda.interview_topic_manager:
+            return False
+        for topic in agenda.interview_topic_manager:
+            for st in topic.required_subtopics.values():
+                if str(st.subtopic_id) == sid:
+                    return bool(st.is_covered)
+        return False
+
+    def _extract_response_subtopic_id(self, raw_response: str) -> str:
+        """Best-effort extraction of target subtopic_id from model output."""
+        text = str(raw_response or "")
+        if not text:
+            return ""
+
+        sid_m = re.search(r"<subtopic_id>\s*(.*?)\s*</subtopic_id>", text, re.DOTALL)
+        if sid_m:
+            return str(sid_m.group(1) or "").strip()
+
+        parsed = self._extract_tool_json_dict(text)
+        if isinstance(parsed, dict):
+            sid = str(parsed.get("subtopic_id", "")).strip()
+            if sid:
+                return sid
+
+        return ""
+
+    def _should_discard_speculative_response(self, raw_response: str) -> bool:
+        """Discard speculative response only when it clearly targets covered content."""
+        sid = self._extract_response_subtopic_id(raw_response)
+        if not sid:
+            # If we cannot confidently infer staleness, keep the speculative result
+            # to avoid unnecessary second LLM calls.
+            return False
+        return self._is_subtopic_currently_covered(sid)
 
     def _is_time_allocation_subtopic(self, subtopic_id: str) -> bool:
         agenda = self.interview_session.session_agenda
@@ -279,6 +1012,35 @@ class Interviewer(BaseAgent, Participant):
                 if str(st.subtopic_id) == str(subtopic_id) and 'time allocation' in st.description.lower():
                     return True
         return False
+
+    def _is_fresh_intake_session(self) -> bool:
+        """Return True for a brand-new intake session with no prior summary context."""
+        if getattr(self.interview_session, "session_type", "intake") != "intake":
+            return False
+        if self.interview_session.chat_history:
+            return False
+        summary = (
+            self.interview_session.session_agenda.get_last_meeting_summary_str() or ""
+        ).strip()
+        return len(summary) == 0
+
+    def _get_role_title_subtopic_id(self) -> str:
+        """Best-effort lookup for the role/title subtopic so first-turn metadata is preserved."""
+        agenda = self.interview_session.session_agenda
+        if not agenda or not agenda.interview_topic_manager:
+            return ""
+        for topic in agenda.interview_topic_manager:
+            for st in topic.required_subtopics.values():
+                desc = str(getattr(st, "description", "")).lower()
+                # Match both legacy wording ("current role or title") and the
+                # current config wording ("their role or title").
+                if (
+                    "current role or title" in desc
+                    or "role or title" in desc
+                    or ("role" in desc and "title" in desc)
+                ):
+                    return str(st.subtopic_id)
+        return ""
 
 
     async def on_message(self, message: Message):
@@ -300,6 +1062,7 @@ class Interviewer(BaseAgent, Participant):
     async def _on_message_body(self, message: Message):
 
         self._message_sent_this_turn = False
+        self._last_sent_message_text = ""
         self._turn_start = asyncio.get_event_loop().time()
 
         if message:
@@ -317,6 +1080,24 @@ class Interviewer(BaseAgent, Participant):
 
         # If session is paused, wait until resumed or a step is requested
         await self.interview_session.wait_if_paused()
+
+        # Fast-path the first turn for fresh intake sessions so the user sees the
+        # opening question immediately without waiting for an LLM round-trip.
+        if message is None and self._is_fresh_intake_session():
+            opening_question = (
+                "Thanks for making time today. "
+                "To start, how would you describe your current role or title in your own words?"
+            )
+            SessionLogger.log_to_file(
+                "execution_log",
+                "[LATENCY] Using fast opening question path (no initial LLM call)."
+            )
+            await self._guarded_handle_response(
+                opening_question,
+                subtopic_id=self._get_role_title_subtopic_id(),
+            )
+            self._turn_to_respond = False
+            return
 
         # Speculative execution: start the LLM call immediately so it runs
         # concurrently with the scribe's processing.  The prompt may use
@@ -339,21 +1120,82 @@ class Interviewer(BaseAgent, Participant):
         # — further scribe work (memory writes, portrait) doesn't affect topic selection.
         _scribe_wait_start = asyncio.get_event_loop().time()
         _scribe_waited = False
+        _scribe_wait_mode = "none"
+        _scribe_wait_exit = "not_needed"
+        profile_confirm_pending = (
+            getattr(self.interview_session, "session_type", "intake") == "intake"
+            and not getattr(self.interview_session, "_profile_confirm_widget_sent", False)
+        )
+
         if message is not None:
             scribe = getattr(self.interview_session, 'session_scribe', None)
-            if scribe is not None:
+            if scribe is None:
+                _scribe_wait_mode = "no_scribe"
+                _scribe_wait_exit = "no_scribe"
+            else:
+                # Yield once so SessionScribe can flip its processing flags for this
+                # user turn before we inspect them. Without this grace tick, the
+                # interviewer can reuse a stale speculative answer.
+                await asyncio.sleep(0)
+                _scribe_wait_mode = (
+                    "coverage_only" if profile_confirm_pending else "full_scribe"
+                )
                 _last_seen_coverage = pre_scribe_coverage
                 _coverage_stable_ticks = 0
-                for _ in range(100):  # max ~10s wait
-                    if not getattr(scribe, 'processing_in_progress', False):
+                _loop_timed_out = True
+                _poll_s = 0.1
+                try:
+                    _max_wait_s = float(os.getenv("INTERVIEWER_MAX_SCRIBE_WAIT_S", "10.0"))
+                except (TypeError, ValueError):
+                    _max_wait_s = 10.0
+                _max_wait_s = max(0.5, _max_wait_s)
+                try:
+                    _coverage_only_fast_exit_s = float(
+                        os.getenv("INTERVIEWER_MAX_COVERAGE_ONLY_WAIT_S", "1.5")
+                    )
+                except (TypeError, ValueError):
+                    _coverage_only_fast_exit_s = 1.5
+                _coverage_only_fast_exit_s = max(0.0, _coverage_only_fast_exit_s)
+                _max_ticks = max(1, int(_max_wait_s / _poll_s))
+                for _ in range(_max_ticks):
+                    if profile_confirm_pending:
+                        # During the profile-confirm transition we only need
+                        # coverage updates to be complete; memory-writing tail
+                        # should not block the next interviewer turn.
+                        _scribe_busy = getattr(
+                            scribe,
+                            'coverage_processing_in_progress',
+                            getattr(scribe, 'processing_in_progress', False),
+                        )
+                    else:
+                        _scribe_busy = getattr(scribe, 'processing_in_progress', False)
+                    if not _scribe_busy:
+                        _scribe_wait_exit = "scribe_idle"
+                        _loop_timed_out = False
                         break
                     _scribe_waited = True
-                    await asyncio.sleep(0.1)
+                    await asyncio.sleep(_poll_s)
+                    _elapsed_s = (_ + 1) * _poll_s
+                    # Fast-exit coverage-only waits once speculative response is ready.
+                    # This avoids waiting for long scribe tails on every turn.
+                    if (
+                        profile_confirm_pending
+                        and speculative_task is not None
+                        and speculative_task.done()
+                        and _elapsed_s >= _coverage_only_fast_exit_s
+                    ):
+                        _scribe_wait_exit = "coverage_only_fast_exit"
+                        _loop_timed_out = False
+                        break
                     # Every 5 ticks (0.5s), check if coverage has changed.
                     # If stable for 2 consecutive checks (1s) and the speculative
                     # result is ready, we can proceed without waiting for the rest
                     # of the scribe's work (memory writes, portrait update).
-                    if _ % 5 == 4 and speculative_task is not None:
+                    if (
+                        _ % 5 == 4
+                        and speculative_task is not None
+                        and not profile_confirm_pending
+                    ):
                         curr = self._get_coverage_snapshot()
                         if curr == _last_seen_coverage:
                             _coverage_stable_ticks += 1
@@ -362,29 +1204,65 @@ class Interviewer(BaseAgent, Participant):
                                     "execution_log",
                                     "[LATENCY] early-exit scribe wait: coverage stable 1s"
                                 )
+                                _scribe_wait_exit = "coverage_stable_early_exit"
+                                _loop_timed_out = False
                                 break
                         else:
                             _coverage_stable_ticks = 0
                             _last_seen_coverage = curr
+                if _loop_timed_out and _scribe_wait_exit == "not_needed":
+                    _scribe_wait_exit = "max_wait_reached"
         _scribe_wait_s = asyncio.get_event_loop().time() - _scribe_wait_start
 
         # If the scribe updated coverage, the speculative prompt is stale — discard it
-        # and regenerate with the fresh state to avoid acting on stale coverage.
+        # only when it clearly targets already-covered content.
         _speculative_discarded = False
         if message is not None and speculative_task is not None:
             post_scribe_coverage = self._get_coverage_snapshot()
             if post_scribe_coverage != pre_scribe_coverage:
-                speculative_task.cancel()
-                speculative_task = None
-                speculative_prompt = None
-                _speculative_discarded = True
+                _discard = False
+                if speculative_task.done():
+                    try:
+                        _discard = self._should_discard_speculative_response(
+                            speculative_task.result()
+                        )
+                    except Exception:
+                        # On parsing/runtime errors, keep previous conservative behavior.
+                        _discard = True
+                if _discard:
+                    if not speculative_task.done():
+                        speculative_task.cancel()
+                    speculative_task = None
+                    speculative_prompt = None
+                    _speculative_discarded = True
 
         if message is not None:
             SessionLogger.log_to_file(
                 "execution_log",
                 f"[LATENCY] scribe_wait={_scribe_wait_s:.2f}s"
+                f" gate={_scribe_wait_mode}"
+                f" exit={_scribe_wait_exit}"
                 f" speculative_discarded={_speculative_discarded}"
             )
+
+        # Deterministic stop: if all configured topics are already covered after
+        # scribe processing, do not let the LLM improvise another follow-up.
+        if (
+            message is not None
+            and not getattr(self.interview_session, "_session_ending", False)
+            and self._no_active_topics_remaining()
+        ):
+            if speculative_task is not None and not speculative_task.done():
+                speculative_task.cancel()
+            SessionLogger.log_to_file(
+                "execution_log",
+                "[GUARD] No active topics remain after scribe update — ending turn without another question."
+            )
+            self._guarded_send_goodbye(self._default_completion_goodbye())
+            if not getattr(self.interview_session, "_feedback_widget_sent", False):
+                self.interview_session.trigger_feedback_widget()
+            self._turn_to_respond = False
+            return
 
         self._turn_to_respond = True
         iterations = 0
@@ -408,34 +1286,10 @@ class Interviewer(BaseAgent, Participant):
                 # gpt-5.x may return JSON instead of XML — convert it to the
                 # expected XML tool-call format so the rest of the pipeline works.
                 if "<tool_calls>" not in response:
-                    parsed = None
-                    raw = response.strip()
-                    try:
-                        parsed = json.loads(raw)
-                    except (ValueError, Exception):
-                        # LLM may return JSON with unescaped quotes inside string values.
-                        # Fall back to regex extraction: subtopic_id is simple, response
-                        # is everything between "response":" and the last " before "}"
-                        sid_m = re.search(r'"subtopic_id"\s*:\s*"([^"]*)"', raw)
-                        resp_m = re.search(r'"response"\s*:\s*"(.*)"', raw, re.DOTALL)
-                        if sid_m and resp_m:
-                            parsed = {
-                                "subtopic_id": sid_m.group(1),
-                                "response": resp_m.group(1).rstrip("}").rstrip(),
-                            }
-                    if isinstance(parsed, dict) and "response" in parsed:
-                        subtopic_id = str(parsed.get("subtopic_id", ""))
-                        resp_text = parsed["response"]
-                        # Escape XML special chars in the values
-                        for ch, esc in [("&", "&amp;"), ("<", "&lt;"), (">", "&gt;")]:
-                            resp_text = resp_text.replace(ch, esc)
-                            subtopic_id = subtopic_id.replace(ch, esc)
-                        response = (
-                            f"<tool_calls><respond_to_user>"
-                            f"<subtopic_id>{subtopic_id}</subtopic_id>"
-                            f"<response>{resp_text}</response>"
-                            f"</respond_to_user></tool_calls>"
-                        )
+                    parsed = self._extract_tool_json_dict(response)
+                    converted = self._tool_json_to_xml(parsed)
+                    if converted:
+                        response = converted
                 if "<tool_calls>" not in response and any(
                     f"<{tool_name}>" in response for tool_name in self.tools
                 ):
@@ -466,13 +1320,13 @@ class Interviewer(BaseAgent, Participant):
                         m = re.search(r'<response>(.*?)</response>', response, re.DOTALL)
                         if m:
                             fallback = m.group(1).strip()
-                    elif response.strip().startswith('{'):
-                        try:
-                            parsed = json.loads(response.strip())
-                            if isinstance(parsed, dict) and "response" in parsed:
-                                fallback = parsed["response"]
-                        except Exception:
-                            pass
+                    else:
+                        parsed = self._extract_tool_json_dict(response.strip())
+                        if isinstance(parsed, dict):
+                            if "goodbye" in parsed:
+                                fallback = str(parsed["goodbye"])
+                            elif "response" in parsed:
+                                fallback = str(parsed["response"])
                     await self._guarded_handle_response(fallback)
 
             iterations += 1
@@ -483,6 +1337,34 @@ class Interviewer(BaseAgent, Participant):
                     content=f"Exceeded maximum number of consideration "
                     f"iterations ({self._max_consideration_iterations})"
                 )
+
+        # Safety net: if all configured topics are covered but end_conversation was
+        # not called (e.g. LLM used respond_to_user for the goodbye), trigger the
+        # feedback widget so the session ends correctly.
+        if (self._message_sent_this_turn
+                and not getattr(self.interview_session, '_session_ending', False)
+                and not self._last_sent_message_is_question()
+                and not getattr(self.interview_session, '_feedback_widget_sent', False)):
+            topic_manager = self.interview_session.session_agenda.interview_topic_manager
+            incomplete_topics = topic_manager.get_all_incomplete_core_topic()
+            allows_emergent = topic_manager.any_active_topic_allows_emergent()
+            topics_complete = not incomplete_topics and not allows_emergent
+            closing_intent = self._looks_like_closing_goodbye(
+                self._last_sent_message_text
+            )
+            if topics_complete or closing_intent:
+                reason = (
+                    "all topics covered"
+                    if topics_complete
+                    else "closing intent detected in respond_to_user message"
+                )
+                SessionLogger.log_to_file(
+                    "execution_log",
+                    "(Interviewer) end_conversation not called — triggering "
+                    f"feedback widget as safety net ({reason}).",
+                    log_level="warning"
+                )
+                self.interview_session.trigger_feedback_widget()
 
     def _get_coverage_snapshot(self) -> frozenset:
         """Return a frozenset of subtopic_ids that are currently marked as covered.
@@ -497,6 +1379,19 @@ class Interviewer(BaseAgent, Participant):
                 if subtopic.is_covered:
                     covered.add(subtopic.subtopic_id)
         return frozenset(covered)
+
+    def _get_recent_user_answers(self, limit: int = 30) -> list[str]:
+        """Return recent non-empty user messages (plain text only)."""
+        answers = [
+            str(event.content).strip()
+            for event in self.event_stream
+            if event.sender == "User"
+            and event.tag == "message"
+            and str(event.content).strip()
+        ]
+        if limit <= 0:
+            return answers
+        return answers[-limit:]
 
     def _get_prompt(self):
         '''Gets the prompt for the interviewer. '''
@@ -528,6 +1423,13 @@ class Interviewer(BaseAgent, Participant):
         )
         recent_interviewer_messages = all_interviewer_messages[-15:] if \
             len(all_interviewer_messages) >= 15 else all_interviewer_messages
+        recent_user_answers = self._get_recent_user_answers(
+            limit=max(self._max_events_len, 15)
+        )
+        recent_user_answers_str = (
+            "\n".join(f"- {msg}" for msg in recent_user_answers)
+            if recent_user_answers else "(none yet)"
+        )
 
         # Start with all available tools
         tools_set = set(self.tools.keys())
@@ -582,6 +1484,7 @@ class Interviewer(BaseAgent, Participant):
             "current_events": '\n'.join(current_events),
             "recent_interviewer_messages": '\n'.join(
                 [msg for msg in recent_interviewer_messages]),
+            "recent_user_answers": recent_user_answers_str,
             "tool_descriptions": self.get_tools_description(list(tools_set))
         }
 

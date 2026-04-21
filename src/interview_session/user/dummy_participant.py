@@ -21,7 +21,9 @@ class UserDummyParticipant(User):
 
     async def on_message(self, message: Message):
         if message.role == "Interviewer" or message.type in (
-            MessageType.TIME_SPLIT_WIDGET, MessageType.FEEDBACK_WIDGET
+            MessageType.TIME_SPLIT_WIDGET,
+            MessageType.AI_USAGE_WIDGET,
+            MessageType.FEEDBACK_WIDGET,
         ):
             with self._lock:
                 self._message_buffer.append({
@@ -29,7 +31,8 @@ class UserDummyParticipant(User):
                     "role": message.role,
                     "content": message.content,
                     "type": message.type,
-                    "timestamp": message.timestamp.isoformat()
+                    "timestamp": message.timestamp.isoformat(),
+                    "metadata": message.metadata if isinstance(message.metadata, dict) else {},
                 })
 
     def get_and_clear_messages(self):
@@ -51,10 +54,11 @@ class UserDummyParticipant(User):
         # # Clear pending message
         # self._pending_user_message = None
 
-    def add_user_message(self, text: str):
+    def add_user_message(self, text: str, metadata: dict | None = None):
         self.interview_session.add_message_to_chat_history(
             role="User",
-            content=text
+            content=text,
+            metadata=metadata or {}
         )
 
     def get_interviewer_message(self):

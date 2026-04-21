@@ -1,0 +1,182 @@
+{
+  "original_user_id": "61nehu8pvOOrH7Q3Rqoo6w",
+  "sim_user_id": "sim_61nehu8p_h030_1776753274",
+  "orig_log": "/Users/jenniferwang/PhD/SparkMe/pilot/61nehu8pvOOrH7Q3Rqoo6w/execution_logs/session_1/chat_history.log",
+  "sim_log": "/Users/jenniferwang/PhD/SparkMe/logs/sim_61nehu8p_h030_1776753274/execution_logs/session_1/chat_history.log",
+  "orig_message_count": 31,
+  "sim_message_count": 30,
+  "overlap_messages": 30,
+  "role_match_rate": 0.9333333333333333,
+  "avg_overlap_turn_similarity": 0.2581249844484553,
+  "whole_transcript_similarity": 0.12046769812212117,
+  "original_tasks": [
+    "reading academic papers to track the field",
+    "searching for relevant papers to find literature using Google Scholar, Claude, and ChatGPT",
+    "writing reports to document research findings",
+    "writing scientific papers to publish research results",
+    "writing code to analyze data",
+    "building presentations to communicate research publicly",
+    "Communicate research results with the team",
+    "Explain research problems"
+  ],
+  "simulated_tasks": [
+    "Reading research papers to stay updated on relevant literature",
+    "Searching for relevant literature to support research",
+    "Reviewing academic papers to provide feedback and gain new ideas",
+    "Writing code to analyze data to obtain clean, reliable results",
+    "writing reports to communicate research findings",
+    "writing scientific papers to communicate research findings",
+    "Attending meetings to discuss research progress and collaboration",
+    "Giving talks at department seminars to present research",
+    "Preparing presentations to communicate results",
+    "Submitting conference papers to share research with the community",
+    "Mentoring others in research-related tasks",
+    "Assisting in teaching courses occasionally",
+    "Helping with small grant-related tasks occasionally",
+    "Organizing departmental events or internal workshops occasionally"
+  ],
+  "strict_threshold": 0.45,
+  "strict_recall": 0.625,
+  "strict_precision": 0.42857142857142855,
+  "strict_matched": [
+    {
+      "original": "reading academic papers to track the field",
+      "simulated": "Reading research papers to stay updated on relevant literature",
+      "score": 0.5
+    },
+    {
+      "original": "searching for relevant papers to find literature using Google Scholar, Claude, and ChatGPT",
+      "simulated": "Searching for relevant literature to support research",
+      "score": 0.6
+    },
+    {
+      "original": "writing reports to document research findings",
+      "simulated": "writing reports to communicate research findings",
+      "score": 1.0
+    },
+    {
+      "original": "writing scientific papers to publish research results",
+      "simulated": "writing scientific papers to communicate research findings",
+      "score": 1.0
+    },
+    {
+      "original": "writing code to analyze data",
+      "simulated": "Writing code to analyze data to obtain clean, reliable results",
+      "score": 1.0
+    }
+  ],
+  "strict_missing_original": [
+    {
+      "original": "building presentations to communicate research publicly",
+      "closest": "Preparing presentations to communicate results",
+      "score": 0.3333333333333333
+    },
+    {
+      "original": "Communicate research results with the team",
+      "closest": "Reading research papers to stay updated on relevant literature",
+      "score": 0.125
+    },
+    {
+      "original": "Explain research problems",
+      "closest": "Reading research papers to stay updated on relevant literature",
+      "score": 0.2
+    }
+  ],
+  "strict_extra_simulated": [
+    {
+      "simulated": "Attending meetings to discuss research progress and collaboration",
+      "closest": "reading academic papers to track the field",
+      "score": 0.0
+    },
+    {
+      "simulated": "Giving talks at department seminars to present research",
+      "closest": "reading academic papers to track the field",
+      "score": 0.0
+    },
+    {
+      "simulated": "Preparing presentations to communicate results",
+      "closest": "building presentations to communicate research publicly",
+      "score": 0.3333333333333333
+    },
+    {
+      "simulated": "Submitting conference papers to share research with the community",
+      "closest": "reading academic papers to track the field",
+      "score": 0.2
+    },
+    {
+      "simulated": "Mentoring others in research-related tasks",
+      "closest": "Explain research problems",
+      "score": 0.125
+    },
+    {
+      "simulated": "Assisting in teaching courses occasionally",
+      "closest": "reading academic papers to track the field",
+      "score": 0.0
+    },
+    {
+      "simulated": "Helping with small grant-related tasks occasionally",
+      "closest": "Communicate research results with the team",
+      "score": 0.08333333333333333
+    },
+    {
+      "simulated": "Organizing departmental events or internal workshops occasionally",
+      "closest": "reading academic papers to track the field",
+      "score": 0.0
+    }
+  ],
+  "semantic": {
+    "matched_pairs": [
+      {
+        "original": "reading academic papers to track the field",
+        "simulated": "Reading research papers to stay updated on relevant literature",
+        "rationale_short": "Both involve reading papers to keep current with the field."
+      },
+      {
+        "original": "searching for relevant papers to find literature using Google Scholar, Claude, and ChatGPT",
+        "simulated": "Searching for relevant literature to support research",
+        "rationale_short": "Both describe searching for relevant literature to support research."
+      },
+      {
+        "original": "writing reports to document research findings",
+        "simulated": "writing reports to communicate research findings",
+        "rationale_short": "Both involve writing reports to communicate/document research findings."
+      },
+      {
+        "original": "writing scientific papers to publish research results",
+        "simulated": "writing scientific papers to communicate research findings",
+        "rationale_short": "Both involve writing scientific papers to share research results."
+      },
+      {
+        "original": "writing code to analyze data",
+        "simulated": "Writing code to analyze data to obtain clean, reliable results",
+        "rationale_short": "Both involve coding for data analysis."
+      },
+      {
+        "original": "building presentations to communicate research publicly",
+        "simulated": "Preparing presentations to communicate results",
+        "rationale_short": "Both involve preparing presentations to communicate research."
+      },
+      {
+        "original": "Communicate research results with the team",
+        "simulated": "Attending meetings to discuss research progress and collaboration",
+        "rationale_short": "Meetings to discuss research progress align with communicating results with team."
+      },
+      {
+        "original": "Explain research problems",
+        "simulated": "Giving talks at department seminars to present research",
+        "rationale_short": "Giving talks includes explaining research problems publicly."
+      }
+    ],
+    "missing_original": [],
+    "extra_simulated": [
+      "Reviewing academic papers to provide feedback and gain new ideas",
+      "Submitting conference papers to share research with the community",
+      "Mentoring others in research-related tasks",
+      "Assisting in teaching courses occasionally",
+      "Helping with small grant-related tasks occasionally",
+      "Organizing departmental events or internal workshops occasionally"
+    ],
+    "semantic_recall": 1.0,
+    "semantic_precision": 0.5333
+  }
+}

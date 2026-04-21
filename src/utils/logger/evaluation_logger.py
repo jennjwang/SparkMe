@@ -192,6 +192,82 @@ class EvaluationLogger:
                 user_message_length
             ])
 
+    def log_turn_latency_breakdown(
+        self,
+        turn_id: str,
+        user_message_id: str,
+        assistant_message_id: str,
+        user_api_received_at: Optional[datetime],
+        user_chat_history_at: datetime,
+        assistant_generated_at: datetime,
+        assistant_delivered_at: datetime,
+        user_message_length: int = 0,
+        assistant_message_length: int = 0,
+        transport: str = "text",
+    ) -> None:
+        """Log per-turn latency stages for bottleneck analysis.
+
+        The stages capture:
+        - queue delay: API receive -> user message enters chat history
+        - generation delay: user message in chat history -> assistant generated
+        - delivery delay: assistant generated -> delivered to client poll
+        """
+        logs_dir = self.eval_dir
+        logs_dir.mkdir(parents=True, exist_ok=True)
+
+        filename = logs_dir / "turn_latency_breakdown.csv"
+        file_exists = filename.exists()
+
+        queue_delay = ""
+        if user_api_received_at is not None:
+            queue_delay = f"{(user_chat_history_at - user_api_received_at).total_seconds():.3f}"
+
+        generation_delay = f"{(assistant_generated_at - user_chat_history_at).total_seconds():.3f}"
+        delivery_delay = f"{(assistant_delivered_at - assistant_generated_at).total_seconds():.3f}"
+        if user_api_received_at is not None:
+            end_to_end = f"{(assistant_delivered_at - user_api_received_at).total_seconds():.3f}"
+        else:
+            end_to_end = f"{(assistant_delivered_at - user_chat_history_at).total_seconds():.3f}"
+
+        with open(filename, 'a', newline='') as f:
+            writer = csv.writer(f)
+            if not file_exists:
+                writer.writerow([
+                    'Turn ID',
+                    'Session ID',
+                    'Transport',
+                    'User Message ID',
+                    'Assistant Message ID',
+                    'User API Received At',
+                    'User Chat History At',
+                    'Assistant Generated At',
+                    'Assistant Delivered At',
+                    'Queue Delay (seconds)',
+                    'Generation Delay (seconds)',
+                    'Delivery Delay (seconds)',
+                    'End-to-End Delay (seconds)',
+                    'User Message Length',
+                    'Assistant Message Length',
+                ])
+
+            writer.writerow([
+                turn_id,
+                self.session_id,
+                transport,
+                user_message_id,
+                assistant_message_id,
+                user_api_received_at.isoformat() if user_api_received_at else "",
+                user_chat_history_at.isoformat(),
+                assistant_generated_at.isoformat(),
+                assistant_delivered_at.isoformat(),
+                queue_delay,
+                generation_delay,
+                delivery_delay,
+                end_to_end,
+                user_message_length,
+                assistant_message_length,
+            ])
+
     def log_conversation_statistics(
         self,
         total_turns: int,

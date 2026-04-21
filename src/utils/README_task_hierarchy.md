@@ -64,6 +64,18 @@ Group label format: `"<action(s)> <object domain> to <shared objective>"` — se
 
 Groups with fewer than 2 children are demoted (children promoted to top-level leaves).
 
+### Pass 3 — Smart regrouping (LLM refinement)
+
+When the first-pass output looks under-grouped (too many top-level loose leaves),
+the system runs a second LLM refinement pass over the current hierarchy.
+
+The refinement pass is instructed to:
+- Preserve leaf wording and keep every original task exactly once
+- Keep max depth at 2
+- Improve bucket coherence and reduce unnecessary flat leaves
+- Group obvious workflow siblings (e.g., experiment execution + analysis)
+- Keep document-type leaves distinct while allowing shared parent buckets
+
 ### Validation
 
 After grouping, every screened task must appear exactly once in the tree — either as a node name or in a node's `merged_from` list. Any task not covered by the LLM output is appended as a top-level leaf.

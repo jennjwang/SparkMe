@@ -181,6 +181,79 @@
     .msg.user .bubble { background: var(--user-bg); border: 1px solid var(--border); }
     .msg-meta { font-size: 10px; color: var(--muted); margin-top: 3px; }
 
+    .feedback-widget-viz {
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      border-radius: 12px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      animation: fadeUp 0.3s ease;
+    }
+    .feedback-widget-viz .title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .feedback-widget-viz .sub {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+    .feedback-widget-viz .rate-row {
+      display: flex;
+      gap: 6px;
+    }
+    .feedback-widget-viz .rate-btn {
+      border: 1px solid var(--border);
+      background: #fff;
+      border-radius: 8px;
+      padding: 6px 10px;
+      cursor: pointer;
+      font-size: 12px;
+      color: var(--text);
+    }
+    .feedback-widget-viz .rate-btn.selected {
+      background: #dcfce7;
+      border-color: var(--green);
+      color: var(--green);
+      font-weight: 700;
+    }
+    .feedback-widget-viz textarea {
+      width: 100%;
+      min-height: 82px;
+      max-height: 160px;
+      resize: vertical;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      padding: 8px 10px;
+      font-family: var(--font);
+      font-size: 12px;
+      line-height: 1.4;
+      outline: none;
+      background: #fff;
+      color: var(--text);
+    }
+    .feedback-widget-viz textarea:focus {
+      border-color: var(--accent);
+    }
+    .feedback-widget-viz .submit {
+      align-self: flex-start;
+      border: none;
+      border-radius: 8px;
+      background: var(--green);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 7px 12px;
+      cursor: pointer;
+    }
+    .feedback-widget-viz .submit:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
     .typing-indicator {
       display: none;
       gap: 4px;
@@ -1092,6 +1165,8 @@ let seenMsgIds   = new Set();
 let chatPollTimer  = null;
 let statePollTimer = null;
 let isSessionDone  = false;
+let awaitingFeedback = false;
+let feedbackSubmitted = false;
 
 // Track what we've already rendered to avoid unnecessary DOM thrash
 let lastMemoryIds   = [];
@@ -1178,6 +1253,7 @@ async function pollMessages() {
     (data.messages || []).forEach(addChatMessage);
 
     if (data.session_completed && !isSessionDone) {
+      if (awaitingFeedback && !feedbackSubmitted) return;
       isSessionDone = true;
       markSessionDone();
     }
@@ -1187,6 +1263,13 @@ async function pollMessages() {
 function addChatMessage(msg) {
   if (seenMsgIds.has(msg.id)) return;
   seenMsgIds.add(msg.id);
+
+  if (msg.type && msg.type !== 'conversation') {
+    if (msg.type === 'feedback_widget') {
+      showFeedbackWidget();
+    }
+    return;
+  }
 
   hideTyping();
 
@@ -1256,6 +1339,7 @@ function renderState(data) {
   renderTimeline(data.turns || []);
 
   if (data.session_completed && !isSessionDone) {
+    if (awaitingFeedback && !feedbackSubmitted) return;
     isSessionDone = true;
     markSessionDone();
   }
@@ -1644,10 +1728,92 @@ function renderTimeline(turns) {
 ================================================================ */
 function markSessionDone() {
   stopPolling();
+  awaitingFeedback = false;
   document.getElementById('session-complete-banner').classList.add('show');
   document.getElementById('btn-send').disabled = true;
   document.getElementById('chat-input').disabled = true;
+  document.getElementById('btn-end-session').disabled = true;
+  const widget = document.getElementById('feedback-widget-viz');
+  if (widget) widget.remove();
   hideTyping();
+}
+
+function showFeedbackWidget() {
+  if (feedbackSubmitted) return;
+  if (document.getElementById('feedback-widget-viz')) return;
+  awaitingFeedback = true;
+
+  const container = document.getElementById('chat-messages');
+  const card = document.createElement('div');
+  card.id = 'feedback-widget-viz';
+  card.className = 'feedback-widget-viz';
+  card.innerHTML = `
+    <div class="title">Before you go</div>
+    <div class="sub">Please rate this session and share any comments.</div>
+    <div class="sub">Satisfaction</div>
+    <div class="rate-row">
+      <button type="button" class="rate-btn" data-val="1">1</button>
+      <button type="button" class="rate-btn" data-val="2">2</button>
+      <button type="button" class="rate-btn" data-val="3">3</button>
+      <button type="button" class="rate-btn" data-val="4">4</button>
+      <button type="button" class="rate-btn" data-val="5">5</button>
+    </div>
+    <textarea id="feedback-comment-viz" placeholder="Any comments or suggestions..."></textarea>
+    <button type="button" class="submit" id="feedback-submit-viz" disabled>Submit & End Session</button>
+  `;
+  container.appendChild(card);
+  container.scrollTop = container.scrollHeight;
+  hideTyping();
+
+  let rating = null;
+  const submitBtn = card.querySelector('#feedback-submit-viz');
+
+  card.querySelectorAll('.rate-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      rating = parseInt(btn.dataset.val, 10);
+      card.querySelectorAll('.rate-btn').forEach((b) => {
+        b.classList.toggle('selected', b === btn);
+      });
+      submitBtn.disabled = false;
+    });
+  });
+
+  submitBtn.addEventListener('click', async () => {
+    if (!rating || !sessionToken) return;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Submitting...';
+    const comment = (card.querySelector('#feedback-comment-viz')?.value || '').trim();
+    try {
+      const res = await fetch('/api/submit-feedback', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          session_token: sessionToken,
+          feedback: {
+            rating,
+            comment,
+            source: 'visualizer',
+          },
+        }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit & End Session';
+        alert('Failed to submit feedback.');
+        return;
+      }
+      feedbackSubmitted = true;
+      awaitingFeedback = false;
+      isSessionDone = true;
+      markSessionDone();
+      pollState();
+    } catch (e) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Submit & End Session';
+      alert('Error submitting feedback.');
+    }
+  });
 }
 
 /* ================================================================
@@ -1726,16 +1892,26 @@ document.getElementById('btn-step')  .addEventListener('click', () => agentContr
 ================================================================ */
 document.getElementById('btn-end-session').addEventListener('click', async () => {
   if (!sessionToken) return;
+  if (isSessionDone || awaitingFeedback) return;
   if (!confirm('End the session?')) return;
+  const btn = document.getElementById('btn-end-session');
+  btn.disabled = true;
   try {
-    await fetch('/api/end-session', {
+    const res = await fetch('/api/end-session', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ session_token: sessionToken })
     });
+    const data = await res.json();
+    if (!data.success) {
+      btn.disabled = false;
+      return;
+    }
+    document.getElementById('btn-send').disabled = true;
+    document.getElementById('chat-input').disabled = true;
+    showFeedbackWidget();
   } catch(e) {}
-  markSessionDone();
-  // Final state pull
+  btn.disabled = false;
   pollState();
 });
 

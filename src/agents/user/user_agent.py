@@ -1,20 +1,27 @@
-import asyncio
 import os
 import re
 import json
+from collections import deque
+from difflib import SequenceMatcher
+from typing import Deque, Dict, List, Optional, Tuple
 from src.agents.base_agent import BaseAgent
 from src.interview_session.user.user import User
 from src.interview_session.session_models import Message
 from src.interview_session.session_models import MessageType
 from src.content.session_agenda.session_agenda import SessionAgenda
-from src.utils.logger.session_logger import SessionLogger
 from src.utils.constants.colors import ORANGE, RESET
+from src.utils.transcript_task_derivation import load_chat_history_messages
 
 
 
 class UserAgent(BaseAgent, User):
     def __init__(self, user_id: str, interview_session, config: dict = None,
-                 hesitancy: float = 0.0):
+                 hesitancy: float = 0.0, reuse_similar_answers: bool = False,
+                 similar_question_threshold: float = 0.85,
+                 similar_answer_cache_size: int = 200,
+                 anchor_to_original_transcript: bool = False,
+                 transcript_anchor_max_pairs: int = 200):
+        config = dict(config or {})
         config["model_name"] = os.getenv("USER_MODEL_NAME", os.getenv("MODEL_NAME", "gpt-4.1-mini"))
         config["base_url"] = os.getenv("USER_VLLM_BASE_URL", None)
         BaseAgent.__init__(
@@ -24,6 +31,14 @@ class UserAgent(BaseAgent, User):
                       interview_session=interview_session)
         # hesitancy ∈ [0.0, 1.0]: 0 = fully cooperative, 1 = fully withholding
         self.hesitancy = max(0.0, min(1.0, hesitancy))
+        self.reuse_similar_answers = bool(reuse_similar_answers)
+        self.similar_question_threshold = max(
+            0.0, min(1.0, float(similar_question_threshold))
+        )
+        cache_size = max(1, int(similar_answer_cache_size))
+        self._qa_history: Deque[Dict[str, str]] = deque(maxlen=cache_size)
+        self.anchor_to_original_transcript = bool(anchor_to_original_transcript)
+        self.transcript_anchor_max_pairs = max(1, int(transcript_anchor_max_pairs))
 
         # Load profile background (flat bio notes)
         profile_path = os.path.join(
@@ -79,6 +94,14 @@ class UserAgent(BaseAgent, User):
         else:
             self.conversational_style = ""
 
+        if self.anchor_to_original_transcript:
+            seeded = self._seed_from_original_transcript()
+            if seeded > 0:
+                print(
+                    f"{ORANGE}[UserAgent] Seeded {seeded} anchored Q/A pairs from "
+                    f"original transcript.{RESET}"
+                )
+
     async def on_message(self, message: Message):
         """Handle incoming messages by generating a response and notifying
         the interview session"""
@@ -106,13 +129,35 @@ class UserAgent(BaseAgent, User):
         #     self.question_score, self.question_score_reasoning = \
         #         self._extract_response(score_response)
 
-        prompt = self._get_prompt(prompt_type="respond_to_question")
-        self.add_event(sender=self.name,
-                       tag="respond_to_question_prompt", content=prompt)
+        question = str(message.content or "").strip()
+        reused = self._find_similar_answer(question)
+        if reused is not None:
+            response, similarity, matched_question = reused
+            self.add_event(
+                sender=self.name,
+                tag="respond_to_question_reuse",
+                content=(
+                    f"Matched prior question (similarity={similarity:.3f}):\n"
+                    f"{matched_question}"
+                ),
+            )
+            self.add_event(
+                sender=self.name,
+                tag="respond_to_question_response",
+                content=response,
+            )
+        else:
+            prompt = self._get_prompt(prompt_type="respond_to_question")
+            self.add_event(sender=self.name,
+                           tag="respond_to_question_prompt", content=prompt)
 
-        response = await self.call_engine_async(prompt)
-        self.add_event(sender=self.name,
-                       tag="respond_to_question_response", content=response)
+            response = await self.call_engine_async(prompt)
+            self.add_event(sender=self.name,
+                           tag="respond_to_question_response", content=response)
+
+        if question and response:
+            self._qa_history.append({"question": question, "answer": response})
+
         self.add_event(sender=self.name,
                        tag="message", content=response)
 
@@ -185,3 +230,126 @@ class UserAgent(BaseAgent, User):
             1).strip() if response_match else full_response
         thinking = thinking_match.group(1).strip() if thinking_match else ""
         return response, thinking
+
+    @staticmethod
+    def _normalize_question(question: str) -> str:
+        normalized = question.lower().replace("'", "").replace("’", "")
+        normalized = re.sub(r"[^a-z0-9\s]", " ", normalized)
+        normalized = re.sub(r"\s+", " ", normalized).strip()
+        return normalized
+
+    @staticmethod
+    def _token_jaccard(a: str, b: str) -> float:
+        a_tokens = set(a.split())
+        b_tokens = set(b.split())
+        if not a_tokens or not b_tokens:
+            return 0.0
+        return len(a_tokens & b_tokens) / len(a_tokens | b_tokens)
+
+    def _question_similarity(self, question_a: str, question_b: str) -> float:
+        a = self._normalize_question(question_a)
+        b = self._normalize_question(question_b)
+        if not a or not b:
+            return 0.0
+        if a == b:
+            return 1.0
+
+        seq_ratio = SequenceMatcher(None, a, b).ratio()
+        jaccard = self._token_jaccard(a, b)
+        return max(seq_ratio, jaccard)
+
+    def _find_similar_answer(
+        self, question: str
+    ) -> Optional[Tuple[str, float, str]]:
+        if not self.reuse_similar_answers or not question:
+            return None
+
+        best_match = None
+        best_score = -1.0
+        for qa in reversed(self._qa_history):
+            prior_question = qa.get("question", "")
+            prior_answer = qa.get("answer", "")
+            if not prior_question or not prior_answer:
+                continue
+            score = self._question_similarity(question, prior_question)
+            if score >= self.similar_question_threshold and score > best_score:
+                best_match = (prior_answer, score, prior_question)
+                best_score = score
+
+        return best_match
+
+    @staticmethod
+    def _extract_interviewer_user_pairs(messages: List[Dict[str, str]]) -> List[Dict[str, str]]:
+        """Build interviewer->user Q/A pairs from parsed chat history messages."""
+        pairs: List[Dict[str, str]] = []
+        current_question = ""
+        current_answers: List[str] = []
+
+        def _flush() -> None:
+            nonlocal current_question, current_answers
+            if not current_question or not current_answers:
+                return
+            answer_text = "\n".join(a.strip() for a in current_answers if a.strip()).strip()
+            if answer_text:
+                pairs.append({"question": current_question.strip(), "answer": answer_text})
+            current_answers = []
+
+        for msg in messages:
+            speaker = str(msg.get("speaker", "")).strip()
+            content = str(msg.get("content", "")).strip()
+            if not content:
+                continue
+            if speaker == "Interviewer":
+                _flush()
+                current_question = content
+            elif speaker == "User" and current_question:
+                current_answers.append(content)
+
+        _flush()
+        return pairs
+
+    def _load_original_transcript_qa_pairs(self) -> List[Dict[str, str]]:
+        uid = getattr(self, "_user_id", getattr(self, "user_id", ""))
+        if not uid:
+            return []
+        profiles_dir = os.getenv("USER_AGENT_PROFILES_DIR", "data/sample_user_profiles")
+        artifact_path = os.path.join(
+            profiles_dir, uid, f"{uid}_derived_tasks_from_transcript.json"
+        )
+        if not os.path.exists(artifact_path):
+            return []
+
+        try:
+            with open(artifact_path, "r", encoding="utf-8") as f:
+                artifact = json.load(f)
+        except Exception:
+            return []
+
+        log_path = str(artifact.get("source_chat_history_log") or "").strip()
+        if not log_path:
+            return []
+        if not os.path.exists(log_path):
+            return []
+
+        try:
+            messages = load_chat_history_messages(log_path)
+        except Exception:
+            return []
+
+        return self._extract_interviewer_user_pairs(messages)
+
+    def _seed_from_original_transcript(self) -> int:
+        """Seed in-memory Q/A cache with pairs from source pilot transcript."""
+        pairs = self._load_original_transcript_qa_pairs()
+        if not pairs:
+            return 0
+
+        seeded = 0
+        for qa in pairs[: self.transcript_anchor_max_pairs]:
+            question = str(qa.get("question", "")).strip()
+            answer = str(qa.get("answer", "")).strip()
+            if not question or not answer:
+                continue
+            self._qa_history.append({"question": question, "answer": answer})
+            seeded += 1
+        return seeded

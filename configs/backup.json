@@ -13,11 +13,25 @@
     ]
   },
   {
+    "description": "Tasks done with AI tools, new tasks created by AI, and resulting workflow changes",
+    "coverage_criteria": [
+      "Distinguishes among (a) tasks still done manually, (b) existing tasks now done with AI tools, and (c) net-new tasks that exist because AI tools are available.",
+      "For each task done with AI tools (including net-new AI-created tasks), capture how often AI is used for that task.",
+      "For each AI-used existing task, capture at least one concrete workflow change versus before AI (what step changed, what was removed/added, or what became faster/slower).",
+      "For each net-new AI-created task, capture what made it possible/necessary and whether it replaced, expanded, or added to prior responsibilities.",
+      "The Interviewer has explicitly probed manual-task AI demand: for tasks still mostly manual, ask whether there is any part they wish AI could help with but currently do not use a tool for. Capture either (a) at least one desired-but-not-yet-adopted AI use case, or (b) an explicit 'none/no interest' answer.",
+      "If a desired-but-not-yet-adopted AI use case is identified, capture the main adoption blocker (e.g., quality/trust, privacy/policy, setup friction, cost, lack of fit).",
+      "ANTI-DUPLICATION: Do NOT ask two near-duplicate workflow-difference questions in a row for the same task set. If the participant already gave a clear global answer (e.g., 'not very different', 'mostly the same', 'completely different'), treat the workflow-change question as answered and move to remaining missing dimensions.",
+      "ANTI-DUPLICATION: Once AI-usage frequency is answered (e.g., 'every time', 'occasionally'), do not re-ask frequency with different wording for the same tasks unless the prior answer was ambiguous."
+    ],
+    "priority_weight": 0.8
+  },
+  {
     "description": "Priority tasks: the task(s) the participant considers most important in their work.",
     "coverage_criteria": [
       "STEP 1 (open ask) — REQUIRED: The Interviewer has asked the participant, open-endedly, which task feels most important to them (e.g., 'Which of those feels most important to you?' or 'Which one matters most?'). Ask this once regardless of how many priorities the participant names.",
-      "STEP 2 (single confirmation) — REQUIRED: The Interviewer has asked ONE follow-up after the participant named their priority — e.g., 'Anything else on that same level, or is that the main one?' Ask this exactly once. A future-oriented answer ('will be important', 'down the line') is fully valid — accept it without probing further.",
-      "COMPLETION: Once STEP 1 and STEP 2 have each been asked once, this subtopic is DONE. Mark it covered and move on immediately. Do NOT ask any further questions about priorities.",
+      "STEP 2 (direct confirmation) — REQUIRED only when needed: Confirm main priority once with direct wording (e.g., 'Would you say that's your main priority right now?'). Do NOT use 'anything else on the same level' phrasing. If the participant already gave an explicit singular answer (e.g., 'just the report', 'that's the main one'), treat STEP 2 as satisfied without asking another question.",
+      "COMPLETION: Once STEP 1 is answered and STEP 2 is either asked once or implicitly satisfied by a clear singular answer, this subtopic is DONE. Mark it covered and move on immediately. Do NOT ask any further questions about priorities.",
       "For each priority task, map out the workflow of the task and the subtasks that are part of the workflow."
     ],
     "priority_weight": 0.5
@@ -26,8 +40,8 @@
     "description": "Priority tasks: the task(s) the participant considers most important in their work.",
     "coverage_criteria": [
       "STEP 1 (open ask): Ask once, open-ended, which task is most important — e.g., 'Which of those feels most important to you?' or 'Which one matters most?'. Do not frame as 'one or two'; let the participant name whatever count they volunteer.",
-      "STEP 2 (single confirmation): After the participant names their priority task(s), ask ONE confirmation probe — e.g., 'Anything else on the same level, or is that the main one?'. Accept whatever answer they give and move on. Do NOT probe a second time, do NOT re-ask in different wording, do NOT push for more.",
-      "Once STEP 1 and STEP 2 have each been asked once, mark this subtopic covered and advance — regardless of how many priorities were named.",
+      "STEP 2 (direct confirmation): If needed, ask ONE direct confirmation (e.g., 'Would you say that's your main priority right now?'). Do NOT ask 'anything else on the same level' variants. If the user already states a single clear priority, do not ask a second confirmation.",
+      "Once STEP 1 is answered and STEP 2 is either asked once or implicitly satisfied by a clear singular answer, mark this subtopic covered and advance.",
       "Distinguishes priority from time-spent — a task can be low-frequency but high-stakes.",
       "Do NOT plant reasons or offer multiple-choice framings when asking about priority (e.g., avoid 'is that because of X, or because of Y?'). Use open probes: 'What makes it the most important?' or 'Why that one?'.",
       "Questions in this subtopic must NOT include examples, suggestions, or option lists (no 'like reading, coding, writing, meetings', 'such as X', 'for example'). Ask open-endedly — let the participant name the task in their own words."
@@ -35,11 +49,14 @@
     "priority_weight": 0.5
   },
   {
-    "description": "Tasks they do with AI tools and how it changes their workflow",
+    "description": "Tasks done with AI tools, new tasks created by AI, and resulting workflow changes",
     "coverage_criteria": [
-      "Distinguishes between tasks performed manually and those performed with AI tools.",
-      "If the user uses AI tools for a task, capture the frequency of AI tool usage for that task.",
-      "If the user uses AI tools for a task, capture how the use of AI tools changes their workflow for that task."
+      "Distinguishes among (a) tasks still done manually, (b) existing tasks now done with AI tools, and (c) net-new tasks that exist because AI tools are available.",
+      "For each task done with AI tools (including net-new AI-created tasks), capture how often AI is used for that task.",
+      "For each net-new AI-created task, capture what made it possible/necessary and whether it replaced, expanded, or added to prior responsibilities.",
+      "For each task done with AI tools, capture how workflow changed versus pre-AI (steps added/removed, speed, quality control/review burden, and handoffs).",
+      "ANTI-DUPLICATION: Do NOT ask two near-duplicate workflow-difference questions in a row for the same task set. If the participant already gave a clear global answer (e.g., 'not very different', 'mostly the same', 'completely different'), treat the workflow-change question as answered and move to remaining missing dimensions.",
+      "ANTI-DUPLICATION: Once AI-usage frequency is answered (e.g., 'every time', 'occasionally'), do not re-ask frequency with different wording for the same tasks unless the prior answer was ambiguous."
     ],
     "priority_weight": 0.5
   },

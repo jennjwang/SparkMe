@@ -14,6 +14,12 @@ python scripts/run_simulation.py --profile-user-id 1T8lGuWK6w-0q4S-s2_KeA --max-
 USER_AGENT_HESITANCY=0.5 python scripts/run_simulation.py \
     --profile-user-id 1T8lGuWK6w-0q4S-s2_KeA --max-turns 30
 
+# Reuse answers for similar questions (enabled by default)
+python scripts/run_simulation.py \
+    --profile-user-id 1T8lGuWK6w-0q4S-s2_KeA \
+    --reuse-similar-answers \
+    --similarity-threshold 0.85
+
 # Batch: run multiple profiles / hesitancy levels
 python scripts/run_simulation.py \
     --profile-user-id 1T8lGuWK6w-0q4S-s2_KeA WF31MF3_WtHzW78V6hH2lg \
@@ -41,6 +47,17 @@ from dotenv import load_dotenv
 load_dotenv(override=True)
 
 
+def parse_bool(value: str, default: bool = False) -> bool:
+    if value is None:
+        return default
+    text = str(value).strip().lower()
+    if text in {"1", "true", "yes", "y", "on"}:
+        return True
+    if text in {"0", "false", "no", "n", "off"}:
+        return False
+    return default
+
+
 def create_sim_user(profile_user_id: str, profiles_dir: str, sim_user_id: str) -> str:
     """Copy profile files from profile_user_id to sim_user_id directory."""
     src_dir = os.path.join(profiles_dir, profile_user_id)
@@ -61,7 +78,16 @@ def create_sim_user(profile_user_id: str, profiles_dir: str, sim_user_id: str) -
     return sim_user_id
 
 
-async def run_session(sim_user_id: str, max_turns: int, session_type: str):
+async def run_session(
+    sim_user_id: str,
+    max_turns: int,
+    session_type: str,
+    reuse_similar_answers: bool,
+    similar_question_threshold: float,
+    similar_answer_cache_size: int,
+    anchor_to_original_transcript: bool,
+    transcript_anchor_max_pairs: int,
+):
     from src.interview_session.interview_session import InterviewSession
 
     if session_type == "weekly":
@@ -76,7 +102,16 @@ async def run_session(sim_user_id: str, max_turns: int, session_type: str):
 
     session = InterviewSession(
         interaction_mode="agent",
-        user_config={"user_id": sim_user_id, "enable_voice": False, "restart": False},
+        user_config={
+            "user_id": sim_user_id,
+            "enable_voice": False,
+            "restart": False,
+            "reuse_similar_answers": reuse_similar_answers,
+            "similar_question_threshold": similar_question_threshold,
+            "similar_answer_cache_size": similar_answer_cache_size,
+            "anchor_to_original_transcript": anchor_to_original_transcript,
+            "transcript_anchor_max_pairs": transcript_anchor_max_pairs,
+        },
         interview_config={
             "enable_voice": False,
             "interview_description": interview_description,
@@ -100,8 +135,76 @@ def main():
                         help="Override synthetic user_id(s) (skip profile copy if set)")
     parser.add_argument("--max-turns", type=int, default=40)
     _default_hesitancy = float(os.getenv("USER_AGENT_HESITANCY", "0.0"))
+    _default_reuse_similar_answers = parse_bool(
+        os.getenv("USER_AGENT_REUSE_SIMILAR_ANSWERS", "true"), default=True
+    )
+    _default_sim_threshold = float(os.getenv("USER_AGENT_SIMILARITY_THRESHOLD", "0.85"))
+    _default_sim_cache_size = int(os.getenv("USER_AGENT_SIMILAR_ANSWER_CACHE_SIZE", "200"))
+    _default_anchor_transcript = parse_bool(
+        os.getenv("USER_AGENT_ANCHOR_TO_ORIGINAL_TRANSCRIPT", "false"), default=False
+    )
+    _default_anchor_pairs = int(os.getenv("USER_AGENT_TRANSCRIPT_ANCHOR_MAX_PAIRS", "200"))
     parser.add_argument("--hesitancy", nargs="*", type=float, default=[_default_hesitancy],
                         help=f"Hesitancy level(s) 0.0–1.0 (default: {_default_hesitancy} from USER_AGENT_HESITANCY)")
+    parser.add_argument(
+        "--reuse-similar-answers",
+        dest="reuse_similar_answers",
+        action="store_true",
+        default=_default_reuse_similar_answers,
+        help=(
+            "Reuse the same answer for semantically similar interviewer questions "
+            f"(default: {_default_reuse_similar_answers})."
+        ),
+    )
+    parser.add_argument(
+        "--no-reuse-similar-answers",
+        dest="reuse_similar_answers",
+        action="store_false",
+        help="Disable answer reuse for similar questions.",
+    )
+    parser.add_argument(
+        "--similarity-threshold",
+        type=float,
+        default=_default_sim_threshold,
+        help=(
+            "Similarity threshold in [0,1] for considering two questions similar "
+            f"(default: {_default_sim_threshold} from USER_AGENT_SIMILARITY_THRESHOLD)."
+        ),
+    )
+    parser.add_argument(
+        "--similar-answer-cache-size",
+        type=int,
+        default=_default_sim_cache_size,
+        help=(
+            "How many prior Q/A pairs to keep for similarity matching "
+            f"(default: {_default_sim_cache_size} from USER_AGENT_SIMILAR_ANSWER_CACHE_SIZE)."
+        ),
+    )
+    parser.add_argument(
+        "--anchor-to-original-transcript",
+        dest="anchor_to_original_transcript",
+        action="store_true",
+        default=_default_anchor_transcript,
+        help=(
+            "Seed simulator Q/A cache from source pilot transcript to keep responses "
+            f"close to original interview wording (default: {_default_anchor_transcript})."
+        ),
+    )
+    parser.add_argument(
+        "--no-anchor-to-original-transcript",
+        dest="anchor_to_original_transcript",
+        action="store_false",
+        help="Disable transcript-anchored Q/A seeding.",
+    )
+    parser.add_argument(
+        "--transcript-anchor-max-pairs",
+        type=int,
+        default=_default_anchor_pairs,
+        help=(
+            "Max interviewer/user Q/A pairs to preload from source transcript "
+            f"(default: {_default_anchor_pairs} from USER_AGENT_TRANSCRIPT_ANCHOR_MAX_PAIRS)."
+        ),
+    )
     parser.add_argument("--session-type", default="intake", choices=["intake", "weekly"])
     parser.add_argument("--profiles-dir", default=None,
                         help="Override USER_AGENT_PROFILES_DIR")
@@ -132,8 +235,25 @@ def main():
             create_sim_user(profile_uid, profiles_dir, sim_uid)
 
         os.environ["USER_AGENT_HESITANCY"] = str(hesitancy)
-        print(f"\n[sim] Running: user={sim_uid}  hesitancy={hesitancy}  max_turns={args.max_turns}")
-        asyncio.run(run_session(sim_uid, args.max_turns, args.session_type))
+        print(
+            f"\n[sim] Running: user={sim_uid}  hesitancy={hesitancy}  "
+            f"reuse_similar_answers={args.reuse_similar_answers}  "
+            f"threshold={args.similarity_threshold:.2f}  "
+            f"anchor_to_original_transcript={args.anchor_to_original_transcript}  "
+            f"max_turns={args.max_turns}"
+        )
+        asyncio.run(
+            run_session(
+                sim_uid,
+                args.max_turns,
+                args.session_type,
+                reuse_similar_answers=args.reuse_similar_answers,
+                similar_question_threshold=args.similarity_threshold,
+                similar_answer_cache_size=args.similar_answer_cache_size,
+                anchor_to_original_transcript=args.anchor_to_original_transcript,
+                transcript_anchor_max_pairs=args.transcript_anchor_max_pairs,
+            )
+        )
         sim_user_ids.append(sim_uid)
         print(f"[sim] Done: {sim_uid}")
 

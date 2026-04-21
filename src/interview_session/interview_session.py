@@ -3,7 +3,7 @@ import json
 import os
 import uuid
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, TypedDict
+from typing import Callable, Dict, List, Optional, TypedDict
 import signal
 import contextlib
 
@@ -33,6 +33,88 @@ from src.content.weekly_snapshot.snapshot_manager import SnapshotManager
 from src.content.weekly_snapshot.weekly_snapshot import WeeklySnapshot, TaskEntry
 
 
+import re as _re
+_CADENCE_RE = _re.compile(
+    r"\b(weekly|monthly|daily|annual|quarterly|biweekly|bi-weekly|regular|occasional|periodic)\b"
+)
+
+
+def _env_to_bool(value: Optional[object], default: bool = False) -> bool:
+    """Parse bool-like values from config/env."""
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    text = str(value).strip().lower()
+    if text in {"1", "true", "yes", "y", "on"}:
+        return True
+    if text in {"0", "false", "no", "n", "off"}:
+        return False
+    return default
+
+
+def _task_core(t: str) -> str:
+    """Normalize task string to action+object for dedup matching.
+
+    Strips:
+    - The purpose clause after " to " (same action+object = same task regardless of goal)
+    - Cadence words like "weekly", "monthly" (same meeting is the same task regardless of cadence)
+    """
+    t = t.lower().strip()
+    t = _CADENCE_RE.sub("", t)
+    t = _re.sub(r"\s+", " ", t).strip()
+    return t.split(" to ")[0].strip() if " to " in t else t
+
+
+def merge_task_inventories(new_tasks: List[str], prior_tasks: List[str]) -> List[str]:
+    """Merge two Task Inventory lists, preserving prior tasks not covered by new ones.
+
+    Matching uses action+object identity (prefix before " to ") so that tasks with
+    different purpose clauses for the same activity are treated as the same task.
+    """
+    if not prior_tasks:
+        return list(new_tasks)
+    new_cores = [_task_core(t) for t in new_tasks]
+    merged = list(new_tasks)
+    for old in prior_tasks:
+        old_core = _task_core(old)
+        covered = any(old_core in nc or nc in old_core for nc in new_cores)
+        if not covered:
+            merged.append(old)
+    return merged
+
+
+def _task_specificity_score(task: str) -> tuple[int, int, int]:
+    """Higher score means the phrasing is more specific/informative."""
+    t = str(task or "").strip()
+    has_objective = 1 if " to " in t.lower() else 0
+    token_count = len(t.split())
+    return (has_objective, token_count, len(t))
+
+
+def merge_tasks_by_action_object(tasks: List[str]) -> List[str]:
+    """Deduplicate task variants by action+object, ignoring objective differences.
+
+    Keeps first-seen core order while preferring the most specific phrasing for
+    duplicates of the same core.
+    """
+    out: List[str] = []
+    core_to_index: Dict[str, int] = {}
+    for raw in tasks or []:
+        task = str(raw or "").strip()
+        if not task:
+            continue
+        core = _task_core(task)
+        if not core:
+            continue
+        if core not in core_to_index:
+            core_to_index[core] = len(out)
+            out.append(task)
+            continue
+        idx = core_to_index[core]
+        if _task_specificity_score(task) > _task_specificity_score(out[idx]):
+            out[idx] = task
+    return out
 
 
 class UserConfig(TypedDict, total=False):
@@ -159,6 +241,9 @@ class InterviewSession:
         self._feedback_widget_sent = False
         self._feedback_submitted = False
 
+        # Profile confirm widget (shown after first topic is covered)
+        self._profile_confirm_widget_sent = False
+
         # Report auto-update states
         self.auto_report_update_in_progress = False
         self.memory_threshold = int(
@@ -186,13 +271,59 @@ class InterviewSession:
         # memory count prevents re-running when no new memories were added.
         self._portrait_update_lock = asyncio.Lock()
         self._portrait_update_memory_count = 0
+        # Optional callback injected by the web app to prewarm task-tree cache.
+        self._task_tree_prewarm_callback: Optional[Callable[[List[str], str], bool]] = None
 
         # User in the interview session
         if interaction_mode == 'agent':
-            hesitancy = float(os.getenv("USER_AGENT_HESITANCY", "0.0"))
+            hesitancy = float(
+                user_config.get(
+                    "hesitancy",
+                    os.getenv("USER_AGENT_HESITANCY", "0.0")
+                )
+            )
+            reuse_similar_answers = _env_to_bool(
+                user_config.get("reuse_similar_answers"),
+                default=_env_to_bool(
+                    os.getenv("USER_AGENT_REUSE_SIMILAR_ANSWERS", "false"),
+                    default=False,
+                ),
+            )
+            similar_question_threshold = float(
+                user_config.get(
+                    "similar_question_threshold",
+                    os.getenv("USER_AGENT_SIMILARITY_THRESHOLD", "0.85"),
+                )
+            )
+            similar_answer_cache_size = int(
+                user_config.get(
+                    "similar_answer_cache_size",
+                    os.getenv("USER_AGENT_SIMILAR_ANSWER_CACHE_SIZE", "200"),
+                )
+            )
+            anchor_to_original_transcript = _env_to_bool(
+                user_config.get("anchor_to_original_transcript"),
+                default=_env_to_bool(
+                    os.getenv("USER_AGENT_ANCHOR_TO_ORIGINAL_TRANSCRIPT", "false"),
+                    default=False,
+                ),
+            )
+            transcript_anchor_max_pairs = int(
+                user_config.get(
+                    "transcript_anchor_max_pairs",
+                    os.getenv("USER_AGENT_TRANSCRIPT_ANCHOR_MAX_PAIRS", "200"),
+                )
+            )
             self.user: User = UserAgent(
                 user_id=self.user_id, interview_session=self,
-                config=user_config, hesitancy=hesitancy)
+                config=user_config,
+                hesitancy=hesitancy,
+                reuse_similar_answers=reuse_similar_answers,
+                similar_question_threshold=similar_question_threshold,
+                similar_answer_cache_size=similar_answer_cache_size,
+                anchor_to_original_transcript=anchor_to_original_transcript,
+                transcript_anchor_max_pairs=transcript_anchor_max_pairs,
+            )
         elif interaction_mode == 'terminal':
             self.user: User = User(user_id=self.user_id, interview_session=self,
                                    enable_voice_input=user_config \
@@ -392,9 +523,9 @@ class InterviewSession:
             elif self.paused and self._awaiting_time_extension:
                 asyncio.create_task(self._offer_time_extension())
 
-    def add_message_to_chat_history(self, role: str, content: str = "", 
+    def add_message_to_chat_history(self, role: str, content: str = "",
                                     message_type: str = MessageType.CONVERSATION,
-                                    metadata: dict = {}):
+                                    metadata: Optional[dict] = None):
         """Add a message to the chat history"""
 
         # Reject messages if session is not in progress
@@ -408,6 +539,7 @@ class InterviewSession:
             content = "Like the question"
 
         # Create message object
+        metadata = dict(metadata or {})
         message = Message(
             id=str(uuid.uuid4()),
             type=message_type,
@@ -420,19 +552,62 @@ class InterviewSession:
         if role == "User":
             self._last_message_time = message.timestamp
         elif role == "Interviewer" and self._last_user_message is not None:
+            # Attach turn linkage metadata so API delivery can measure full
+            # turn latency (ingest -> generation -> delivery) deterministically.
+            if message_type == MessageType.CONVERSATION:
+                user_meta = self._last_user_message.metadata if isinstance(
+                    self._last_user_message.metadata, dict
+                ) else {}
+                turn_id = str(user_meta.get("turn_id", "")).strip()
+                if turn_id:
+                    message.metadata.setdefault("turn_id", turn_id)
+                    message.metadata.setdefault(
+                        "paired_user_message_id", self._last_user_message.id
+                    )
+                    message.metadata.setdefault(
+                        "paired_user_timestamp",
+                        self._last_user_message.timestamp.isoformat()
+                    )
+                    api_received_at = str(user_meta.get("api_received_at", "")).strip()
+                    if api_received_at:
+                        message.metadata.setdefault("api_received_at", api_received_at)
+                    message.metadata.setdefault(
+                        "transport", str(user_meta.get("transport", "text"))
+                    )
+                    message.metadata.setdefault(
+                        "user_message_length", len(self._last_user_message.content or "")
+                    )
             self._last_user_message = None
         
         # Log feedback (not for widget trigger messages)
-        if message_type not in (MessageType.CONVERSATION, MessageType.TIME_SPLIT_WIDGET, MessageType.FEEDBACK_WIDGET):
+        if message_type not in (
+            MessageType.CONVERSATION,
+            MessageType.TIME_SPLIT_WIDGET,
+            MessageType.AI_USAGE_WIDGET,
+            MessageType.FEEDBACK_WIDGET,
+            MessageType.PROFILE_CONFIRM_WIDGET,
+        ):
             save_feedback_to_csv(
                 self.chat_history[-1], message, self.user_id, self.session_id)
 
         # Notify participants if message is a skip, conversation, or UI widget trigger
-        if message_type in (MessageType.SKIP, MessageType.CONVERSATION, MessageType.TIME_SPLIT_WIDGET, MessageType.FEEDBACK_WIDGET):
+        if message_type in (
+            MessageType.SKIP,
+            MessageType.CONVERSATION,
+            MessageType.TIME_SPLIT_WIDGET,
+            MessageType.AI_USAGE_WIDGET,
+            MessageType.FEEDBACK_WIDGET,
+            MessageType.PROFILE_CONFIRM_WIDGET,
+        ):
 
             # Add message to chat history
             self.chat_history.append(message)
-            if message_type not in (MessageType.TIME_SPLIT_WIDGET, MessageType.FEEDBACK_WIDGET):
+            if message_type not in (
+                MessageType.TIME_SPLIT_WIDGET,
+                MessageType.AI_USAGE_WIDGET,
+                MessageType.FEEDBACK_WIDGET,
+                MessageType.PROFILE_CONFIRM_WIDGET,
+            ):
                 SessionLogger.log_to_file(
                     "chat_history", f"{message.role}: {message.content}")
 
@@ -624,32 +799,78 @@ class InterviewSession:
             "execution_log", f"[SNAPSHOT] Weekly snapshot saved to {path}"
         )
 
+    async def ensure_user_portrait_fresh(
+        self,
+        min_memory_count: Optional[int] = None,
+        wait_for_inflight: bool = True,
+    ) -> bool:
+        """Ensure portrait is current for at least ``min_memory_count`` memories.
+
+        Returns:
+            True if this call performed a fresh portrait extraction.
+            False if portrait was already fresh or an in-flight refresh was reused.
+        """
+        target_count = max(0, int(min_memory_count or 0))
+        target_count = max(target_count, len(self.memory_bank.memories))
+        if target_count <= self._portrait_update_memory_count:
+            return False
+
+        if self._portrait_update_lock.locked():
+            if not wait_for_inflight:
+                return False
+            # Wait for the in-flight refresh, then re-check freshness.
+            async with self._portrait_update_lock:
+                pass
+            target_count = max(target_count, len(self.memory_bank.memories))
+            if target_count <= self._portrait_update_memory_count:
+                return False
+
+        async with self._portrait_update_lock:
+            target_count = max(target_count, len(self.memory_bank.memories))
+            if target_count <= self._portrait_update_memory_count:
+                return False
+            await self._generate_and_save_user_portrait_inner()
+            return True
+
     async def _generate_and_save_user_portrait(self):
         """Synthesize all session memories into the user portrait schema and save to file."""
-        if self._portrait_update_lock.locked():
-            # Another portrait update is already in flight; skip this concurrent call
-            # so we never run two LLM extractions simultaneously (which produces
-            # divergent task lists and cascades into multiple screen passes).
-            return
-        async with self._portrait_update_lock:
-            await self._generate_and_save_user_portrait_inner()
+        await self.ensure_user_portrait_fresh(wait_for_inflight=False)
 
     async def _generate_and_save_user_portrait_inner(self):
         from src.agents.session_scribe.prompts import get_prompt as scribe_get_prompt
         from src.utils.llm.engines import get_engine, invoke_engine
 
         memories = self.memory_bank.memories
-        if not memories:
-            return
 
         memories_text = "\n".join(
             f"- [{m.title}] {m.text}" for m in memories
-        )
+        ) if memories else "(none)"
+
+        # Include the conversation transcript so the portrait extraction can
+        # recover tasks that the scribe may have bundled into too few memories.
+        conv_turns = [
+            m for m in self.chat_history
+            if getattr(m, "type", None) == MessageType.CONVERSATION
+        ]
+        transcript_text = "\n".join(
+            f"{m.role}: {m.content}" for m in conv_turns
+        ) if conv_turns else "(none)"
+
+        if not memories and not conv_turns:
+            return
+
         current_portrait = self.session_agenda.user_portrait
+        prior_tasks = (
+            current_portrait.get("Task Inventory", [])
+            if isinstance(current_portrait, dict) else []
+        )
+        prior_tasks_text = "\n".join(f"- {t}" for t in prior_tasks) if prior_tasks else "(none)"
 
         prompt_template = scribe_get_prompt("extract_user_portrait")
         prompt = prompt_template.format(
             memories=memories_text,
+            transcript=transcript_text,
+            prior_tasks=prior_tasks_text,
             user_portrait=str(current_portrait),
         )
 
@@ -687,22 +908,76 @@ class InterviewSession:
 
         portrait_data = normalize_user_portrait(portrait_data)
 
-        # Merge Task Inventory: preserve tasks from the prior portrait that the LLM
-        # dropped (it may omit tasks not mentioned in the current session's memories
-        # even though they were confirmed in a prior session).
-        prior_tasks = current_portrait.get("Task Inventory", []) if isinstance(current_portrait, dict) else []
-        new_tasks = portrait_data.get("Task Inventory", [])
-        if prior_tasks:
-            def _norm_task(t: str) -> str:
-                return t.lower().strip()
-            merged = list(new_tasks)
-            for old in prior_tasks:
-                old_n = _norm_task(old)
-                covered = any(old_n in _norm_task(new) or _norm_task(new) in old_n
-                              for new in new_tasks)
-                if not covered:
-                    merged.append(old)
-            portrait_data["Task Inventory"] = merged
+        # Enforce deterministic Task Inventory merge semantics:
+        # same action+object => one task (objective does not distinguish tasks).
+        # prior_tasks phrasings are authoritative (user widget edits or confirmed
+        # prior-session wording): if the LLM returned a different phrasing that
+        # shares the same action+object core, snap it back to the prior_tasks
+        # wording. If the LLM dropped a prior task without the user saying they
+        # stopped it, re-insert it verbatim.
+        if isinstance(portrait_data, dict):
+            task_inventory = portrait_data.get("Task Inventory")
+            if isinstance(task_inventory, list):
+                returned = [str(t).strip() for t in task_inventory if str(t).strip()]
+                prior_by_core: Dict[str, str] = {}
+                for pt in prior_tasks:
+                    pt_str = str(pt).strip()
+                    if not pt_str:
+                        continue
+                    core = _task_core(pt_str)
+                    if core and core not in prior_by_core:
+                        prior_by_core[core] = pt_str
+
+                canonical: List[str] = []
+                seen_cores: set[str] = set()
+                for entry in returned:
+                    core = _task_core(entry)
+                    if not core:
+                        continue
+                    authoritative = prior_by_core.get(core, entry)
+                    if core in seen_cores:
+                        continue
+                    seen_cores.add(core)
+                    canonical.append(authoritative)
+
+                for core, pt_str in prior_by_core.items():
+                    if core not in seen_cores:
+                        canonical.append(pt_str)
+                        seen_cores.add(core)
+
+                portrait_data["Task Inventory"] = merge_tasks_by_action_object(canonical)
+
+        # Carry forward the user-authored task hierarchy (drag-and-drop regroupings
+        # saved via the time-split widget) if its leaves still match the new
+        # inventory. When the inventory shifts, drop it so the LLM organizer can
+        # rebuild a tree that reflects the new tasks.
+        if isinstance(portrait_data, dict) and isinstance(current_portrait, dict):
+            saved_tree = current_portrait.get("Task Grouping Tree")
+            if isinstance(saved_tree, list) and saved_tree:
+                def _collect_leaves(nodes):
+                    out: List[str] = []
+                    for n in nodes or []:
+                        if not isinstance(n, dict):
+                            continue
+                        children = n.get("children") or []
+                        if isinstance(children, list) and children:
+                            out.extend(_collect_leaves(children))
+                        else:
+                            name = str(n.get("name") or "").strip()
+                            if name:
+                                out.append(name)
+                    return out
+
+                def _norm(s: str) -> str:
+                    return " ".join(str(s or "").strip().lower().split())
+
+                leaf_keys = {_norm(t) for t in _collect_leaves(saved_tree) if _norm(t)}
+                inv = portrait_data.get("Task Inventory") or []
+                want_keys = {_norm(t) for t in inv if _norm(t)}
+                if leaf_keys and leaf_keys == want_keys:
+                    portrait_data["Task Grouping Tree"] = saved_tree
+                else:
+                    portrait_data.pop("Task Grouping Tree", None)
 
         # Update the in-memory portrait
         self.session_agenda.user_portrait = portrait_data
@@ -719,6 +994,31 @@ class InterviewSession:
         SessionLogger.log_to_file(
             "execution_log", f"[PORTRAIT] User portrait updated ({len(memories)} memories)"
         )
+        asyncio.create_task(self._prewarm_task_tree_cache_from_portrait())
+
+    async def _prewarm_task_tree_cache_from_portrait(self) -> None:
+        """Seed organize-tasks cache after portrait updates."""
+        callback = getattr(self, "_task_tree_prewarm_callback", None)
+        if not callable(callback):
+            return
+        portrait = getattr(self.session_agenda, "user_portrait", {})
+        if not isinstance(portrait, dict):
+            return
+        tasks = [str(t).strip() for t in (portrait.get("Task Inventory") or []) if str(t).strip()]
+        if len(tasks) < 2:
+            return
+        grouping_feedback = str(portrait.get("Task Grouping Feedback", "") or "")
+        try:
+            cached = await asyncio.to_thread(callback, tasks, grouping_feedback)
+            SessionLogger.log_to_file(
+                "execution_log",
+                f"[TASK_TREE] Prewarm complete tasks={len(tasks)} cached={bool(cached)}",
+            )
+        except Exception as e:
+            SessionLogger.log_to_file(
+                "execution_log",
+                f"[TASK_TREE] Prewarm failed: {e}",
+            )
 
     async def get_session_memories(self, include_processed=True) -> List[Memory]:
         """Get memories added during this session
@@ -988,6 +1288,25 @@ class InterviewSession:
         SessionLogger.log_to_file(
             "execution_log",
             "[FEEDBACK] Feedback widget emitted; awaiting submission."
+        )
+
+    def trigger_profile_confirm_widget(self):
+        """Emit the post-first-topic profile review widget.
+
+        Safe to call multiple times — only the first call emits the widget.
+        """
+        if self._profile_confirm_widget_sent:
+            return
+        self._profile_confirm_widget_sent = True
+        self._last_message_time = datetime.now()
+        self.add_message_to_chat_history(
+            role="Interviewer",
+            content="",
+            message_type=MessageType.PROFILE_CONFIRM_WIDGET,
+        )
+        SessionLogger.log_to_file(
+            "execution_log",
+            "[PROFILE_CONFIRM] Profile confirm widget emitted."
         )
 
     def submit_feedback(self, feedback: dict):
