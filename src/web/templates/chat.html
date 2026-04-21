@@ -2714,6 +2714,7 @@
       let sessionRecoverAttempts = 0;
       const MAX_SESSION_RECOVER_ATTEMPTS = 1;
       const MIN_SESSION_DURATION_MS = 0;
+      const VALID_AVAILABLE_TIME_OPTIONS = new Set([10, 15, 20, 30, 45, 60]);
       let profileConfirmPending = false;
       let profileConfirmWidgetSeen = false;
       let botMessageBuffer = [];
@@ -2734,7 +2735,7 @@
       function startTimer() {
         const el = document.getElementById("session-timer");
         const tick = () => {
-          const elapsedMs = Date.now() - sessionStartTime;
+          const elapsedMs = Math.max(0, Date.now() - sessionStartTime);
           if (sessionTargetMs) {
             const remainingMs = sessionTargetMs - elapsedMs;
             const remainingMin = Math.ceil(remainingMs / 60000);
@@ -2756,6 +2757,21 @@
           clearInterval(timerInterval);
           timerInterval = null;
         }
+      }
+
+      function parseSessionStartTimeMs(payload) {
+        const epochCandidate = Number(payload?.session_started_at_epoch_ms);
+        if (Number.isFinite(epochCandidate) && epochCandidate > 0) {
+          return epochCandidate;
+        }
+
+        const iso = String(payload?.session_started_at || "").trim();
+        if (!iso) return null;
+
+        const hasZone = /(?:Z|[+-]\d{2}:\d{2})$/.test(iso);
+        const parsed = Date.parse(hasZone ? iso : `${iso}Z`);
+        if (!Number.isFinite(parsed)) return null;
+        return parsed;
       }
 
       function scrollToBottom() {
@@ -4326,16 +4342,19 @@
             sessionToken = data.session_token;
             pendingSessionRecovery = false;
             sessionRecoverAttempts = 0;
-            const targetMinutes = parseInt(
-              data.available_time || availableTime,
+            const targetMinutes = Number.parseInt(
+              data.available_time ?? availableTime ?? "",
               10,
             );
-            if (!isNaN(targetMinutes) && targetMinutes > 0) {
+            if (VALID_AVAILABLE_TIME_OPTIONS.has(targetMinutes)) {
               sessionTargetMs = targetMinutes * 60 * 1000;
+            } else {
+              sessionTargetMs = null;
             }
-            const startedAt = data.session_started_at
-              ? new Date(data.session_started_at).getTime()
-              : null;
+            let startedAt = parseSessionStartTimeMs(data);
+            if (startedAt && startedAt > Date.now()) {
+              startedAt = Date.now();
+            }
             sessionStartTime =
               startedAt && !isNaN(startedAt) ? startedAt : Date.now();
             startTimer();
@@ -4738,7 +4757,7 @@
 
       let preConfirmIndicatorProbeInFlight = false;
       let preConfirmIndicatorLastProbeAt = 0;
-      const PRE_CONFIRM_INDICATOR_PROBE_INTERVAL_MS = 1200;
+      const PRE_CONFIRM_INDICATOR_PROBE_INTERVAL_MS = 350;
 
       function isFirstTopicCoveredForProfileConfirm(topics) {
         if (!Array.isArray(topics) || topics.length === 0) return false;
@@ -4749,6 +4768,18 @@
         const required = subtopics.filter((s) => !s || !s.is_emergent);
         if (required.length === 0) return false;
         return required.every((s) => !!(s && s.is_covered));
+      }
+
+      function isFirstTopicNearlyCoveredForProfileConfirm(topics) {
+        if (!Array.isArray(topics) || topics.length === 0) return false;
+        const firstTopic = topics[0] || {};
+        const subtopics = Array.isArray(firstTopic.subtopics)
+          ? firstTopic.subtopics
+          : [];
+        const required = subtopics.filter((s) => !s || !s.is_emergent);
+        if (required.length <= 1) return false;
+        const covered = required.filter((s) => !!(s && s.is_covered)).length;
+        return covered >= required.length - 1;
       }
 
       async function maybeShowProfileBuildingIndicatorBeforeConfirm() {
@@ -4776,7 +4807,13 @@
           if (String(data.session_type || "intake") !== "intake") return;
           const portrait = data.user_portrait || {};
           if (!profileHasRoleAndTenure(portrait)) return;
-          if (!isFirstTopicCoveredForProfileConfirm(data.topics || [])) return;
+          const topics = data.topics || [];
+          if (
+            !isFirstTopicCoveredForProfileConfirm(topics) &&
+            !isFirstTopicNearlyCoveredForProfileConfirm(topics)
+          ) {
+            return;
+          }
           if (profileConfirmPending || profileConfirmWidgetSeen) return;
           if (!document.getElementById("typing-indicator")) return;
           removeTyping();
@@ -4814,6 +4851,7 @@
           resolveProfileConfirmGate();
         }
         showTyping();
+        maybeShowProfileBuildingIndicatorBeforeConfirm();
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 20000);
         try {

@@ -58,6 +58,8 @@ from src.content.session_agenda.session_agenda import normalize_user_portrait
 
 SESSION_TIMEOUT_SECONDS = 3600  # 1 hour
 START_TIME = time.time()
+AVAILABLE_TIME_OPTIONS_MINUTES = {10, 15, 20, 30, 45, 60}
+DEFAULT_AVAILABLE_TIME_MINUTES = 20
 
 class AppConfig:
     """Application configuration"""
@@ -253,6 +255,33 @@ def _register_pending_turn(session_token: str, turn_id: str, payload: Dict[str, 
     # Keep bounded state per session.
     while len(turns) > 500:
         turns.popitem(last=False)
+
+
+def _normalize_available_time_minutes(raw_value: Optional[object], fallback: Optional[int] = None) -> Optional[int]:
+    """Normalize available_time input to an allowed minute bucket."""
+    if raw_value is None:
+        return None
+    try:
+        minutes = int(raw_value)
+    except (TypeError, ValueError):
+        return fallback
+    if minutes in AVAILABLE_TIME_OPTIONS_MINUTES:
+        return minutes
+    return fallback
+
+
+def _serialize_session_start_time(value: Optional[datetime]) -> tuple[Optional[str], Optional[int]]:
+    """Serialize session start time as UTC ISO string and epoch ms."""
+    if value is None:
+        return None, None
+    try:
+        if value.tzinfo is None:
+            utc_value = value.astimezone(timezone.utc)
+        else:
+            utc_value = value.astimezone(timezone.utc)
+        return utc_value.isoformat().replace("+00:00", "Z"), int(utc_value.timestamp() * 1000)
+    except Exception:
+        return None, None
 
 def create_interview_session(user_id: str, session_type: str = "intake",
                              interaction_mode: str = 'api',
@@ -596,6 +625,22 @@ def start_session():
             app.logger.info(f"Returning existing session {token} for user {get_current_user().username}")
             print(f"[Session] Reusing existing session {token} for {get_current_user().username}")
             existing = wrapper.interview_session
+            session_started_at, session_started_at_epoch_ms = _serialize_session_start_time(
+                getattr(existing, '_session_start_time', None)
+            )
+            existing_available_time = _normalize_available_time_minutes(
+                getattr(existing, '_available_time', None),
+                fallback=DEFAULT_AVAILABLE_TIME_MINUTES,
+            )
+            if getattr(existing, '_available_time', None) != existing_available_time:
+                app.logger.warning(
+                    "Normalizing existing session available_time from %r to %r for user %s",
+                    getattr(existing, '_available_time', None),
+                    existing_available_time,
+                    get_current_user().username,
+                )
+                existing._available_time = existing_available_time
+                existing.session_agenda.available_time_minutes = existing_available_time
             return jsonify({
                 'success': True,
                 'session_token': token,
@@ -604,19 +649,35 @@ def start_session():
                 'username': get_current_user().username,
                 'message': 'Using existing session',
                 'was_existing': True,
-                'available_time': getattr(existing, '_available_time', None),
-                'session_started_at': getattr(existing, '_session_start_time', None).isoformat() if getattr(existing, '_session_start_time', None) else None
+                'available_time': existing_available_time,
+                'session_started_at': session_started_at,
+                'session_started_at_epoch_ms': session_started_at_epoch_ms,
             })
     
     # Create new session only if none exists
     data = request.get_json(silent=True) or {}
     session_type = data.get("session_type", os.getenv("SESSION_TYPE", "intake"))
-    available_time = data.get("available_time")  # minutes, from pre-interview question
+    raw_available_time = data.get("available_time")  # minutes, from pre-interview question
+    available_time = _normalize_available_time_minutes(
+        raw_available_time,
+        fallback=DEFAULT_AVAILABLE_TIME_MINUTES if raw_available_time is not None else None,
+    )
+    if raw_available_time is not None and available_time != raw_available_time:
+        app.logger.warning(
+            "Normalizing requested available_time from %r to %r for user %s",
+            raw_available_time,
+            available_time,
+            get_current_user().username,
+        )
     interview_session, session_token = create_interview_session(user_id=user_id, session_type=session_type,
                                                                  available_time=available_time)
 
     app.logger.info(f"Session created: {session_token} | User: {get_current_user().username} ({user_id})")
     print(f"[Session] Created NEW session {session_token} for user {get_current_user().username}")
+
+    session_started_at, session_started_at_epoch_ms = _serialize_session_start_time(
+        getattr(interview_session, '_session_start_time', None)
+    )
 
     return jsonify({
         'success': True,
@@ -627,7 +688,8 @@ def start_session():
         'message': 'Session started successfully',
         'was_existing': False,
         'available_time': available_time,
-        'session_started_at': getattr(interview_session, '_session_start_time', None).isoformat() if getattr(interview_session, '_session_start_time', None) else None
+        'session_started_at': session_started_at,
+        'session_started_at_epoch_ms': session_started_at_epoch_ms,
     })
 
 @app.route('/api/start-agent-session', methods=['POST'])
