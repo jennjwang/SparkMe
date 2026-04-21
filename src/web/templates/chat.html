@@ -1184,11 +1184,10 @@
       .tsp-task-label {
         flex: 1;
         min-width: 0;
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-        line-clamp: 2;
-        overflow: hidden;
+        display: block;
+        white-space: normal;
+        word-break: break-word;
+        overflow-wrap: anywhere;
       }
       .tsp-row-spacer {
         display: none;
