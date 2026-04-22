@@ -886,7 +886,15 @@ New context to incorporate:
 </additional_context>
 
 <instructions>
-Update the user portrait based on the new context. Produce a concise, structured summary in the same dictionary format as the current user portrait. 
+Update the user portrait based on the new context. Produce a concise, structured summary in the same dictionary format as the current user portrait.
+
+Standard portrait fields (always maintain these when data is available):
+- "Role": job title and primary responsibilities in 1-2 sentences
+- "Tenure": how long the user has been in their current role
+- "Deliverables": list of concrete outputs or work products the user produces or delivers (e.g. "Literature Review Draft", "Quarterly Report"). These are WHAT they produce; tasks are HOW they produce it. Only include items explicitly named by the user.
+- "Task Inventory": list of recurring tasks the user performs
+- "Time Allocation": dict mapping task name to percentage string
+- "Priority Tasks": tasks the user flagged as most important
 
 Your goals:
 - For existing fields: Update if new information significantly changes understanding.
@@ -1220,6 +1228,7 @@ Return a JSON object with exactly these fields. Use only information the user ex
 {{
   "Role": "Job title and primary responsibilities in 1-2 sentences",
   "Tenure": "How long the user has been in their current role or position",
+  "Deliverables": ["List of concrete outputs or work products the user produces or delivers in their role"],
   "Task Inventory": ["List of recurring tasks or responsibilities the user performs"],
   "Time Allocation": {{"task name": "percentage string, e.g. '65%'"}},
   "Priority Tasks": ["Tasks the user considers highest priority or most central to their role"]
@@ -1228,6 +1237,7 @@ Return a JSON object with exactly these fields. Use only information the user ex
 Rules:
 - Use the user's own language and phrasing where possible
 - Lists should contain specific, concrete items — not vague categories
+- **Deliverables** are the concrete outputs, documents, or work products the user creates, submits, or hands off — the things they deliver to others or complete as a final product (e.g. "Literature Review Draft", "Quarterly Progress Report", "Client Presentation Deck", "Research Paper"). Deliverables are WHAT the user produces; tasks are HOW they produce it. Extract deliverables from the interview's deliverable-mapping section and anywhere the user names a specific output or completed item. Leave as empty list if no concrete deliverables were named.
 - Task Inventory must contain only discrete tasks — do NOT include sentences that describe how time is split across tasks (e.g. "spends 65% on X and 35% on Y"). Those belong in Time Allocation.
 - **Task Inventory must ONLY contain tasks the user has explicitly described** — either in this session's transcript or in the prior_tasks list. Do NOT add tasks based on inferred role or domain. A task exists in the inventory only if the user named it or clearly described doing it.
 - **prior_tasks is the authoritative base for Task Inventory.** Start by copying EVERY entry from prior_tasks VERBATIM (character-for-character, same wording, same punctuation). Only then consider whether the transcript adds new activities.
@@ -1236,6 +1246,7 @@ Rules:
 - **Only ADD a task from the transcript if it is a genuinely new activity not already covered by any prior_tasks entry.** Use action+object identity to decide: if a transcript mention shares action AND object with an existing prior_tasks entry, it is the SAME task — do NOT add a separate entry, even if the phrasing differs or the transcript version is more specific. Prior_tasks wins.
 - **Do NOT put research mission statements or role descriptions in Task Inventory.** Phrases like "conducting research on X", "working on Y research", "advancing the field of Z", "investigating problems related to X" describe the user's ROLE, not a discrete task — they belong in the Role field. Task Inventory should contain only specific recurring activities the user explicitly mentioned performing. If the memories only describe what the user researches (their domain/topic) rather than what they specifically DO, return an empty Task Inventory.
 - **Every task must follow action+object format; objective is optional.** Each entry must clearly state WHAT the user does (action+object). Include WHY they do it (objective = purpose/goal) when the user stated it clearly. Only infer purpose when the user's own statement makes it unambiguous. Do NOT invent a purpose the user did not express.
+- **Write new task names in third-person gerund form** — applies ONLY to new transcript-derived entries (never rewrite prior_tasks). Remove first-person pronouns ("I", "my", "me", "we", "our") and write as action+object. Examples: "I write my thesis" → "writing thesis"; "my meetings with advisors" → "attending advisor meetings"; "reviewing my lab's code" → "reviewing lab code". Make the name general enough to describe a recurring activity, not a one-off instance: "reviewed John's draft this week" → "reviewing paper drafts".
 - **Strip cadence/frequency from task names.** Do NOT embed scheduling phrases like "on a roughly monthly cadence", "every few weeks", "quarterly", "weekly", "a few times a year", "occasionally" inside the task description. Record only the bare action+object (+objective when clearly present). Example: write "writing up project proposals", NOT "working on writeups for project proposals on a roughly monthly cadence". Cadence belongs in Time Allocation or is captured separately — never in the Task Inventory entry itself.
 - **Dedup Task Inventory using action+object identity** — applies ONLY among new transcript-derived entries (prior_tasks entries are already authoritative and must not be rewritten). Two tasks are the same task ONLY if they share the same action AND the same object (e.g. "reading books" vs "reading nonfiction books" — same action=reading, same object=books). Among duplicates within the new transcript entries, keep ONLY the most specific version. Tasks that differ in either action OR object are DISTINCT tasks and must both be included.
 - **Split compound "X to Y" tasks when Y is itself a distinct activity** — applies ONLY to new transcript-derived entries. If a task is phrased as "doing X to do Y" and Y is a separate action the user also performs, list X and Y as two tasks. Do NOT apply this split to prior_tasks entries — keep them verbatim.

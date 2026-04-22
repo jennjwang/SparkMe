@@ -1,5 +1,15 @@
 [
   {
+    "description": "Priority tasks: identify which task(s) matter most, ensure each priority task is specific, and capture a workflow description for the priority task(s).",
+    "coverage_criteria": [
+      "STEP 1 (open ask) — REQUIRED: Ask once, open-endedly, which task feels most important (e.g., 'Which of those feels most important to you?' or 'Which one matters most?'). If the participant already named a clear priority earlier (including high-stakes framing like 'presenting and writing are high stakes'), treat STEP 1 as satisfied without asking again. Do NOT ask a yes/no confirmation variant ('Would you say that's your main priority?') — restating their answer as a check is a duplicate.",
+      "STEP 2 (specificity sweep) — REQUIRED: Scan every priority task. For any task with a vague action ('do', 'handle', 'work on', 'deal with') or a vague object ('analysis', 'meetings', 'emails', 'documents', 'work', 'projects', 'research' without a concrete qualifier), ask ONE targeted clarifying question per task to pin down the missing specific (e.g., 'Analysis of what — experiment results, interview data?'; 'Meetings with whom, about what?'). One clarification per turn. Cap total sweep clarifications at 3 — if the participant's answer is still vague after one attempt, accept it and move on.",
+      "STEP 3 (workflow capture) — REQUIRED for priority task(s) only: Ask exactly this two-sentence structure, nothing more: 'Think back to the last time you did <priority task>. Walk me through the steps you took.' Do NOT paraphrase. Do NOT add a presupposed start or end state (e.g., 'from blank page to finished draft', 'from I need a plan to having it written down') — that is leading and confusing. Do NOT double-barrel it. Accept whatever the participant gives — do NOT ask follow-up workflow questions even if the response seems incomplete. One question per priority task. Only apply this step to task(s) named as priority in STEP 1 — do NOT drill workflow for non-priority tasks.",
+      "COMPLETION: Once STEP 1 is answered, STEP 2's sweep is done (or no vague priority tasks remain), and STEP 3 has captured a workflow for each priority task, this subtopic is DONE. Transition to Time Allocation."
+    ],
+    "priority_weight": 0.8
+  },
+  {
     "topic": "Role and Context",
     "allow_emergent": false,
     "allow_strategic_planner": false,

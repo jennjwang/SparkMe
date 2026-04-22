@@ -3,9 +3,11 @@
     "topic": "Tasks and Deliverables",
     "subtopics": [
       {
-        "description": "What tasks did you work on this week, and what (if anything) changed compared to last week?",
+        "description": "Goals and deliverables for this week: what were they trying to accomplish, what did they actually complete, and what changed compared to last week?",
         "coverage_criteria": [
-          "Tasks worked on this week are identified",
+          "STEP 1 (goals): The participant has stated at least one goal or intention they had for this week — what they were trying to get done. Ask 'What were your goals for this week?' or 'What were you trying to get done this week?' A broad answer is fine.",
+          "STEP 2 (deliverables): Once goals are on the table, probe what actually happened: 'And what did you actually deliver or complete?' At least one concrete output is named — something finished, submitted, handed off, or presented. Do NOT ask 'what did you work on?' — deliverables are more concrete and memorable than tasks.",
+          "STEP 3 (task extraction): For each deliverable named, work backwards: 'What did you need to do to get that done?' Anchor follow-ups to what they said: 'You mentioned [deliverable] — what did that involve before or after?' At least one task has been surfaced this way.",
           "Any tasks dropped, added, or shifted in priority vs last week are noted",
           "Time allocation across tasks plausibly accounts for a full work week"
         ]

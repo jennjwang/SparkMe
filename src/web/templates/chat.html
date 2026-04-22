@@ -1082,6 +1082,387 @@
         background: #1f2937;
       }
 
+      /* ---- Profile Progress Bar (inside profile panel header area) ---- */
+      .profile-progress-bar-wrap {
+        padding: 6px 18px 10px;
+        background: #fff;
+        border-bottom: 1px solid #e5e7eb;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .profile-progress-bar-track {
+        flex: 1;
+        height: 4px;
+        background: #e5e7eb;
+        border-radius: 99px;
+        overflow: hidden;
+      }
+      .profile-progress-bar-fill {
+        height: 100%;
+        background: #16a34a;
+        border-radius: 99px;
+        width: 0%;
+        transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .profile-progress-label {
+        font-size: 11px;
+        font-weight: 600;
+        color: #374151;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+
+      /* ---- Coverage badges inline in profile sections ---- */
+      .profile-section-header-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 8px;
+      }
+      .profile-section-header-row .profile-section-label {
+        margin-bottom: 0;
+      }
+      .profile-coverage-badge {
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        padding: 2px 7px;
+        border-radius: 99px;
+        flex-shrink: 0;
+      }
+      .profile-coverage-badge.covered {
+        background: #f0fdf4;
+        color: #16a34a;
+        border: 1px solid #bbf7d0;
+      }
+      .profile-coverage-badge.partial {
+        background: #fffbeb;
+        color: #d97706;
+        border: 1px solid #fde68a;
+      }
+      .profile-coverage-badge.pending {
+        background: #f3f4f6;
+        color: #9ca3af;
+        border: 1px solid #e5e7eb;
+      }
+      .profile-deliverable-badge {
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        padding: 2px 6px;
+        border-radius: 99px;
+        white-space: nowrap;
+        flex-shrink: 0;
+        margin-top: 2px;
+      }
+      .profile-deliverable-badge.mapped {
+        background: #f0fdf4;
+        color: #16a34a;
+        border: 1px solid #bbf7d0;
+      }
+      .profile-deliverable-badge.exploring {
+        background: #fffbeb;
+        color: #d97706;
+        border: 1px solid #fde68a;
+      }
+      .profile-deliverable-badge.pending {
+        background: #f3f4f6;
+        color: #9ca3af;
+        border: 1px solid #e5e7eb;
+      }
+
+      /* ---- Tenure pill inside profile section ---- */
+      .profile-tenure-pill {
+        display: inline-flex;
+        align-items: center;
+        background: #f3f4f6;
+        border: 1px solid #e5e7eb;
+        border-radius: 99px;
+        padding: 3px 10px 3px 8px;
+        font-size: 12.5px;
+        font-weight: 500;
+        color: #374151;
+        gap: 5px;
+      }
+      .profile-tenure-pill svg {
+        color: #9ca3af;
+        flex-shrink: 0;
+      }
+
+      /* ---- Progress Panel ---- */
+      .progress-panel {
+        width: 0;
+        flex-shrink: 0;
+        background: #f3f4f6;
+        border-left: 0 solid #e5e7eb;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        transition:
+          width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+          border-left-width 0.35s;
+      }
+      .progress-panel.visible {
+        width: 380px;
+        border-left-width: 1px;
+      }
+      .progress-panel-inner {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        min-width: 380px;
+        overflow: hidden;
+      }
+      .progress-top {
+        padding: 14px 18px 0;
+        background: #fff;
+        border-bottom: 1px solid #e5e7eb;
+        flex-shrink: 0;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+      }
+      .progress-header-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 10px;
+      }
+      .progress-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: #111827;
+        letter-spacing: -0.01em;
+      }
+      .progress-pct {
+        font-size: 11px;
+        font-weight: 600;
+        color: #16a34a;
+        background: #f0fdf4;
+        border: 1px solid #bbf7d0;
+        padding: 2px 8px;
+        border-radius: 99px;
+      }
+      .progress-bar-track {
+        height: 4px;
+        background: #e5e7eb;
+        border-radius: 99px;
+        overflow: hidden;
+        margin-bottom: 0;
+      }
+      .progress-bar-fill {
+        height: 100%;
+        background: #f59e0b;
+        border-radius: 99px;
+        transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
+        width: 0%;
+      }
+      .progress-tabs {
+        display: flex;
+        gap: 0;
+        border-bottom: 1px solid #e5e7eb;
+        margin: 10px -18px 0;
+        padding: 0 18px;
+      }
+      .progress-tab {
+        background: none;
+        border: none;
+        border-bottom: 2px solid transparent;
+        padding: 7px 10px;
+        font-size: 12px;
+        color: #9ca3af;
+        cursor: pointer;
+        font-family: inherit;
+        transition: color 0.15s, border-color 0.15s;
+        margin-bottom: -1px;
+        white-space: nowrap;
+      }
+      .progress-tab:hover { color: #6b7280; }
+      .progress-tab.active {
+        color: #111827;
+        border-bottom-color: #111827;
+        font-weight: 600;
+      }
+      .progress-body {
+        flex: 1;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding: 12px 12px 20px;
+        background: #f3f4f6;
+      }
+      .progress-body::-webkit-scrollbar { width: 4px; }
+      .progress-body::-webkit-scrollbar-track { background: transparent; }
+      .progress-body::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+
+      .prog-role-card {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 13px 14px;
+        margin-bottom: 8px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+      }
+      .prog-role-label {
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        color: #9ca3af;
+        margin-bottom: 6px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .prog-role-label::before {
+        content: "";
+        display: inline-block;
+        width: 3px;
+        height: 11px;
+        background: #d1d5db;
+        border-radius: 2px;
+        flex-shrink: 0;
+      }
+      .prog-role-title {
+        font-size: 13.5px;
+        font-weight: 500;
+        color: #1f2937;
+        line-height: 1.5;
+      }
+      .prog-role-meta {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        background: #f3f4f6;
+        border: 1px solid #e5e7eb;
+        border-radius: 99px;
+        padding: 3px 10px 3px 8px;
+        font-size: 12px;
+        color: #374151;
+        margin-top: 8px;
+      }
+      .prog-section-header {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        margin-bottom: 6px;
+        padding: 0 2px;
+      }
+      .prog-section-title {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #6b7280;
+      }
+      .prog-section-count {
+        font-size: 11px;
+        color: #9ca3af;
+      }
+      .prog-section-desc {
+        font-size: 12px;
+        color: #9ca3af;
+        margin-bottom: 10px;
+        line-height: 1.5;
+        padding: 0 2px;
+      }
+      .prog-deliverable-card {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 12px 14px;
+        margin-bottom: 8px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+      }
+      .prog-deliverable-card.mapped {
+        background: #f0fdf4;
+        border-color: #bbf7d0;
+      }
+      .prog-deliverable-card.exploring {
+        background: #fffbeb;
+        border-color: #fde68a;
+      }
+      .prog-deliverable-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .prog-deliverable-name {
+        font-size: 13px;
+        font-weight: 600;
+        color: #1f2937;
+        line-height: 1.3;
+        flex: 1;
+        min-width: 0;
+        margin-right: 8px;
+      }
+      .prog-deliverable-status {
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        white-space: nowrap;
+        flex-shrink: 0;
+        padding: 2px 6px;
+        border-radius: 99px;
+      }
+      .prog-deliverable-status.mapped { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+      .prog-deliverable-status.exploring { background: #fffbeb; color: #d97706; border: 1px solid #fde68a; }
+      .prog-deliverable-status.pending { background: #f3f4f6; color: #9ca3af; border: 1px solid #e5e7eb; }
+      .prog-deliverable-divider {
+        height: 1px;
+        background: #e5e7eb;
+        margin: 10px 0 8px;
+      }
+      .prog-tasks-label {
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        color: #9ca3af;
+        margin-bottom: 7px;
+      }
+      .prog-tasks-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+      }
+      .prog-tasks-list li {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        font-size: 12.5px;
+        color: #374151;
+        line-height: 1.4;
+      }
+      .prog-tasks-list li::before {
+        content: "•";
+        color: #d1d5db;
+        font-size: 14px;
+        line-height: 1.3;
+        flex-shrink: 0;
+      }
+      .prog-tasks-list.mapped li::before { color: #86efac; }
+      .prog-tasks-list.exploring li::before { color: #fde68a; }
+      .prog-exploring-note {
+        font-size: 12px;
+        color: #d97706;
+        font-style: italic;
+      }
+      .prog-empty-state {
+        text-align: center;
+        padding: 48px 20px;
+        color: #9ca3af;
+      }
+      .prog-empty-state p { font-size: 13px; line-height: 1.6; }
+      .progress-toggle-btn.active {
+        background: #f0fdf4;
+        color: #16a34a;
+        border-color: #bbf7d0;
+      }
+
       /* ---- Time-Split Slider Widget ---- */
       .time-split-widget {
         background: #fff;
@@ -1124,7 +1505,7 @@
       }
       .tsp-row {
         display: grid;
-        grid-template-columns: minmax(100px, 1.4fr) minmax(100px, 2.2fr) 36px;
+        grid-template-columns: minmax(100px, 1.4fr) minmax(100px, 2.2fr) 48px;
         align-items: center;
         gap: 12px;
         padding: 9px 8px 9px 10px;
@@ -1410,21 +1791,26 @@
         display: flex;
         align-items: center;
       }
-      .tsp-bar-bg {
+      .tsp-track::before {
+        content: "";
         position: absolute;
         left: 0;
         right: 0;
         height: 5px;
         background: #ebebed;
         border-radius: 3px;
+        pointer-events: none;
       }
       .tsp-bar-fill {
         position: absolute;
         left: 0;
         height: 5px;
-        background: #111827;
         border-radius: 3px;
         pointer-events: none;
+      }
+      .tsp-pct-zero {
+        color: #9ca3af;
+        font-weight: 400;
       }
       .tsp-slider {
         position: relative;
@@ -1467,31 +1853,9 @@
         font-variant-numeric: tabular-nums;
         color: #111827;
         font-weight: 700;
-        text-align: center;
-        background: transparent;
-        border-radius: 6px;
-        padding: 2px 0;
-        width: 100%;
-        border: 1.5px solid transparent;
-        outline: none;
-        font-family: inherit;
-        cursor: text;
-        transition:
-          border-color 0.15s,
-          background 0.15s;
-        -moz-appearance: textfield;
-      }
-      .tsp-pct::-webkit-outer-spin-button,
-      .tsp-pct::-webkit-inner-spin-button {
-        -webkit-appearance: none;
-        margin: 0;
-      }
-      .tsp-pct:hover {
-        background: #f3f4f6;
-      }
-      .tsp-pct:focus {
-        background: #f9fafb;
-        border-color: #a5b4fc;
+        text-align: right;
+        min-width: 48px;
+        flex-shrink: 0;
       }
       .tsp-remove {
         background: none;
@@ -2574,6 +2938,30 @@
           box-shadow: -12px 0 28px rgba(17, 24, 39, 0.2);
           pointer-events: auto;
         }
+        .progress-panel {
+          position: fixed;
+          top: 0;
+          right: 0;
+          bottom: 0;
+          width: min(92vw, 420px);
+          max-width: 92vw;
+          border-left: 1px solid #e5e7eb;
+          z-index: 35;
+          transform: translateX(100%);
+          transition:
+            transform 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+            box-shadow 0.28s;
+          pointer-events: none;
+        }
+        .progress-panel.visible {
+          width: min(92vw, 420px);
+          transform: translateX(0);
+          box-shadow: -12px 0 28px rgba(17, 24, 39, 0.2);
+          pointer-events: auto;
+        }
+        .progress-panel-inner {
+          min-width: 0;
+        }
       }
     </style>
   </head>
@@ -2601,6 +2989,7 @@
         <button class="end-btn profile-toggle-btn" id="profile-btn">
           Profile
         </button>
+        <button class="end-btn progress-toggle-btn" id="progress-btn" style="display:none">Progress</button>
         <button class="end-btn" id="end-session-btn">End Session</button>
       </div>
     </div>
@@ -2658,7 +3047,7 @@
         <div class="profile-header">
           <div class="profile-header-left">
             <span class="profile-header-title">Your Profile</span>
-            <span class="profile-header-badge" id="profile-badge"
+            <span class="profile-header-badge" id="profile-badge" style="display:none"
               >Loading...</span
             >
           </div>
@@ -2682,6 +3071,12 @@
             </svg>
           </button>
         </div>
+        <div class="profile-progress-bar-wrap" id="profile-progress-wrap" style="display:none">
+          <div class="profile-progress-bar-track">
+            <div class="profile-progress-bar-fill" id="profile-progress-fill"></div>
+          </div>
+          <span class="profile-progress-label" id="profile-progress-label"></span>
+        </div>
         <div class="profile-body" id="profile-body">
           <div class="profile-empty-state">
             <svg
@@ -2696,6 +3091,28 @@
               <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
             </svg>
             <p>Start the interview to<br />build your profile.</p>
+          </div>
+        </div>
+      </div>
+      <div class="progress-panel" id="progress-panel">
+        <div class="progress-panel-inner">
+          <div class="progress-top">
+            <div class="progress-header-row">
+              <span class="progress-title">Interview Progress</span>
+              <span class="progress-pct" id="progress-pct">0%</span>
+            </div>
+            <div class="progress-bar-track">
+              <div class="progress-bar-fill" id="progress-bar-fill"></div>
+            </div>
+            <div class="progress-tabs" id="progress-tabs">
+              <button class="progress-tab active" data-tab="role">Role</button>
+              <button class="progress-tab" data-tab="deliverables">Deliverables</button>
+              <button class="progress-tab" data-tab="tasks">Tasks</button>
+              <button class="progress-tab" data-tab="review">Review</button>
+            </div>
+          </div>
+          <div class="progress-body" id="progress-body">
+            <div class="prog-empty-state"><p>Start the interview to<br>see your progress.</p></div>
           </div>
         </div>
       </div>
@@ -3195,16 +3612,11 @@
 
         function footerMarkup(t) {
           const hasAny = t > 0;
-          const status = hasAny ? "ok" : "warn";
-          const label = hasAny
-            ? `Proportions set — will be scaled to 100% on submit`
-            : "Move at least one slider to continue";
+          const warnMsg = !hasAny
+            ? `<div class="tsp-total-wrap"><span class="tsp-total warn" id="tsp-total"><span class="tsp-total-dot"></span>Move at least one slider to continue</span></div>`
+            : "";
           return `
-                    <div class="tsp-total-wrap">
-                        <span class="tsp-total ${status}" id="tsp-total">
-                            <span class="tsp-total-dot"></span>${label}
-                        </span>
-                    </div>
+                    ${warnMsg}
                     <button class="tsp-back-btn" id="tsp-alloc-back">Back</button>
                     <button class="tsp-submit" id="tsp-submit" ${hasAny ? "" : "disabled"}>Submit</button>`;
         }
@@ -3361,9 +3773,7 @@
           const nodeColor = colorFor(id);
           const trackInner = inRefine
             ? ``
-            : `
-                        <div class="tsp-bar-bg"></div>
-                        <div class="tsp-bar-fill" id="tsp-fill-${id}" style="width:${n.val}%;background:${nodeColor}"></div>
+            : `<div class="tsp-bar-fill" id="tsp-fill-${id}" style="width:${n.val}%;background:${nodeColor}"></div>
                         <input type="range" class="tsp-slider" data-id="${id}" min="0" max="100" step="1" value="${n.val}" style="--tsp-color:${nodeColor}">`;
           if (inRefine) {
             const depthCls = depth > 0 ? " is-sub" : "";
@@ -3380,7 +3790,8 @@
                             ${id !== otherId ? `<button class="tsp-remove" data-id="${id}" title="Remove">×</button>` : `<span class="tsp-row-spacer"></span>`}
                         </div>`);
           } else {
-            const pctCell = `<input type="number" class="tsp-pct" id="tsp-pct-${id}" data-id="${id}" min="0" max="100" step="1" value="${n.val}" aria-label="${escapeAttr(n.name)} percent">`;
+            const displayPct = normalizedRootPcts()[id] || 0;
+            const pctCell = `<span class="tsp-pct${displayPct ? "" : " tsp-pct-zero"}" id="tsp-pct-${id}">${displayPct ? displayPct + "%" : "—"}</span>`;
             out.push(`
                         <div class="tsp-row ${rowCls}" data-id="${id}" style="border-left:3px solid ${nodeColor};padding-left:10px;">
                             <span class="tsp-task" title="${escapeAttr(n.name)}">
@@ -3502,7 +3913,18 @@
             footer.innerHTML = footerMarkup(total());
         }
 
-        function applyVal(id, rawVal, syncPct) {
+        function updatePctDisplays() {
+          const pcts = normalizedRootPcts();
+          rootIds.forEach((id) => {
+            const el = document.getElementById(`tsp-pct-${id}`);
+            if (!el) return;
+            const p = pcts[id] || 0;
+            el.textContent = p ? p + "%" : "—";
+            el.className = "tsp-pct" + (p ? "" : " tsp-pct-zero");
+          });
+        }
+
+        function applyVal(id, rawVal) {
           const n = nodes[id];
           if (!n) return;
           let v = parseInt(rawVal);
@@ -3513,12 +3935,9 @@
           if (fill) fill.style.width = v + "%";
           const slider = widget.querySelector(`.tsp-slider[data-id="${id}"]`);
           if (slider && slider !== document.activeElement) slider.value = v;
-          if (syncPct) {
-            const pct = document.getElementById(`tsp-pct-${id}`);
-            if (pct && pct !== document.activeElement) pct.value = v;
-          }
           updateFooter();
           updateStackedBar();
+          updatePctDisplays();
         }
 
         function addTopLevel() {
@@ -3628,9 +4047,7 @@
 
         widget.addEventListener("input", function (e) {
           if (e.target.classList.contains("tsp-slider")) {
-            applyVal(e.target.dataset.id, e.target.value, true);
-          } else if (e.target.classList.contains("tsp-pct")) {
-            applyVal(e.target.dataset.id, e.target.value, false);
+            applyVal(e.target.dataset.id, e.target.value);
           } else if (e.target.id === "tsp-explain-input") {
             otherExplanation = e.target.value;
             const btn = document.getElementById("tsp-explain-submit");
@@ -3644,11 +4061,6 @@
         });
 
         widget.addEventListener("change", function (e) {
-          if (e.target.classList.contains("tsp-pct")) {
-            const id = e.target.dataset.id;
-            const n = nodes[id];
-            if (n) e.target.value = n.val;
-          }
           if (e.target.classList.contains("tsp-task-edit")) {
             const id = e.target.dataset.id;
             const n = nodes[id];
@@ -3799,7 +4211,7 @@
             return;
           }
           if (e.target.id === "tsp-submit") {
-            if (total() !== 100) return;
+            if (total() === 0) return;
             const other = findOther();
             if (other && other.val >= OTHER_EXPLAIN_THRESHOLD) {
               phase = "explain";
@@ -4957,6 +5369,8 @@
       document.getElementById("profile-backdrop").onclick = function () {
         document.getElementById("profile-panel").classList.remove("visible");
         document.getElementById("profile-btn").classList.remove("active");
+        document.getElementById("progress-panel").classList.remove("visible");
+        document.getElementById("progress-btn").classList.remove("active");
         this.classList.remove("visible");
       };
 
@@ -4999,6 +5413,7 @@
       // ---- Profile Panel ----
       let profilePollInterval = null;
       let lastPortrait = {};
+      let lastSessionTopics = [];
       let profileShown = false;
       const TASK_GROUPING_FEEDBACK_KEY = "Task Grouping Feedback";
       let taskTreeCache = { signature: null, tree: null };
@@ -5491,11 +5906,12 @@
               showProfilePanel();
             }
           }
-          // Update progress bar from subtopic coverage
+          // Store topic coverage for the progress panel
           const topics = data.topics || [];
-          const allSubs = topics.flatMap((t) => t.subtopics || []);
-          const total = allSubs.length;
-          const covered = allSubs.filter((s) => s.is_covered).length;
+          lastSessionTopics = topics;
+          updateProfileProgressBar();
+          renderProgressPanel(lastPortrait);
+          renderProfile(lastPortrait);
         } catch (e) {
         } finally {
           if (stopLoadingSignal) stopLoadingSignal();
@@ -5589,7 +6005,7 @@
         "Task Inventory": "Tasks",
       };
       /** Primary column order in the profile panel; other keys follow alphabetically. */
-      const PROFILE_FIELD_ORDER = ["Role", "Tenure", "Task Inventory"];
+      const PROFILE_FIELD_ORDER = ["Role", "Deliverables", "Task Inventory"];
 
       function classifyField(value) {
         if (Array.isArray(value)) return "tags";
@@ -5716,12 +6132,37 @@
           )
             continue;
           const tagId = key.replace(/ /g, "-");
-          if (kind === "text") {
+          const _sectionHeader = (lbl, fkey) => {
+            const cov = _getFieldCoverage(fkey);
+            if (!cov) return `<div class="profile-section-label">${escapeHtml(lbl)}</div>`;
+            const badgeText = cov.status === "covered" ? "✓ Covered" : cov.status === "partial" ? "In Progress" : "Pending";
+            return `<div class="profile-section-header-row">
+              <div class="profile-section-label">${escapeHtml(lbl)}</div>
+              <span class="profile-coverage-badge ${cov.status}">${badgeText}</span>
+            </div>`;
+          };
+
+          if (key === "Tenure") {
+            // Tenure is shown as a pill inside the Role card; skip as standalone section
+            continue;
+          } else if (kind === "text") {
             const val = typeof value === "string" ? value : "";
             const displayVal = capitalizeFieldValue(val);
+            let tenurePillHtml = "";
+            if (key === "Role") {
+              const rawTenure = portrait["Tenure"] || displayPortrait["Tenure"] || "";
+              const tenureVal = typeof rawTenure === "string" ? condenseTenureText(rawTenure) : "";
+              if (tenureVal) {
+                tenurePillHtml = `<div class="profile-tenure-pill" style="margin-top:8px">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  ${escapeHtml(tenureVal)}
+                </div>`;
+              }
+            }
             html += `<div class="profile-section">
-                        <div class="profile-section-label">${escapeHtml(label)}</div>
+                        ${_sectionHeader(label, key)}
                         <textarea class="profile-edit-input" data-key="${escapeAttr(key)}" rows="1" placeholder="Not yet captured">${escapeHtml(displayVal)}</textarea>
+                        ${tenurePillHtml}
                     </div>`;
           } else if (kind === "tags") {
             const items = Array.isArray(value) ? value : [];
@@ -5800,7 +6241,7 @@
             }
 
             html += `<div class="profile-section">
-                        <div class="profile-section-label">${escapeHtml(label)}</div>
+                        ${_sectionHeader(label, key)}
                         ${listHtml}
                         <div class="profile-add-row">
                             <input class="profile-add-input" id="add-input-${tagId}" placeholder="Add ${escapeAttr(singular)}…">
@@ -5812,7 +6253,7 @@
               ([k, v]) => k && v !== undefined && v !== null && v !== "",
             );
             html += `<div class="profile-section">
-                        <div class="profile-section-label">${escapeHtml(label)}</div>
+                        ${_sectionHeader(label, key)}
                         ${
                           entries.length > 0
                             ? `<ul class="profile-task-list" id="dict-${tagId}">
@@ -5910,6 +6351,8 @@
         document
           .getElementById("profile-save-btn")
           .addEventListener("click", saveProfile);
+
+        updateProfileProgressBar();
       }
 
       function addTag(key) {
@@ -5968,6 +6411,337 @@
           btn.disabled = false;
         }
       }
+
+
+      // Shorten a subtopic description to a readable label (text before first colon, or full if short)
+      function _subtopicLabel(desc) {
+        if (!desc) return "";
+        const colonIdx = desc.indexOf(":");
+        const label = colonIdx > 0 && colonIdx < 40 ? desc.slice(0, colonIdx) : desc;
+        return label.length > 52 ? label.slice(0, 50) + "…" : label;
+      }
+
+      // Build deliverable cards from interview topics (session state)
+      function _buildTopicDeliverables() {
+        if (!lastSessionTopics.length) return null;
+        const cards = lastSessionTopics.map((topic) => {
+          const subs = (topic.subtopics || []).filter((s) => !s.is_emergent);
+          const coveredCount = subs.filter((s) => s.is_covered).length;
+          let status;
+          if (subs.length === 0) status = "pending";
+          else if (coveredCount === subs.length) status = "mapped";
+          else if (coveredCount > 0) status = "exploring";
+          else status = "pending";
+          return { name: topic.description, subs, status, coveredCount, total: subs.length };
+        });
+        // If no topic is partially covered yet, mark the first pending as EXPLORING
+        if (!isSessionCompleted && !cards.some((c) => c.status === "exploring")) {
+          const firstPending = cards.find((c) => c.status === "pending");
+          if (firstPending) firstPending.status = "exploring";
+        }
+        return cards;
+      }
+
+      function _computeProgressPct() {
+        // Use real subtopic coverage from session state
+        if (lastSessionTopics.length > 0) {
+          const allSubs = lastSessionTopics.flatMap((t) => t.subtopics || []);
+          const total = allSubs.filter((s) => !s.is_emergent).length;
+          if (total > 0) {
+            const covered = allSubs.filter((s) => !s.is_emergent && s.is_covered).length;
+            return Math.round((covered / total) * 100);
+          }
+        }
+        return 0;
+      }
+
+      // Get deliverables for the progress panel:
+      // 1. portrait["Deliverables"] flat list → each is a card, tasks come from Task Grouping Tree children
+      // 2. Fallback: Task Grouping Tree top-level nodes
+      function _getPortraitDeliverables(portrait) {
+        // Build a name→tasks lookup from the task grouping tree
+        const savedTree = portrait && portrait["Task Grouping Tree"];
+        const treeSource = (Array.isArray(savedTree) && savedTree.length > 0)
+          ? savedTree
+          : (taskTreeCache && Array.isArray(taskTreeCache.tree) && taskTreeCache.tree.length > 0)
+            ? taskTreeCache.tree
+            : [];
+        const treeMap = {};
+        for (const node of treeSource) {
+          const name = (node.name || "").trim().toLowerCase();
+          if (name) treeMap[name] = Array.isArray(node.children)
+            ? node.children.map((c) => (typeof c === "string" ? c : c.name || "")).filter(Boolean)
+            : [];
+        }
+
+        // Prefer the explicit Deliverables list
+        const delivList = portrait && portrait["Deliverables"];
+        if (Array.isArray(delivList) && delivList.length > 0) {
+          return delivList.filter(Boolean).map((name) => ({
+            name: String(name),
+            tasks: treeMap[String(name).trim().toLowerCase()] || [],
+          }));
+        }
+
+        // Fallback: use Task Grouping Tree nodes directly
+        return treeSource.map((node) => ({
+          name: node.name || "",
+          tasks: Array.isArray(node.children)
+            ? node.children.map((c) => (typeof c === "string" ? c : c.name || "")).filter(Boolean)
+            : [],
+        }));
+      }
+
+      function updateProfileProgressBar() {
+        const wrap = document.getElementById("profile-progress-wrap");
+        const fill = document.getElementById("profile-progress-fill");
+        const label = document.getElementById("profile-progress-label");
+        if (!wrap || !fill || !label) return;
+        if (!lastSessionTopics || lastSessionTopics.length === 0) {
+          wrap.style.display = "none";
+          return;
+        }
+        const pct = _computeProgressPct();
+        wrap.style.display = "flex";
+        fill.style.width = pct + "%";
+        label.textContent = pct + "%";
+      }
+
+      // ---- Progress Panel ----
+
+      let progressPanelTab = "role";
+
+      function toggleProgressPanel() {
+        const panel = document.getElementById("progress-panel");
+        const btn = document.getElementById("progress-btn");
+        const backdrop = document.getElementById("profile-backdrop");
+        if (!panel) return;
+        const isVisible = panel.classList.contains("visible");
+        if (isVisible) {
+          panel.classList.remove("visible");
+          btn.classList.remove("active");
+          if (backdrop) backdrop.classList.remove("visible");
+        } else {
+          document.getElementById("profile-panel").classList.remove("visible");
+          document.getElementById("profile-btn").classList.remove("active");
+          panel.classList.add("visible");
+          btn.classList.add("active");
+          if (backdrop) backdrop.classList.add("visible");
+          renderProgressPanel(lastPortrait);
+          if (sessionToken) fetchAndRenderProfile();
+        }
+      }
+
+      document.getElementById("progress-btn").onclick = toggleProgressPanel;
+
+      document.getElementById("progress-tabs").addEventListener("click", (e) => {
+        const tabBtn = e.target.closest("[data-tab]");
+        if (!tabBtn) return;
+        progressPanelTab = tabBtn.dataset.tab;
+        document.querySelectorAll(".progress-tab").forEach((t) => t.classList.remove("active"));
+        tabBtn.classList.add("active");
+        renderProgressPanel(lastPortrait);
+      });
+
+      function renderProgressPanel(portrait) {
+        const panel = document.getElementById("progress-panel");
+        if (!panel || !panel.classList.contains("visible")) return;
+        portrait = portrait || {};
+
+        const pct = _computeProgressPct();
+        document.getElementById("progress-pct").textContent = pct + "%";
+        document.getElementById("progress-bar-fill").style.width = pct + "%";
+
+        const role = portrait["Role"] || "";
+        const tenure = portrait["Tenure"] || "";
+        const tasks = (portrait["Task Inventory"] || []).filter(Boolean);
+        const topicCards = _buildTopicDeliverables();
+        const portraitDeliverables = _getPortraitDeliverables(portrait);
+
+        let html = "";
+        if (progressPanelTab === "role") {
+          html = _progRoleHtml(role, tenure);
+        } else if (progressPanelTab === "deliverables") {
+          html = _progDeliverablesHtml(portraitDeliverables, tasks);
+        } else if (progressPanelTab === "tasks") {
+          html = _progTasksHtml(portraitDeliverables, tasks);
+        } else if (progressPanelTab === "review") {
+          html = _progReviewHtml(portrait, topicCards, tasks);
+        }
+
+        document.getElementById("progress-body").innerHTML =
+          html || '<div class="prog-empty-state"><p>Start the interview to<br>see your progress.</p></div>';
+      }
+
+      function _progRoleHtml(role, tenure) {
+        if (!role)
+          return '<div class="prog-empty-state"><p>Role will appear<br>as the interview progresses.</p></div>';
+        const tenureHtml = tenure
+          ? `<div class="prog-role-meta"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${escapeHtml(condenseTenureText(tenure))}</div>`
+          : "";
+        return `<div class="prog-role-card">
+          <div class="prog-role-label">Role</div>
+          <div class="prog-role-title">${escapeHtml(role)}</div>
+          ${tenureHtml}
+        </div>`;
+      }
+
+      function _progDeliverablesHtml(deliverables, fallbackTasks) {
+        let firstUnmapped = true;
+        const enriched = deliverables.map((d) => {
+          if (d.tasks.length > 0) return { ...d, status: "mapped" };
+          if (firstUnmapped && !isSessionCompleted) { firstUnmapped = false; return { ...d, status: "exploring" }; }
+          return { ...d, status: "pending" };
+        });
+
+        if (!enriched.length) {
+          if (!fallbackTasks.length)
+            return '<div class="prog-empty-state"><p>Deliverables will appear<br>as the interview progresses.</p></div>';
+          return `<div class="prog-section-header">
+            <span class="prog-section-title">Deliverables</span>
+            <span class="prog-section-count">identifying…</span>
+          </div>
+          <div class="prog-deliverable-card exploring">
+            <div class="prog-deliverable-top">
+              <span class="prog-deliverable-name">Your work</span>
+              <span class="prog-deliverable-status exploring">Exploring</span>
+            </div>
+            <div class="prog-deliverable-divider"></div>
+            <div class="prog-tasks-label">Tasks (${fallbackTasks.length})</div>
+            <ul class="prog-tasks-list exploring">
+              ${fallbackTasks.slice(0, 6).map((t) => `<li>${escapeHtml(t)}</li>`).join("")}
+              ${fallbackTasks.length > 6 ? `<li style="color:#9ca3af">+${fallbackTasks.length - 6} more…</li>` : ""}
+            </ul>
+          </div>`;
+        }
+
+        let html = `<div class="prog-section-header">
+          <span class="prog-section-title">Deliverables</span>
+          <span class="prog-section-count">${enriched.filter(d => d.status === "mapped").length} of ${enriched.length} mapped</span>
+        </div>`;
+
+        for (const d of enriched) {
+          const statusLabel = d.status === "mapped" ? "Mapped ✓" : d.status === "exploring" ? "Exploring" : "Pending";
+          html += `<div class="prog-deliverable-card ${d.status === "pending" ? "" : d.status}">
+            <div class="prog-deliverable-top">
+              <span class="prog-deliverable-name">${escapeHtml(d.name)}</span>
+              <span class="prog-deliverable-status ${d.status}">${statusLabel}</span>
+            </div>`;
+          if (d.status === "mapped" && d.tasks.length > 0) {
+            html += `<div class="prog-deliverable-divider"></div>
+              <div class="prog-tasks-label">Tasks (${d.tasks.length})</div>
+              <ul class="prog-tasks-list mapped">
+                ${d.tasks.map((t) => `<li>${escapeHtml(t)}</li>`).join("")}
+              </ul>`;
+          } else if (d.status === "exploring") {
+            html += `<div class="prog-deliverable-divider"></div>
+              <div class="prog-tasks-label">Tasks</div>
+              <div class="prog-exploring-note">Identifying tasks with you now…</div>`;
+          }
+          html += "</div>";
+        }
+        return html;
+      }
+
+      function _progTasksHtml(portraitDeliverables, fallbackTasks) {
+        if (portraitDeliverables.some((d) => d.tasks.length > 0)) {
+          let html = "";
+          for (const d of portraitDeliverables) {
+            if (!d.tasks.length) continue;
+            html += `<div class="prog-role-card">
+              <div class="prog-role-label">${escapeHtml(d.name)}</div>
+              <ul class="prog-tasks-list mapped" style="margin-top:4px">
+                ${d.tasks.map((t) => `<li>${escapeHtml(t)}</li>`).join("")}
+              </ul>
+            </div>`;
+          }
+          return html;
+        }
+        if (!fallbackTasks.length)
+          return '<div class="prog-empty-state"><p>Tasks will appear<br>as the interview progresses.</p></div>';
+        return `<div class="prog-section-header">
+          <span class="prog-section-title">All Tasks</span>
+          <span class="prog-section-count">${fallbackTasks.length} identified</span>
+        </div>
+        <div class="prog-role-card">
+          <ul class="prog-tasks-list" style="margin-top:0">
+            ${fallbackTasks.map((t) => `<li>${escapeHtml(t)}</li>`).join("")}
+          </ul>
+        </div>`;
+      }
+
+      function _progReviewHtml(portrait, topicCards, tasks) {
+        const role = portrait["Role"] || "";
+        const tenure = portrait["Tenure"] || "";
+        const portraitDeliverables = _getPortraitDeliverables(portrait);
+        const mappedCount = portraitDeliverables.filter((d) => d.tasks.length > 0).length;
+
+        if (!role && !tasks.length)
+          return '<div class="prog-empty-state"><p>The review will be available<br>once the interview progresses.</p></div>';
+
+        let html = "";
+        if (role) {
+          const tenureHtml = tenure
+            ? `<div class="prog-role-meta"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${escapeHtml(condenseTenureText(tenure))}</div>`
+            : "";
+          html += `<div class="prog-role-card"><div class="prog-role-label">Role</div><div class="prog-role-title">${escapeHtml(role)}</div>${tenureHtml}</div>`;
+        }
+        if (portraitDeliverables.length > 0) {
+          html += `<div class="prog-role-card"><div class="prog-role-label">Deliverables</div><div class="prog-role-title">${mappedCount} of ${portraitDeliverables.length} mapped</div></div>`;
+        }
+        if (tasks.length > 0) {
+          html += `<div class="prog-role-card"><div class="prog-role-label">Tasks Identified</div><div class="prog-role-title">${tasks.length} tasks captured</div></div>`;
+        }
+        if (topicCards && topicCards.length) {
+          const coveredTopics = topicCards.filter((c) => c.status === "mapped").length;
+          html += `<div class="prog-role-card"><div class="prog-role-label">Interview Coverage</div><div class="prog-role-title">${coveredTopics} of ${topicCards.length} topics done</div></div>`;
+        }
+        return html;
+      }
+
+      // Returns {status:'covered'|'partial'|'pending'} for a profile field based on interview topic coverage
+      function _getFieldCoverage(fieldKey) {
+        if (!lastSessionTopics || !lastSessionTopics.length) return null;
+        let topic;
+        if (fieldKey === "Role" || fieldKey === "Tenure") {
+          topic = lastSessionTopics.find((t) =>
+            (t.description || "").toLowerCase().includes("role")
+          );
+        } else if (fieldKey === "Deliverables" || fieldKey === "Task Inventory") {
+          topic = lastSessionTopics.find((t) =>
+            (t.description || "").toLowerCase().includes("task")
+          );
+        }
+        if (!topic) return null;
+        const subs = (topic.subtopics || []).filter((s) => !s.is_emergent);
+        let relevantSubs = subs;
+        // Role covers both role/title (sub 0) and tenure (sub 1) since tenure pill lives inside the Role card
+        if (fieldKey === "Role") relevantSubs = subs.slice(0, 2);
+        const total = relevantSubs.length;
+        if (total === 0) return null;
+        const covered = relevantSubs.filter((s) => s.is_covered).length;
+        return { status: covered === total ? "covered" : covered > 0 ? "partial" : "pending" };
+      }
+
+      // Returns Map<name.toLowerCase(), status> for each deliverable in the portrait
+      function _getDeliverableStatuses(portrait) {
+        const deliverables = _getPortraitDeliverables(portrait);
+        const result = new Map();
+        let firstUnmapped = true;
+        for (const d of deliverables) {
+          const key = d.name.toLowerCase();
+          if (d.tasks.length > 0) {
+            result.set(key, "mapped");
+          } else if (firstUnmapped && !isSessionCompleted) {
+            result.set(key, "exploring");
+            firstUnmapped = false;
+          } else {
+            result.set(key, "pending");
+          }
+        }
+        return result;
+      }
+
     </script>
   </body>
 </html>

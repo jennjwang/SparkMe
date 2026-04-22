@@ -89,6 +89,8 @@ def _build_prompt(
 - Split if it bundles 2+ unrelated activities.
 - Reject aspirations, goals, and role descriptions with no specific action.
 - Reject personal/non-work activities (e.g., doing personal taxes, personal errands).
+- **Rephrase to third-person gerund form**: remove all first-person pronouns ("I", "my", "me", "we", "our", "your") and rewrite as action+object. Examples: "I write my thesis" → "writing thesis"; "my meetings with advisors" → "attending advisor meetings"; "reviewing my lab's code" → "reviewing lab code"; "I send weekly updates to my team" → "sending weekly team updates".
+- **Make names general**: remove one-off proper nouns or instance-specific details that don't generalize across weeks. "reviewing John's draft" → "reviewing paper drafts"; "the Accenture project meeting" → "attending project meetings". Keep proper nouns only when they name a standing, recurring context (e.g., a named course the person regularly teaches).
 
 """ if screen else ""
     rejected_note = "- Rejected tasks are omitted entirely.\n" if screen else ""
@@ -123,8 +125,8 @@ Show your reasoning in <thinking>...</thinking>, then output JSON in <hierarchy>
   - If the cluster has a shared objective → use the shape "<action> <object> to <purpose>".
   - If no shared objective (fallback grouping) → use the shape "<action> <object>" with NO "to ..." clause. Do not fabricate a purpose just to fill the slot.
 - Use descriptive labels (typically 6–18 words). Avoid short noun phrases like "Meetings and talks", "Experimentation", or "Writing".
-- Write high-level labels as impersonal task statements: remove personal association words (e.g., "I", "my", "we", "our").
-- Good examples: "participating in meetings and talks to exchange updates and feedback" (shared objective); "reviewing documents" (no shared objective).
+- Write ALL task names (leaf nodes and group labels alike) as impersonal third-person gerund statements: remove personal pronouns ("I", "my", "me", "we", "our", "your") and rewrite as action+object. This applies to invented group labels AND to verbatim leaf names — if a leaf name contains a personal pronoun, rephrase it.
+- Good examples: "participating in meetings and talks to exchange updates and feedback" (shared objective); "reviewing documents" (no shared objective); "writing research papers" (not "writing my papers").
 
 **Deduplicate** — merge when tasks share the same action AND the same direct object (the thing being acted on). Trailing clauses — purpose ("to ..."), beneficiary ("for ..."), or tool qualifiers ("using AI ...") — do NOT make tasks distinct. When in doubt, prefer merging; keep the single most informative phrasing.
 
