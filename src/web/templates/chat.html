@@ -3557,10 +3557,6 @@
           if (rowsEl) rowsEl.classList.remove("is-drop-root");
         }
         widget.addEventListener("dragstart", function (e) {
-          if (e.target.closest(".tsp-task-edit")) {
-            e.preventDefault();
-            return;
-          }
           const row = e.target.closest(".tsp-row.is-refine");
           if (!row || row.dataset.id === otherId) return;
           dragId = row.dataset.id;
