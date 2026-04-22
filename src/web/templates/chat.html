@@ -1273,9 +1273,9 @@
         color: #374151;
       }
       .tsp-drag-handle {
-        color: #d1d5db;
-        font-size: 13px;
-        letter-spacing: -2px;
+        color: #c4c9d4;
+        font-size: 14px;
+        letter-spacing: -1px;
         cursor: grab;
         user-select: none;
         flex-shrink: 0;
@@ -1283,17 +1283,26 @@
         transition:
           color 0.15s,
           opacity 0.15s;
-        opacity: 0;
+        opacity: 1;
       }
       .tsp-row.is-refine:hover .tsp-drag-handle {
-        color: #94a3b8;
+        color: #6366f1;
         opacity: 1;
       }
       .tsp-row.is-refine[draggable="true"] {
         cursor: grab;
       }
+      .tsp-row.is-refine[draggable="true"] .tsp-task-edit {
+        cursor: grab;
+      }
+      .tsp-row.is-refine[draggable="true"] .tsp-task-edit:focus {
+        cursor: text;
+      }
       .tsp-row.is-refine.is-dragging {
         opacity: 0.4;
+        cursor: grabbing;
+      }
+      .tsp-row.is-refine.is-dragging .tsp-task-edit {
         cursor: grabbing;
       }
       .tsp-row.is-refine.is-drop-target {
@@ -3047,10 +3056,29 @@
           return PALETTE[idx % PALETTE.length] || "#6366f1";
         }
 
+        function normalizedRootPcts() {
+          const rawTotal = rootIds.reduce((s, id) => s + (nodes[id].val || 0), 0);
+          if (rawTotal === 0) return {};
+          const pcts = {};
+          let allocated = 0;
+          const active = rootIds.filter((id) => (nodes[id].val || 0) > 0);
+          active.forEach((id, i) => {
+            if (i < active.length - 1) {
+              const scaled = Math.round((nodes[id].val / rawTotal) * 100);
+              pcts[id] = scaled;
+              allocated += scaled;
+            } else {
+              pcts[id] = 100 - allocated;
+            }
+          });
+          return pcts;
+        }
+
         function stackedBarMarkup() {
+          const pcts = normalizedRootPcts();
           const segs = rootIds
             .map((id) => {
-              const pct = nodes[id].val || 0;
+              const pct = pcts[id] || 0;
               if (pct === 0) return "";
               return `<div class="tsp-stacked-seg" style="width:${pct}%;background:${colorFor(id)}" title="${escapeAttr(capitalizeFirst(nodes[id].name))}: ${pct}%"></div>`;
             })
@@ -3068,9 +3096,10 @@
         function updateStackedBar() {
           const bar = widget.querySelector("#tsp-stacked-bar");
           if (!bar) return;
+          const pcts = normalizedRootPcts();
           bar.innerHTML = rootIds
             .map((id) => {
-              const pct = nodes[id].val || 0;
+              const pct = pcts[id] || 0;
               if (pct === 0) return "";
               return `<div class="tsp-stacked-seg" style="width:${pct}%;background:${colorFor(id)}" title="${escapeAttr(capitalizeFirst(nodes[id].name))}: ${pct}%"></div>`;
             })
@@ -3165,24 +3194,19 @@
         }
 
         function footerMarkup(t) {
-          const status = t === 100 ? "ok" : "warn";
-          const label =
-            t === 100
-              ? "Total: 100%"
-              : `Total: ${t}% — ${t < 100 ? "add " + (100 - t) + "% more" : "remove " + (t - 100) + "%"}`;
-          const fillCls = t === 100 ? "ok" : t > 100 ? "over" : "";
-          const fillWidth = Math.min(t, 100);
+          const hasAny = t > 0;
+          const status = hasAny ? "ok" : "warn";
+          const label = hasAny
+            ? `Proportions set — will be scaled to 100% on submit`
+            : "Move at least one slider to continue";
           return `
                     <div class="tsp-total-wrap">
                         <span class="tsp-total ${status}" id="tsp-total">
                             <span class="tsp-total-dot"></span>${label}
                         </span>
-                        <div class="tsp-progress">
-                            <div class="tsp-progress-fill ${fillCls}" id="tsp-progress-fill" style="width:${fillWidth}%"></div>
-                        </div>
                     </div>
                     <button class="tsp-back-btn" id="tsp-alloc-back">Back</button>
-                    <button class="tsp-submit" id="tsp-submit" ${t === 100 ? "" : "disabled"}>Submit</button>`;
+                    <button class="tsp-submit" id="tsp-submit" ${hasAny ? "" : "disabled"}>Submit</button>`;
         }
 
         function refineFooterMarkup() {
@@ -3347,7 +3371,7 @@
             out.push(`
                         <div class="tsp-row is-refine${depthCls} ${rowCls}" data-id="${id}" data-depth="${depth}" style="${depth > 0 ? `margin-left:${depth * 28}px;` : ""}" ${isDraggable ? 'draggable="true"' : ""}>
                             ${depth > 0 ? `<span class="tsp-sub-connector" aria-hidden="true"></span>` : ""}
-                            ${isDraggable ? `<span class="tsp-drag-handle" aria-hidden="true" title="Drag to nest or un-nest">⋮⋮</span>` : ""}
+                            ${isDraggable ? `<span class="tsp-drag-handle" title="Drag to nest or un-nest">⠿</span>` : ""}
                             <span class="tsp-task">
                                 <textarea class="tsp-task-edit" data-id="${id}" draggable="false" maxlength="120" title="Click to edit" rows="1">${escapeHtml(capitalizeFirst(n.name))}</textarea>
                                 ${""}
@@ -3390,6 +3414,23 @@
         }
 
         function finalSubmit() {
+          // Normalize all values so they sum to exactly 100%.
+          const rawTotal = total();
+          if (rawTotal > 0) {
+            let allocated = 0;
+            const nodeList = Object.values(nodes);
+            const active = nodeList.filter((n) => n.val > 0);
+            active.forEach((n, i) => {
+              if (i < active.length - 1) {
+                const scaled = Math.round((n.val / rawTotal) * 100);
+                n.val = scaled;
+                allocated += scaled;
+              } else {
+                n.val = 100 - allocated;
+              }
+            });
+          }
+
           // Emit every node with a non-zero allocation (parents and leaves alike).
           const parts = [];
           function walk(id, prefix) {
@@ -3420,7 +3461,7 @@
               : "Time allocation across tasks";
           const subtitle =
             phase === "refine"
-              ? "Edit names, remove extras, or drag to nest tasks under each other."
+              ? "Edit names, remove extras, or drag any task to nest it under another."
               : "";
           const addRow =
             phase === "refine" || phase === "allocate"

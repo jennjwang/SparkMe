@@ -96,6 +96,7 @@ CORS(app)
 # =============================================================================
 
 REQUIRE_LOGIN = os.getenv('REQUIRE_LOGIN', 'true').lower() == 'true'
+LOGIN_ALWAYS_NEW_USER_ID = os.getenv('LOGIN_ALWAYS_NEW_USER_ID', 'true').lower() == 'true'
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -396,15 +397,17 @@ def login():
             username = _generate_random_numeric_string(8)
 
         users = load_users()
-
-        # Find existing user by entered/generated ID, or create a new one
         user_id = None
-        for uid, user_data in users.items():
-            if user_data['username'] == username:
-                user_id = uid
-                break
+        if not LOGIN_ALWAYS_NEW_USER_ID:
+            # Legacy mode: reuse an existing account for the same username.
+            for uid, user_data in users.items():
+                if user_data.get('username') == username:
+                    user_id = uid
+                    break
 
         if not user_id:
+            # Default mode: always issue a brand-new internal ID at login so
+            # sessions never inherit prior users' state through reused IDs.
             user_id = _generate_unique_user_id(users, digits=10)
             users[user_id] = {
                 'username': username,
@@ -414,6 +417,8 @@ def login():
             os.makedirs(os.path.join(os.getenv('LOGS_DIR', 'logs'), user_id), exist_ok=True)
             os.makedirs(os.path.join(os.getenv('DATA_DIR', 'data'), user_id), exist_ok=True)
             app.logger.info(f"New user created: {username} ({user_id})")
+        else:
+            app.logger.info(f"Existing user login: {username} ({user_id})")
 
         user = User(user_id, username)
         login_user(user)
