@@ -49,24 +49,23 @@ class ClaudeVertexEngine:
             raise ValueError(
                 "GCP_PROJECT and GCP_REGION must be provided in .env"
             )
-        
-        if not credentials_path or not os.path.exists(credentials_path):
-            raise ValueError(
-                f"GCP_CREDENTIALS path not found: {credentials_path}"
+
+        # Use key file if available, otherwise fall back to Application Default
+        # Credentials (e.g. Cloud Run service account, `gcloud auth application-default`)
+        if credentials_path and os.path.exists(credentials_path):
+            credentials = service_account.Credentials.from_service_account_file(
+                credentials_path,
+                scopes=SCOPES
             )
-        
-        # Load credentials from the specified file with required scopes
-        credentials = service_account.Credentials.from_service_account_file(
-            credentials_path,
-            scopes=SCOPES
-        )
-                
+        else:
+            credentials = None  # AnthropicVertex will use ADC automatically
+
         # Initialize the AnthropicVertex client
         try:
             self.client = AnthropicVertex(
-                project_id=project_id, 
+                project_id=project_id,
                 region=region,
-                credentials=credentials
+                **({"credentials": credentials} if credentials is not None else {})
             )
         except Exception as e:
             print(f"Warning: Could not initialize Claude models: {e}")

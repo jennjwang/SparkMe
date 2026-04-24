@@ -223,12 +223,71 @@ class SessionWrapper:
 active_sessions: Dict[str, SessionWrapper] = {}
 last_messages_by_session: Dict[str, Dict[str, str]] = {}
 session_audio_cache: Dict[str, Dict[str, object]] = {}
+# Rolling dialogue state for /api/task-followup, keyed by session + phase.
+task_followup_history_by_session: Dict[str, Dict[str, list[Dict[str, str]]]] = {}
 # Tracks how many chat_history entries have been delivered for agent-mode sessions
 chat_history_offsets: Dict[str, int] = {}
 # Pending turn metadata keyed by session token -> turn id.
 pending_turns_by_session: Dict[str, OrderedDict[str, Dict[str, object]]] = {}
 # Guards against duplicate latency rows when messages are replayed.
 delivered_turn_messages_by_session: Dict[str, set[str]] = {}
+
+
+_TASK_FOLLOWUP_HISTORY_MAX_MESSAGES = 12
+
+
+def _normalize_task_followup_phase(raw_phase: object) -> str:
+    phase = str(raw_phase or "probing").strip().lower()
+    return phase if phase in {"probing", "ai_extras"} else "probing"
+
+
+def _normalize_task_followup_dialogue(raw_dialogue: object) -> list[Dict[str, str]]:
+    if not isinstance(raw_dialogue, list):
+        return []
+    out: list[Dict[str, str]] = []
+    for item in raw_dialogue:
+        if not isinstance(item, dict):
+            continue
+        content = str(item.get("content", "")).strip()
+        if not content:
+            continue
+        role_raw = str(item.get("role", "")).strip().lower()
+        if role_raw in {"user", "participant", "human"}:
+            role = "Participant"
+        elif role_raw in {"assistant", "interviewer", "bot"}:
+            role = "Interviewer"
+        else:
+            continue
+        out.append({"role": role, "content": content})
+    return out[-_TASK_FOLLOWUP_HISTORY_MAX_MESSAGES:]
+
+
+def _task_followup_history(session_token: str, phase: str) -> list[Dict[str, str]]:
+    bucket = task_followup_history_by_session.setdefault(session_token, {})
+    return bucket.setdefault(phase, [])
+
+
+def _format_task_followup_history(history: list[Dict[str, str]]) -> str:
+    if not history:
+        return "(none)"
+    lines = []
+    for item in history[-_TASK_FOLLOWUP_HISTORY_MAX_MESSAGES:]:
+        role = str(item.get("role", "")).strip() or "Participant"
+        content = str(item.get("content", "")).strip()
+        if not content:
+            continue
+        lines.append(f"{role}: {content}")
+    return "\n".join(lines) if lines else "(none)"
+
+
+def _latest_interviewer_message_from_chat(iv) -> str:
+    for msg in reversed(getattr(iv, "chat_history", []) or []):
+        role = str(getattr(msg, "role", "")).strip().lower()
+        mtype = str(getattr(msg, "type", "")).strip().lower()
+        content = str(getattr(msg, "content", "")).strip()
+        if role == "interviewer" and mtype == "conversation" and content:
+            return content
+    return ""
 
 
 def _parse_iso_datetime(value: Optional[object]) -> Optional[datetime]:
@@ -1871,7 +1930,15 @@ def update_portrait():
         )
     return jsonify({'success': True})
 
-_TASK_GEN_MODEL = os.getenv("TASK_GEN_MODEL", "claude-sonnet-4-6")
+# Pick best available model based on credentials present
+def _default_task_gen_model() -> str:
+    if os.getenv("ANTHROPIC_API_KEY"):
+        return "claude-sonnet-4-6"       # direct Anthropic API
+    if os.getenv("GCP_PROJECT") and os.getenv("GCP_REGION"):
+        return "claude-3-7-sonnet"       # Vertex AI
+    return "gpt-4o"                      # OpenAI fallback
+
+_TASK_GEN_MODEL = os.getenv("TASK_GEN_MODEL", _default_task_gen_model())
 _TASK_BATCH_SIZE = 3    # tasks shown per batch; each LLM call generates exactly this many
 _TASK_MIN_BATCHES = 10  # LLM cannot stop before this many batches (~30 tasks min)
 _TASK_MAX_BATCHES = 30  # hard cap to avoid infinite generation
@@ -2055,7 +2122,7 @@ def generate_tasks():
         tasks, has_more = _llm_generate_task_batch(job_description, prior_tasks, batch_index, perspective)
     except Exception as e:
         app.logger.error(f"[generate_tasks] LLM error: {e}", exc_info=True)
-        return jsonify({'success': False, 'error': 'Task generation failed'}), 500
+        return jsonify({'success': False, 'error': str(e)}), 500
 
     # Don't let the LLM stop before _TASK_MIN_BATCHES batches
     if batch_index + 1 < _TASK_MIN_BATCHES:
@@ -2088,16 +2155,18 @@ def ai_era_tasks():
 
     prompt = (
         f"Occupation context: \"{job_description}\"\n\n"
-        "Generate tasks that someone in this role does TODAY because of AI tools — tasks that either:\n"
+        "First, identify the broad occupational category this person belongs to "
+        "(e.g. 'researcher', 'software engineer', 'nurse', 'teacher', 'manager'). "
+        "Then generate tasks that are broadly true for people in that category today because of AI — tasks that either:\n"
         "  (a) are newly possible or dramatically easier due to AI (expanded capabilities), OR\n"
-        "  (b) have emerged as oversight, governance, or quality-control responsibilities because AI is now involved in the workflow.\n\n"
+        "  (b) have emerged as oversight, governance, or quality-control responsibilities because AI is now in the workflow.\n\n"
         "Generate exactly 6 tasks: 3 expanded-capability tasks and 3 governance/oversight tasks.\n\n"
         "Rules:\n"
-        "- The task NAME must make it explicit that AI is involved — include 'using AI', 'with AI', or the specific AI tool\n"
-        "  Good: 'Synthesize literature reviews using AI tools', 'Review AI-generated code for correctness'\n"
-        "  Bad: 'Accelerate literature synthesis', 'Review code'\n"
-        "- Be specific to this occupation — not generic\n"
-        "- Each task: 5–12 words, starts with an action verb, sentence case (only first word and proper nouns capitalized)\n"
+        "- Tasks should apply broadly to the occupational category, NOT be hyper-specific to this individual's niche\n"
+        "  Good for a researcher: 'Verify AI-generated literature summaries against source papers'\n"
+        "  Too specific: 'Audit AI-generated participant-facing materials for bias in human-subjects research'\n"
+        "- The task NAME must make it explicit that AI is involved — include 'using AI', 'with AI', or a specific AI tool\n"
+        "- Each task: 5–12 words, starts with an action verb, sentence case\n"
         "- Each needs a name and a one-sentence description\n"
         "- Label each with type: 'capability' or 'governance'\n"
         "- Return ONLY valid JSON (no markdown fences):\n"
@@ -2118,7 +2187,7 @@ def ai_era_tasks():
                 tasks.append({"name": name, "description": desc, "ai_type": ai_type})
     except Exception as e:
         app.logger.error(f"[ai_era_tasks] error: {e}", exc_info=True)
-        return jsonify({'success': False, 'error': 'Generation failed'}), 500
+        return jsonify({'success': False, 'error': str(e)}), 500
 
     return jsonify({'success': True, 'tasks': tasks})
 
@@ -2167,7 +2236,7 @@ def attention_check_tasks():
                 tasks.append({"name": name, "description": desc, "is_attention_check": True})
     except Exception as e:
         app.logger.error(f"[attention_check_tasks] error: {e}", exc_info=True)
-        return jsonify({'success': False, 'error': 'Generation failed'}), 500
+        return jsonify({'success': False, 'error': str(e)}), 500
 
     return jsonify({'success': True, 'tasks': tasks})
 
@@ -2217,16 +2286,18 @@ def regenerate_task_description():
 def task_followup():
     """Return a brief interviewer response during the post-TVW probing phase.
 
-    Detects whether the user is adding a new task or signalling they are done.
-    Returns {reply, done} — when done=true the session is ended server-side.
+    Detects whether the user is adding a new task, answering a clarifier, or
+    signaling they are done. Returns {reply, done}. When done=true during
+    ai_extras, the session is ended server-side.
     """
-    import re as _re
     from src.utils.llm.engines import get_engine, invoke_engine
 
     data = request.get_json(silent=True) or {}
     session_token = data.get('session_token')
     task_text = (data.get('task_text') or '').strip()
     prior_tasks = data.get('prior_tasks') or []
+    phase = _normalize_task_followup_phase(data.get('phase') or 'probing')
+    recent_dialogue = _normalize_task_followup_dialogue(data.get('recent_dialogue'))
 
     if not task_text:
         return jsonify({'success': False, 'error': 'task_text required'}), 400
@@ -2238,57 +2309,103 @@ def task_followup():
     iv = wrapper.interview_session
     job_description = _extract_job_description(iv)
 
+    history = _task_followup_history(session_token, phase)
+    if recent_dialogue:
+        history[:] = recent_dialogue[-_TASK_FOLLOWUP_HISTORY_MAX_MESSAGES:]
+    elif not history:
+        seed = _latest_interviewer_message_from_chat(iv)
+        if seed:
+            history.append({"role": "Interviewer", "content": seed})
+
+    history_block = _format_task_followup_history(history)
+
     prior_block = ""
     if prior_tasks:
         prior_block = "Tasks already collected:\n" + "\n".join(f"- {t}" for t in prior_tasks) + "\n\n"
 
     prompt = (
-        f"You are a warm, concise interviewer wrapping up a task inventory.\n\n"
+        "You are a warm, concise interviewer collecting a task inventory.\n"
+        "Goal: capture remaining tasks while sounding like you understood what the participant just said.\n\n"
         f"Occupation context: \"{job_description}\"\n"
         f"{prior_block}"
+        f"Recent task-followup conversation (oldest to newest):\n{history_block}\n\n"
         f"Participant's latest message: \"{task_text}\"\n\n"
         "Decide which case applies:\n\n"
-        "CASE A — participant is DONE (signals no more tasks: e.g. 'no', 'that's it', 'nothing else', "
-        "'I think that's everything', 'nope', 'all good', 'nothing more'):\n"
+        "CASE A — participant is DONE adding tasks:\n"
+        "  Signals like 'no', 'that's it', 'nothing else', 'I think that's everything', 'nope', "
+        "'all good', 'nothing more', 'no more'.\n"
+        "  IMPORTANT: short affirmations like 'both', 'yes', 'yeah', 'correct' are DONE only when they "
+        "clearly answer a prior 'any other tasks?' prompt.\n"
         "  Respond warmly in 1 sentence. Vary the phrasing — do NOT use 'Perfect' or 'Got it'. "
         "  Return JSON: {\"reply\": \"...\", \"done\": true}\n\n"
-        "CASE B — participant is adding a task (describes work they do):\n"
-        "  Write a natural, specific acknowledgment that reflects what they said — "
-        "  vary it: sometimes add a brief relevant observation, sometimes show genuine interest. "
-        "  NEVER use generic filler phrases like 'Got it', 'Good one', 'Thanks for sharing', or 'Noted'.\n"
-        "  If the task is vague: ask ONE short focused clarifying question. "
-        "  Always end with a varied phrasing of 'anything else?' — e.g. 'Anything else come to mind?', "
-        "  'What else?', 'Is there anything else?'\n"
+        "CASE B — participant is adding a NEW task (describes distinct work they do):\n"
+        "  Ask exactly one follow-up question about that task.\n"
+        "  The question must show understanding by anchoring to a concrete detail from their latest message.\n"
+        "  Do NOT use generic filler phrases like 'Got it', 'Good one', 'Thanks for sharing', or 'Noted'.\n"
+        "  Do NOT end with 'anything else?' in this case.\n"
+        "  Also extract a concise task name in 'Action + Object + Objective' format — a verb phrase "
+        "  that captures what they do, what they do it to, and why/to what end "
+        "  (e.g. 'Attend CS seminars to stay current with research trends', "
+        "  'Analyze experimental results to validate hypotheses', "
+        "  'Write grant proposals to secure project funding'). "
+        "  Return JSON: {\"reply\": \"...\", \"task_name\": \"...\", \"done\": false}\n\n"
+        "CASE C — participant is answering your previous follow-up/clarifier (including short replies like "
+        "'both', 'yes', 'correct', or noun phrases like 'experimental results') and did NOT introduce a new task:\n"
+        "  Respond in 1 sentence that briefly reflects understanding, then ask if there are other tasks.\n"
         "  Return JSON: {\"reply\": \"...\", \"done\": false}\n\n"
         "Rules:\n"
-        "- reply: 1–2 sentences max\n"
-        "- Do NOT repeat the task name back verbatim\n"
+        "- reply: 1 sentence max; at most one question mark\n"
+        "- task_name: starts with a verb, includes action + object + objective (purpose/outcome), aim for 8–12 words\n"
+        "- For CASE B, follow-up must be specific to this participant's latest message and show understanding\n"
+        "- Do NOT repeat the task name verbatim in the reply\n"
         "- Return ONLY valid JSON, no markdown fences, no extra text"
     )
 
     done = False
-    reply = "Got it. Is there anything else to add?"
+    reply = "What other tasks are part of your work?"
+    task_name = None
     try:
         engine = get_engine(model_name=_TASK_GEN_MODEL, temperature=0.9)
         response = invoke_engine(engine, prompt)
         raw = (response.content if hasattr(response, 'content') else str(response)).strip()
-        raw = _re.sub(r"^```[a-z]*\n?", "", raw)
-        raw = _re.sub(r"\n?```$", "", raw).strip()
+        if raw.startswith("```"):
+            first_newline = raw.find("\n")
+            if first_newline != -1:
+                raw = raw[first_newline + 1 :]
+            else:
+                raw = raw.lstrip("`")
+        if raw.endswith("```"):
+            raw = raw[:-3]
+        raw = raw.strip()
         parsed = json.loads(raw)
         reply = str(parsed.get('reply', reply)).strip()
         done = bool(parsed.get('done', False))
+        if not done and parsed.get('task_name'):
+            task_name = str(parsed['task_name']).strip()
     except Exception as e:
         app.logger.error(f"[task_followup] error: {e}", exc_info=True)
 
-    if done:
+    # Ensure non-done responses continue the probing flow with one question.
+    if not done and "?" not in reply:
+        reply = f"{reply.rstrip('. ')}. What other tasks are part of your work?"
+
+    history.append({"role": "Participant", "content": task_text})
+    if reply:
+        history.append({"role": "Interviewer", "content": reply})
+    if len(history) > _TASK_FOLLOWUP_HISTORY_MAX_MESSAGES:
+        del history[:-_TASK_FOLLOWUP_HISTORY_MAX_MESSAGES]
+
+    if done and phase == 'ai_extras':
         def _end():
             iv.end_with_thankyou(send_message=False)
         if hasattr(wrapper, 'loop'):
             wrapper.loop.call_soon_threadsafe(_end)
         else:
             _end()
+        # End of post-task flow; clear rolling state.
+        task_followup_history_by_session.pop(session_token, None)
 
-    return jsonify({'success': True, 'reply': reply, 'done': done})
+    return jsonify({'success': True, 'reply': reply, 'task_name': task_name, 'done': done})
 
 
 @app.route('/api/submit-task-validation', methods=['POST'])
@@ -2309,6 +2426,8 @@ def submit_task_validation():
         return jsonify({'success': False, 'error': 'Invalid or expired session'}), 400
 
     iv = wrapper.interview_session
+    # Reset post-validation probing dialogue state for this session.
+    task_followup_history_by_session.pop(session_token, None)
     all_tasks = [str(t).strip() for t in validated_tasks + extra_tasks if str(t).strip()]
     wishlist = [str(t).strip() for t in wishlist_tasks if str(t).strip()]
 
@@ -2335,7 +2454,7 @@ def submit_task_validation():
     def _inject_question():
         iv.add_message_to_chat_history(
             role="Interviewer",
-            content="Are there any tasks central to your role that we haven't covered?",
+            content="Are there any tasks you can think of that we haven't covered?",
             message_type="conversation",
         )
 
@@ -2564,6 +2683,7 @@ def cleanup_old_sessions():
             to_remove.append(token)
             session_audio_cache.pop(token, None)
             last_messages_by_session.pop(token, None)
+            task_followup_history_by_session.pop(token, None)
             pending_turns_by_session.pop(token, None)
             delivered_turn_messages_by_session.pop(token, None)
 

@@ -48,23 +48,21 @@ class GeminiVertexEngine:
                 "GCP_PROJECT and GCP_REGION must be provided in .env"
             )
         
-        if not credentials_path or not os.path.exists(credentials_path):
-            raise ValueError(
-                f"GCP_CREDENTIALS path not found: {credentials_path}"
+        # Use key file if available, otherwise fall back to ADC (e.g. Cloud Run)
+        if credentials_path and os.path.exists(credentials_path):
+            credentials = service_account.Credentials.from_service_account_file(
+                credentials_path,
+                scopes=SCOPES
             )
-        
-        # Load credentials from the specified file with required scopes
-        credentials = service_account.Credentials.from_service_account_file(
-            credentials_path,
-            scopes=SCOPES
-        )
-                
+        else:
+            credentials = None
+
         # Initialize Vertex AI with the credentials
         try:
             init(
                 project=project_id,
                 location=region,
-                credentials=credentials
+                **({"credentials": credentials} if credentials is not None else {})
             )
             
             # Store the GenerativeModel class for later use

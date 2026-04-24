@@ -1220,7 +1220,7 @@
         background: #fff;
         border-bottom: 1px solid #e5e7eb;
         flex-shrink: 0;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
       }
       .progress-header-row {
         display: flex;
@@ -1254,7 +1254,7 @@
         height: 100%;
         background: #f59e0b;
         border-radius: 99px;
-        transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
+        transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
         width: 0%;
       }
       .progress-tabs {
@@ -1273,11 +1273,15 @@
         color: #9ca3af;
         cursor: pointer;
         font-family: inherit;
-        transition: color 0.15s, border-color 0.15s;
+        transition:
+          color 0.15s,
+          border-color 0.15s;
         margin-bottom: -1px;
         white-space: nowrap;
       }
-      .progress-tab:hover { color: #6b7280; }
+      .progress-tab:hover {
+        color: #6b7280;
+      }
       .progress-tab.active {
         color: #111827;
         border-bottom-color: #111827;
@@ -1290,9 +1294,16 @@
         padding: 12px 12px 20px;
         background: #f3f4f6;
       }
-      .progress-body::-webkit-scrollbar { width: 4px; }
-      .progress-body::-webkit-scrollbar-track { background: transparent; }
-      .progress-body::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+      .progress-body::-webkit-scrollbar {
+        width: 4px;
+      }
+      .progress-body::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .progress-body::-webkit-scrollbar-thumb {
+        background: #d1d5db;
+        border-radius: 3px;
+      }
 
       .prog-role-card {
         background: #fff;
@@ -1300,7 +1311,7 @@
         border-radius: 10px;
         padding: 13px 14px;
         margin-bottom: 8px;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
       }
       .prog-role-label {
         font-size: 10px;
@@ -1371,7 +1382,7 @@
         border-radius: 10px;
         padding: 12px 14px;
         margin-bottom: 8px;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
       }
       .prog-deliverable-card.mapped {
         background: #f0fdf4;
@@ -1405,9 +1416,21 @@
         padding: 2px 6px;
         border-radius: 99px;
       }
-      .prog-deliverable-status.mapped { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
-      .prog-deliverable-status.exploring { background: #fffbeb; color: #d97706; border: 1px solid #fde68a; }
-      .prog-deliverable-status.pending { background: #f3f4f6; color: #9ca3af; border: 1px solid #e5e7eb; }
+      .prog-deliverable-status.mapped {
+        background: #f0fdf4;
+        color: #16a34a;
+        border: 1px solid #bbf7d0;
+      }
+      .prog-deliverable-status.exploring {
+        background: #fffbeb;
+        color: #d97706;
+        border: 1px solid #fde68a;
+      }
+      .prog-deliverable-status.pending {
+        background: #f3f4f6;
+        color: #9ca3af;
+        border: 1px solid #e5e7eb;
+      }
       .prog-deliverable-divider {
         height: 1px;
         background: #e5e7eb;
@@ -1444,8 +1467,12 @@
         line-height: 1.3;
         flex-shrink: 0;
       }
-      .prog-tasks-list.mapped li::before { color: #86efac; }
-      .prog-tasks-list.exploring li::before { color: #fde68a; }
+      .prog-tasks-list.mapped li::before {
+        color: #86efac;
+      }
+      .prog-tasks-list.exploring li::before {
+        color: #fde68a;
+      }
       .prog-exploring-note {
         font-size: 12px;
         color: #d97706;
@@ -1456,7 +1483,10 @@
         padding: 48px 20px;
         color: #9ca3af;
       }
-      .prog-empty-state p { font-size: 13px; line-height: 1.6; }
+      .prog-empty-state p {
+        font-size: 13px;
+        line-height: 1.6;
+      }
       .progress-toggle-btn.active {
         background: #f0fdf4;
         color: #16a34a;
@@ -2438,198 +2468,553 @@
       .task-validation-widget {
         background: #fff;
         border-radius: 16px;
-        padding: 22px 22px 20px;
+        border: 1.5px solid #e5e7eb;
+        border-top: 3px solid #111827;
+        padding: 20px 20px 18px;
         margin-top: -4px;
         animation: fadeInUp 0.3s ease-out;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04);
+        box-shadow:
+          0 4px 20px rgba(0, 0, 0, 0.07),
+          0 1px 4px rgba(0, 0, 0, 0.04);
       }
       .tvw-header {
         display: flex;
-        align-items: baseline;
+        align-items: center;
         justify-content: space-between;
-        margin-bottom: 4px;
+        margin-bottom: 6px;
       }
-      .tvw-title { font-size: 13px; font-weight: 700; color: #111827; }
-      .tvw-progress-text { font-size: 12px; color: #9ca3af; }
-      .tvw-subtitle { font-size: 13px; color: #9ca3af; margin: 10px 0 16px; line-height: 1.8; }
+      .tvw-title {
+        font-size: 15px;
+        font-weight: 700;
+        color: #111827;
+      }
+      .tvw-progress-text {
+        font-size: 12px;
+        color: #6b7280;
+        font-weight: 500;
+      }
+      .tvw-subtitle {
+        font-size: 13px;
+        color: #6b7280;
+        margin: 8px 0 16px;
+        padding-left: 18px;
+        line-height: 1.7;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .tvw-subtitle li {
+        list-style: disc;
+      }
       .tvw-progress-track {
-        height: 3px; background: #f3f4f6; border-radius: 99px;
-        margin-bottom: 16px; overflow: hidden;
+        height: 4px;
+        background: #f3f4f6;
+        border-radius: 99px;
+        margin-bottom: 18px;
+        overflow: hidden;
       }
       .tvw-progress-fill {
-        height: 100%; background: #6366f1; border-radius: 99px; transition: width 0.4s ease;
+        height: 100%;
+        background: #111827;
+        border-radius: 99px;
+        transition: width 0.4s ease;
       }
       .tvw-loading {
-        display: flex; align-items: center; gap: 10px;
-        color: #9ca3af; font-size: 13px; padding: 10px 0 4px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: #9ca3af;
+        font-size: 13px;
+        padding: 12px 0 6px;
       }
       .tvw-loading-spinner {
-        width: 14px; height: 14px;
-        border: 2px solid #e5e7eb; border-top-color: #6366f1;
-        border-radius: 50%; animation: profileSpin 0.7s linear infinite; flex-shrink: 0;
+        width: 14px;
+        height: 14px;
+        border: 2px solid #e5e7eb;
+        border-top-color: #374151;
+        border-radius: 50%;
+        animation: profileSpin 0.7s linear infinite;
+        flex-shrink: 0;
       }
-      .tvw-task-list { display: flex; flex-direction: column; gap: 8px; }
+      .tvw-task-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
       .tvw-task-card {
-        display: flex; align-items: flex-start; gap: 12px;
-        padding: 14px 14px 14px 12px;
-        background: #fff; border: 1px solid #e5e7eb;
-        border-left: 3px solid #e5e7eb; border-radius: 10px; transition: border-color 0.2s;
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
+        padding: 16px 16px 14px 14px;
+        background: #f9fafb;
+        border: 1.5px solid #e5e7eb;
+        border-left: 3px solid #d1d5db;
+        border-radius: 12px;
+        transition: border-color 0.2s;
       }
-      .tvw-task-card.tvw-card-confirmed { border-left-color: #16a34a; background: #fafffe; }
-      .tvw-task-card.tvw-card-edited    { border-left-color: #d97706; background: #fffdf5; }
-      .tvw-task-card.tvw-card-removed   { border-left-color: #e5e7eb; background: #f9fafb; }
-      .tvw-task-card.editing            { border-left-color: #6366f1; background: #fafafe; }
+      .tvw-task-card.tvw-card-confirmed {
+        border-left-color: #16a34a;
+        background: #f0fdf4;
+        border-color: #bbf7d0;
+      }
+      .tvw-task-card.tvw-card-edited {
+        border-left-color: #d97706;
+        background: #fffbeb;
+        border-color: #fde68a;
+      }
+      .tvw-task-card.tvw-card-removed {
+        border-left-color: #d1d5db;
+        background: #f3f4f6;
+        border-color: #e5e7eb;
+        opacity: 0.7;
+      }
+      .tvw-task-card.editing {
+        border-left-color: #374151;
+        background: #f9fafb;
+        border-color: #9ca3af;
+      }
       .tvw-card-num {
-        width: 26px; height: 26px; min-width: 26px;
-        border-radius: 50%; background: #f3f4f6; color: #9ca3af;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 12px; font-weight: 700; transition: all 0.2s; margin-top: 1px;
+        width: 28px;
+        height: 28px;
+        min-width: 28px;
+        border-radius: 8px;
+        background: #f3f4f6;
+        color: #374151;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: 700;
+        transition: all 0.2s;
+        margin-top: 1px;
       }
-      .tvw-num-confirmed { background: #dcfce7; color: #16a34a; }
-      .tvw-num-edited    { background: #fef3c7; color: #d97706; }
-      .tvw-num-removed   { background: #f3f4f6; color: #d1d5db; }
-      .tvw-card-body { flex: 1; min-width: 0; }
+      .tvw-num-confirmed {
+        background: #dcfce7;
+        color: #16a34a;
+        border-radius: 8px;
+      }
+      .tvw-num-edited {
+        background: #fef3c7;
+        color: #d97706;
+        border-radius: 8px;
+      }
+      .tvw-num-removed {
+        background: #f3f4f6;
+        color: #d1d5db;
+        border-radius: 8px;
+      }
+      .tvw-card-body {
+        flex: 1;
+        min-width: 0;
+      }
       .tvw-card-title-row {
-        display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 3px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 5px;
       }
-      .tvw-card-title { font-size: 14px; font-weight: 600; color: #111827; line-height: 1.4; }
-      .tvw-task-card.tvw-card-removed .tvw-card-title { text-decoration: line-through; color: #9ca3af; }
+      .tvw-card-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #111827;
+        line-height: 1.4;
+      }
+      .tvw-task-card.tvw-card-removed .tvw-card-title {
+        text-decoration: line-through;
+        color: #9ca3af;
+      }
       .tvw-badge {
-        font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; white-space: nowrap;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 99px;
+        white-space: nowrap;
       }
-      .tvw-badge-confirmed { background: #dcfce7; color: #15803d; }
-      .tvw-badge-edited    { background: #fef3c7; color: #92400e; }
-      .tvw-badge-removed   { background: #f3f4f6; color: #9ca3af; }
-      .tvw-card-desc { font-size: 13px; color: #6b7280; line-height: 1.5; margin-bottom: 10px; }
-      .tvw-card-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+      .tvw-badge-confirmed {
+        background: #dcfce7;
+        color: #15803d;
+      }
+      .tvw-badge-edited {
+        background: #fef3c7;
+        color: #92400e;
+      }
+      .tvw-badge-removed {
+        background: #f3f4f6;
+        color: #9ca3af;
+      }
+      .tvw-card-desc {
+        font-size: 12.5px;
+        color: #6b7280;
+        line-height: 1.6;
+        margin-top: 2px;
+        margin-bottom: 14px;
+      }
+      .tvw-card-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
       .tvw-action-btn {
-        background: #fff; border: 1px solid #e5e7eb; border-radius: 99px;
-        padding: 4px 14px; font-size: 12px; font-family: inherit;
-        color: #374151; cursor: pointer; transition: all 0.15s;
+        background: #fff;
+        border: 1.5px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 7px 16px;
+        font-size: 13px;
+        font-family: inherit;
+        font-weight: 500;
+        color: #374151;
+        cursor: pointer;
+        transition: all 0.15s;
       }
-      .tvw-action-btn:hover        { border-color: #9ca3af; color: #111827; }
-      .tvw-accurate-btn:hover { border-color: #16a34a; color: #15803d; background: #f0fdf4; }
-      .tvw-edit-btn:hover     { border-color: #d97706; color: #92400e; background: #fffbeb; }
-      .tvw-remove-btn:hover   { border-color: #ef4444; color: #b91c1c; background: #fef2f2; }
-      .tvw-accurate-btn.tvw-btn-active { border-color: #16a34a; color: #15803d; background: #dcfce7; font-weight: 600; }
-      .tvw-edit-btn.tvw-btn-active     { border-color: #d97706; color: #92400e; background: #fef3c7; font-weight: 600; }
-      .tvw-remove-btn.tvw-btn-active   { border-color: #ef4444; color: #b91c1c; background: #fef2f2; font-weight: 600; }
-      .tvw-wish-btn { padding: 4px 10px; font-size: 13px; }
-      .tvw-wish-btn:hover     { border-color: #f472b6; color: #be185d; background: #fdf2f8; }
-      .tvw-wish-btn.tvw-btn-active { border-color: #ec4899; color: #be185d; background: #fce7f3; font-weight: 600; }
-      .tvw-card-wishlisted { border-left-color: #ec4899 !important; background: #fdf2f8; }
+      .tvw-action-btn:hover {
+        border-color: #9ca3af;
+        color: #111827;
+        background: #f9fafb;
+      }
+      .tvw-accurate-btn:hover {
+        border-color: #16a34a;
+        color: #15803d;
+        background: #f0fdf4;
+      }
+      .tvw-edit-btn:hover {
+        border-color: #d97706;
+        color: #92400e;
+        background: #fffbeb;
+      }
+      .tvw-remove-btn:hover {
+        border-color: #ef4444;
+        color: #b91c1c;
+        background: #fef2f2;
+      }
+      .tvw-accurate-btn.tvw-btn-active {
+        border-color: #16a34a;
+        color: #15803d;
+        background: #dcfce7;
+        font-weight: 600;
+      }
+      .tvw-edit-btn.tvw-btn-active {
+        border-color: #d97706;
+        color: #92400e;
+        background: #fef3c7;
+        font-weight: 600;
+      }
+      .tvw-remove-btn.tvw-btn-active {
+        border-color: #ef4444;
+        color: #b91c1c;
+        background: #fef2f2;
+        font-weight: 600;
+      }
+      .tvw-wish-btn {
+        padding: 7px 14px;
+        font-size: 13px;
+      }
+      .tvw-wish-btn:hover {
+        border-color: #f472b6;
+        color: #be185d;
+        background: #fdf2f8;
+      }
+      .tvw-wish-btn.tvw-btn-active {
+        border-color: #ec4899;
+        color: #be185d;
+        background: #fce7f3;
+        font-weight: 600;
+      }
+      .tvw-card-wishlisted {
+        border-left-color: #ec4899 !important;
+        background: #fdf2f8;
+      }
       .tvw-card-input {
-        font-size: 14px; font-weight: 600; font-family: inherit; color: #111827;
-        background: #fff; border: 1.5px solid #a5b4fc; border-radius: 6px;
-        outline: none; line-height: 1.5; width: 100%;
-        padding: 4px 8px; box-sizing: border-box;
+        font-size: 14px;
+        font-weight: 600;
+        font-family: inherit;
+        color: #111827;
+        background: #fff;
+        border: 1.5px solid #9ca3af;
+        border-radius: 8px;
+        outline: none;
+        line-height: 1.5;
+        width: 100%;
+        padding: 6px 10px;
+        box-sizing: border-box;
       }
       .tvw-widget-footer {
-        display: flex; align-items: center; justify-content: space-between; gap: 8px;
-        margin-top: 16px; padding-top: 14px; border-top: 1px solid #f3f4f6;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-top: 20px;
+        padding-top: 16px;
+        border-top: 1px solid #f3f4f6;
       }
       .tvw-continue-btn {
-        background: #111827; color: #fff; border: none;
-        padding: 9px 22px; border-radius: 10px; font-size: 13px; font-weight: 600;
-        font-family: inherit; cursor: pointer; transition: background 0.15s; margin-left: auto;
+        background: #111827;
+        color: #fff;
+        border: none;
+        padding: 10px 24px;
+        border-radius: 10px;
+        font-size: 13px;
+        font-weight: 600;
+        font-family: inherit;
+        cursor: pointer;
+        transition: background 0.15s;
+        margin-left: auto;
       }
-      .tvw-continue-btn:hover { background: #374151; }
+      .tvw-continue-btn:hover {
+        background: #374151;
+      }
       .tvw-skip-btn {
-        background: transparent; border: none; color: #9ca3af;
-        font-size: 13px; font-family: inherit; cursor: pointer;
-        padding: 0; text-decoration: underline; transition: color 0.15s;
+        background: transparent;
+        border: none;
+        color: #9ca3af;
+        font-size: 13px;
+        font-family: inherit;
+        cursor: pointer;
+        padding: 0;
+        text-decoration: underline;
+        transition: color 0.15s;
       }
-      .tvw-skip-btn:hover { color: #374151; }
+      .tvw-skip-btn:hover {
+        color: #374151;
+      }
       /* Missing / summary screen */
       .tvw-section-label {
-        font-size: 11px; font-weight: 700; color: #9ca3af;
-        letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 8px;
+        font-size: 11px;
+        font-weight: 700;
+        color: #9ca3af;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        margin-bottom: 12px;
       }
       /* Summary task list — replaces chips for better readability */
-      .tvw-summary-list { display: flex; flex-direction: column; gap: 4px; }
-      .tvw-summary-item {
-        display: flex; align-items: baseline; gap: 10px;
-        padding: 7px 10px; border-radius: 8px; background: #f9fafb;
+      .tvw-summary-list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
       }
-      .tvw-summary-item.tvw-summary-edited  { background: #fffbeb; }
-      .tvw-summary-item.tvw-summary-removed { background: #f9fafb; opacity: 0.5; }
+      .tvw-summary-item {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        padding: 10px 12px;
+        border-radius: 10px;
+        background: #f9fafb;
+        border: 1px solid #f3f4f6;
+      }
+      .tvw-summary-item.tvw-summary-edited {
+        background: #fffbeb;
+      }
+      .tvw-summary-item.tvw-summary-removed {
+        background: #f9fafb;
+        opacity: 0.5;
+      }
       .tvw-summary-num {
-        font-size: 11px; font-weight: 700; color: #9ca3af;
-        min-width: 18px; flex-shrink: 0; text-align: right;
+        font-size: 11px;
+        font-weight: 700;
+        color: #9ca3af;
+        min-width: 18px;
+        flex-shrink: 0;
+        text-align: right;
       }
       .tvw-summary-text {
-        font-size: 13px; color: #111827; line-height: 1.4; flex: 1;
+        font-size: 13px;
+        color: #111827;
+        line-height: 1.4;
+        flex: 1;
       }
-      .tvw-summary-item.tvw-summary-removed .tvw-summary-text { text-decoration: line-through; color: #9ca3af; }
+      .tvw-summary-item.tvw-summary-removed .tvw-summary-text {
+        text-decoration: line-through;
+        color: #9ca3af;
+      }
       .tvw-summary-tag {
-        font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 99px; flex-shrink: 0;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 2px 7px;
+        border-radius: 99px;
+        flex-shrink: 0;
       }
-      .tvw-summary-tag-edited  { background: #fef3c7; color: #92400e; }
+      .tvw-summary-tag-edited {
+        background: #fef3c7;
+        color: #92400e;
+      }
       /* Chip row kept for inline-added tasks */
-      .tvw-chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
-      .tvw-chip {
-        display: inline-flex; align-items: center; padding: 5px 12px;
-        border-radius: 99px; font-size: 13px; font-weight: 500; line-height: 1.3;
+      .tvw-chip-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 4px;
       }
-      .tvw-chip-confirmed { background: #dcfce7; color: #15803d; }
-      .tvw-chip-edited    { background: #fef3c7; color: #92400e; }
-      .tvw-chip-removed   { background: #f3f4f6; color: #9ca3af; text-decoration: line-through; }
+      .tvw-chip {
+        display: inline-flex;
+        align-items: center;
+        padding: 5px 12px;
+        border-radius: 99px;
+        font-size: 13px;
+        font-weight: 500;
+        line-height: 1.3;
+      }
+      .tvw-chip-confirmed {
+        background: #dcfce7;
+        color: #15803d;
+      }
+      .tvw-chip-edited {
+        background: #fef3c7;
+        color: #92400e;
+      }
+      .tvw-chip-removed {
+        background: #f3f4f6;
+        color: #9ca3af;
+        text-decoration: line-through;
+      }
       /* Add-task card (injected into chat) */
       .tvw-add-card {
-        margin-top: 12px; padding: 16px 18px; background: #fff;
-        border: 1px solid #e5e7eb; border-radius: 14px;
+        margin-top: 12px;
+        padding: 16px 18px;
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
       }
-      .tvw-add-card p { margin: 0 0 12px; font-size: 14px; color: #111827; line-height: 1.5; }
-      .tvw-add-row { display: flex; gap: 8px; }
+      .tvw-add-card p {
+        margin: 0 0 12px;
+        font-size: 14px;
+        color: #111827;
+        line-height: 1.5;
+      }
+      .tvw-add-row {
+        display: flex;
+        gap: 8px;
+      }
       .tvw-add-input {
-        flex: 1; padding: 10px 14px; font-size: 13px; font-family: inherit; color: #1f2937;
-        background: #f9fafb; border: 1.5px solid #e5e7eb; border-radius: 10px;
-        outline: none; transition: border-color 0.15s;
+        flex: 1;
+        padding: 10px 14px;
+        font-size: 13px;
+        font-family: inherit;
+        color: #1f2937;
+        background: #f9fafb;
+        border: 1.5px solid #e5e7eb;
+        border-radius: 10px;
+        outline: none;
+        transition: border-color 0.15s;
       }
-      .tvw-add-input:focus { border-color: #a5b4fc; background: #fff; }
-      .tvw-add-input::placeholder { color: #9ca3af; }
+      .tvw-add-input:focus {
+        border-color: #9ca3af;
+        background: #fff;
+      }
+      .tvw-add-input::placeholder {
+        color: #9ca3af;
+      }
       .tvw-add-btn {
-        background: #fff; color: #374151; border: 1.5px solid #e5e7eb;
-        padding: 0 18px; border-radius: 10px; font-size: 13px; font-family: inherit;
-        cursor: pointer; white-space: nowrap; transition: all 0.15s; font-weight: 500;
+        background: #fff;
+        color: #374151;
+        border: 1.5px solid #e5e7eb;
+        padding: 0 18px;
+        border-radius: 10px;
+        font-size: 13px;
+        font-family: inherit;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: all 0.15s;
+        font-weight: 500;
       }
-      .tvw-add-btn:hover { border-color: #6366f1; color: #4338ca; }
-      .tvw-inline-added { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+      .tvw-add-btn:hover {
+        border-color: #374151;
+        color: #111827;
+      }
+      .tvw-inline-added {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        margin-top: 8px;
+      }
       .tvw-inline-added-item {
-        display: flex; align-items: center; gap: 8px;
-        font-size: 13px; color: #15803d; padding: 5px 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: #15803d;
+        padding: 5px 0;
       }
-      .tvw-inline-added-item::before { content: "✓"; font-weight: 700; color: #16a34a; }
+      .tvw-inline-added-item::before {
+        content: "✓";
+        font-weight: 700;
+        color: #16a34a;
+      }
       .tvw-add-footer {
-        display: flex; justify-content: flex-end; margin-top: 14px;
-        padding-top: 12px; border-top: 1px solid #f3f4f6;
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 14px;
+        padding-top: 12px;
+        border-top: 1px solid #f3f4f6;
       }
       .tvw-added-card {
-        display: flex; align-items: flex-start; gap: 12px; padding: 10px 12px;
-        background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; margin-top: 6px;
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 10px 12px;
+        background: #f0fdf4;
+        border: 1px solid #bbf7d0;
+        border-radius: 10px;
+        margin-top: 6px;
       }
       .tvw-added-icon {
-        width: 22px; height: 22px; border-radius: 50%; background: #dcfce7; color: #15803d;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 13px; font-weight: 700; flex-shrink: 0;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: #dcfce7;
+        color: #15803d;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        font-weight: 700;
+        flex-shrink: 0;
       }
-      .tvw-added-title { font-size: 13px; font-weight: 600; color: #15803d; }
+      .tvw-added-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: #15803d;
+      }
       .tvw-missing-footer {
-        display: flex; align-items: center; justify-content: space-between;
-        margin-top: 18px; padding-top: 14px; border-top: 1px solid #f3f4f6;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 18px;
+        padding-top: 14px;
+        border-top: 1px solid #f3f4f6;
       }
       .tvw-no-more-btn {
-        background: transparent; border: none; color: #6b7280; font-size: 13px;
-        font-family: inherit; cursor: pointer; text-decoration: underline; padding: 0; transition: color 0.15s;
+        background: transparent;
+        border: none;
+        color: #6b7280;
+        font-size: 13px;
+        font-family: inherit;
+        cursor: pointer;
+        text-decoration: underline;
+        padding: 0;
+        transition: color 0.15s;
       }
-      .tvw-no-more-btn:hover { color: #111827; }
+      .tvw-no-more-btn:hover {
+        color: #111827;
+      }
       .tvw-finish-btn {
-        background: #111827; color: #fff; border: none; padding: 9px 22px;
-        border-radius: 10px; font-size: 13px; font-weight: 600; font-family: inherit;
-        cursor: pointer; transition: background 0.15s;
+        background: #111827;
+        color: #fff;
+        border: none;
+        padding: 9px 22px;
+        border-radius: 10px;
+        font-size: 13px;
+        font-weight: 600;
+        font-family: inherit;
+        cursor: pointer;
+        transition: background 0.15s;
       }
-      .tvw-finish-btn:hover { background: #374151; }
-      .tvw-finish-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+      .tvw-finish-btn:hover {
+        background: #374151;
+      }
+      .tvw-finish-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
 
       /* ---- Feedback Widget ---- */
       .feedback-widget {
@@ -2883,6 +3268,187 @@
         cursor: not-allowed;
       }
 
+      /* ---- AI Task Widget ---- */
+      .aitw-widget {
+        background: #fff;
+        border: 1.5px solid #e5e7eb;
+        border-radius: 16px;
+        padding: 20px 20px 18px;
+        margin-top: 12px;
+        box-shadow:
+          0 4px 20px rgba(0, 0, 0, 0.07),
+          0 1px 4px rgba(0, 0, 0, 0.04);
+        animation: fadeInUp 0.3s ease-out;
+      }
+      .aitw-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 6px;
+      }
+      .aitw-title {
+        font-size: 15px;
+        font-weight: 700;
+        color: #111827;
+      }
+      .aitw-counter {
+        font-size: 12px;
+        color: #6b7280;
+        font-weight: 500;
+      }
+      .aitw-subtitle {
+        font-size: 13px;
+        color: #6b7280;
+        margin: 6px 0 16px;
+        line-height: 1.6;
+      }
+      .aitw-task-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .aitw-task-card {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 14px 14px 14px 14px;
+        background: #f9fafb;
+        border: 1.5px solid #e5e7eb;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.15s;
+        user-select: none;
+      }
+      .aitw-task-card:hover {
+        border-color: #9ca3af;
+        background: #f3f4f6;
+      }
+      .aitw-task-card.selected {
+        border-color: #111827;
+        background: #f0f0f0;
+      }
+      .aitw-card-num {
+        width: 28px;
+        height: 28px;
+        min-width: 28px;
+        border-radius: 8px;
+        background: #f3f4f6;
+        color: #374151;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: 700;
+        flex-shrink: 0;
+        margin-top: 1px;
+        transition: all 0.15s;
+      }
+      .aitw-task-card.selected .aitw-card-num {
+        background: #111827;
+        color: #fff;
+      }
+      .aitw-card-body {
+        flex: 1;
+        min-width: 0;
+      }
+      .aitw-card-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #111827;
+        line-height: 1.4;
+        outline: none;
+        cursor: text;
+        border-radius: 4px;
+        padding: 1px 3px;
+        margin: -1px -3px;
+      }
+      .aitw-card-title:focus {
+        background: #fff;
+        box-shadow: 0 0 0 2px #9ca3af;
+        cursor: text;
+      }
+      .aitw-card-desc {
+        font-size: 12.5px;
+        color: #6b7280;
+        line-height: 1.6;
+        margin-top: 4px;
+      }
+      .aitw-card-hint {
+        font-size: 11px;
+        color: #9ca3af;
+        margin-top: 6px;
+      }
+      .aitw-checkbox {
+        width: 20px;
+        height: 20px;
+        min-width: 20px;
+        border-radius: 6px;
+        border: 1.5px solid #d1d5db;
+        background: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        margin-top: 3px;
+        transition: all 0.15s;
+      }
+      .aitw-task-card.selected .aitw-checkbox {
+        background: #111827;
+        border-color: #111827;
+        color: #fff;
+      }
+      .aitw-checkbox::after {
+        content: "";
+        display: none;
+        width: 5px;
+        height: 9px;
+        border: 2px solid #fff;
+        border-top: none;
+        border-left: none;
+        transform: rotate(45deg) translateY(-1px);
+      }
+      .aitw-task-card.selected .aitw-checkbox::after {
+        display: block;
+      }
+      .aitw-footer {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-top: 20px;
+        padding-top: 16px;
+        border-top: 1px solid #f3f4f6;
+      }
+      .aitw-skip-btn {
+        background: transparent;
+        border: none;
+        color: #9ca3af;
+        font-size: 13px;
+        font-family: inherit;
+        cursor: pointer;
+        padding: 0;
+        text-decoration: underline;
+        transition: color 0.15s;
+      }
+      .aitw-skip-btn:hover {
+        color: #374151;
+      }
+      .aitw-submit-btn {
+        background: #111827;
+        color: #fff;
+        border: none;
+        padding: 10px 24px;
+        border-radius: 10px;
+        font-size: 13px;
+        font-weight: 600;
+        font-family: inherit;
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+      .aitw-submit-btn:hover {
+        background: #374151;
+      }
+
       /* ---- AI Usage Widget ---- */
       .ai-usage-widget {
         background: #fff;
@@ -3012,25 +3578,6 @@
         cursor: not-allowed;
       }
 
-      @media (max-width: 640px) {
-        .aiw-row {
-          grid-template-columns: 1fr;
-        }
-        .aiw-toggle {
-          width: fit-content;
-        }
-        .aiw-remove {
-          justify-self: end;
-        }
-        .aiw-actions {
-          flex-direction: column;
-        }
-        .aiw-add,
-        .aiw-submit {
-          width: 100%;
-        }
-      }
-
       /* ---- Responsive ---- */
       @media (min-width: 768px) {
         .chat-inner {
@@ -3045,6 +3592,14 @@
       }
 
       @media (max-width: 900px) {
+        /* TVW widget fits narrower screens */
+        .tvw-task-card {
+          padding: 16px 14px 14px 12px;
+        }
+        .tvw-card-actions {
+          flex-wrap: wrap;
+        }
+
         .top-bar {
           padding: 10px 12px;
           align-items: flex-start;
@@ -3160,6 +3715,124 @@
           min-width: 0;
         }
       }
+
+      /* ---- TVW + Feedback: mobile ---- */
+      @media (max-width: 640px) {
+        /* AI task widget */
+        .aitw-widget {
+          padding: 16px 14px 14px;
+        }
+        .aitw-task-card {
+          padding: 12px 10px 12px 12px;
+          gap: 10px;
+        }
+        .aitw-footer {
+          flex-direction: column;
+          gap: 10px;
+        }
+        .aitw-submit-btn {
+          width: 100%;
+          padding: 13px;
+        }
+        .aitw-skip-btn {
+          width: 100%;
+          text-align: center;
+          padding: 6px 0;
+        }
+
+        /* AI usage widget */
+        .aiw-row {
+          grid-template-columns: 1fr;
+        }
+        .aiw-toggle {
+          width: fit-content;
+        }
+        .aiw-remove {
+          justify-self: end;
+        }
+        .aiw-actions {
+          flex-direction: column;
+        }
+        .aiw-add,
+        .aiw-submit {
+          width: 100%;
+        }
+
+        /* Tighter card on small screens */
+        .tvw-task-card {
+          padding: 14px 12px 14px 12px;
+          gap: 10px;
+        }
+        .tvw-card-num {
+          width: 26px;
+          height: 26px;
+          min-width: 26px;
+          font-size: 11px;
+        }
+        .tvw-card-title {
+          font-size: 13.5px;
+        }
+        .tvw-card-desc {
+          font-size: 12.5px;
+          margin-bottom: 12px;
+        }
+
+        /* Action buttons: equal-width row, easy to tap */
+        .tvw-action-btn {
+          padding: 9px 10px;
+          font-size: 13px;
+          flex: 1;
+          text-align: center;
+        }
+        .tvw-card-actions {
+          gap: 6px;
+        }
+
+        /* Footer: stack Continue on top, Done below */
+        .tvw-widget-footer {
+          flex-direction: column;
+          gap: 10px;
+          margin-top: 18px;
+        }
+        .tvw-continue-btn {
+          width: 100%;
+          padding: 13px 22px;
+        }
+        .tvw-skip-btn {
+          width: 100%;
+          text-align: center;
+          padding: 8px 0;
+        }
+
+        /* Summary items */
+        .tvw-summary-item {
+          padding: 9px 10px;
+        }
+        .tvw-summary-text {
+          font-size: 12.5px;
+        }
+
+        /* Subtitle tighter on small screens */
+        .tvw-subtitle {
+          font-size: 12.5px;
+          margin: 10px 0 16px;
+        }
+
+        /* Feedback widget */
+        .feedback-widget {
+          padding: 20px 16px 18px;
+        }
+        .fb-section {
+          margin-top: 24px;
+        }
+        .fb-rating {
+          gap: 4px;
+        }
+        .fb-rating-btn {
+          font-size: 14px;
+          padding: 11px 0;
+        }
+      }
     </style>
   </head>
   <body>
@@ -3183,10 +3856,20 @@
           <input type="checkbox" id="tts-toggle" />
           <label for="tts-toggle">Voice</label>
         </div>
-        <button class="end-btn profile-toggle-btn" id="profile-btn">
+        <button
+          class="end-btn profile-toggle-btn"
+          id="profile-btn"
+          style="display: none"
+        >
           Profile
         </button>
-        <button class="end-btn progress-toggle-btn" id="progress-btn" style="display:none">Progress</button>
+        <button
+          class="end-btn progress-toggle-btn"
+          id="progress-btn"
+          style="display: none"
+        >
+          Progress
+        </button>
         <button class="end-btn" id="end-session-btn">End Session</button>
       </div>
     </div>
@@ -3244,7 +3927,10 @@
         <div class="profile-header">
           <div class="profile-header-left">
             <span class="profile-header-title">Your Profile</span>
-            <span class="profile-header-badge" id="profile-badge" style="display:none"
+            <span
+              class="profile-header-badge"
+              id="profile-badge"
+              style="display: none"
               >Loading...</span
             >
           </div>
@@ -3268,11 +3954,21 @@
             </svg>
           </button>
         </div>
-        <div class="profile-progress-bar-wrap" id="profile-progress-wrap" style="display:none">
+        <div
+          class="profile-progress-bar-wrap"
+          id="profile-progress-wrap"
+          style="display: none"
+        >
           <div class="profile-progress-bar-track">
-            <div class="profile-progress-bar-fill" id="profile-progress-fill"></div>
+            <div
+              class="profile-progress-bar-fill"
+              id="profile-progress-fill"
+            ></div>
           </div>
-          <span class="profile-progress-label" id="profile-progress-label"></span>
+          <span
+            class="profile-progress-label"
+            id="profile-progress-label"
+          ></span>
         </div>
         <div class="profile-body" id="profile-body">
           <div class="profile-empty-state">
@@ -3303,13 +3999,17 @@
             </div>
             <div class="progress-tabs" id="progress-tabs">
               <button class="progress-tab active" data-tab="role">Role</button>
-              <button class="progress-tab" data-tab="deliverables">Deliverables</button>
+              <button class="progress-tab" data-tab="deliverables">
+                Deliverables
+              </button>
               <button class="progress-tab" data-tab="tasks">Tasks</button>
               <button class="progress-tab" data-tab="review">Review</button>
             </div>
           </div>
           <div class="progress-body" id="progress-body">
-            <div class="prog-empty-state"><p>Start the interview to<br>see your progress.</p></div>
+            <div class="prog-empty-state">
+              <p>Start the interview to<br />see your progress.</p>
+            </div>
           </div>
         </div>
       </div>
@@ -3468,7 +4168,9 @@
       };
 
       function stemTaskToken(token) {
-        const t = String(token || "").toLowerCase().trim();
+        const t = String(token || "")
+          .toLowerCase()
+          .trim();
         if (!t) return "";
         if (IRREGULAR_TASK_STEMS[t]) return IRREGULAR_TASK_STEMS[t];
         if (t.endsWith("ies") && t.length > 4) return t.slice(0, -3) + "y";
@@ -3671,7 +4373,10 @@
         }
 
         function normalizedRootPcts() {
-          const rawTotal = rootIds.reduce((s, id) => s + (nodes[id].val || 0), 0);
+          const rawTotal = rootIds.reduce(
+            (s, id) => s + (nodes[id].val || 0),
+            0,
+          );
           if (rawTotal === 0) return {};
           const pcts = {};
           let allocated = 0;
@@ -3917,7 +4622,8 @@
             regrouped = true;
           } catch (_) {
             if (reqId !== regroupRequestNonce) return;
-            regroupStatus = "Couldn’t regroup right now. Try different feedback.";
+            regroupStatus =
+              "Couldn’t regroup right now. Try different feedback.";
             regroupStatusError = true;
           } finally {
             if (reqId !== regroupRequestNonce) return;
@@ -4253,7 +4959,8 @@
             groupingFeedback = e.target.value;
             const btn = document.getElementById("tsp-regroup-btn");
             if (btn)
-              btn.disabled = regroupBusy || groupingFeedback.trim().length === 0;
+              btn.disabled =
+                regroupBusy || groupingFeedback.trim().length === 0;
           }
         });
 
@@ -4346,9 +5053,7 @@
               if (!n) return null;
               const out = {
                 name: String(n.name || "").trim(),
-                children: (n.childIds || [])
-                  .map(serializeNode)
-                  .filter(Boolean),
+                children: (n.childIds || []).map(serializeNode).filter(Boolean),
               };
               if (n.isGroup) out.is_group = true;
               if (Array.isArray(n.mergedFrom) && n.mergedFrom.length > 0) {
@@ -4464,35 +5169,46 @@
         document.getElementById("chat-box").appendChild(widget);
         scrollToBottom();
 
-        const _PAGE_SIZE = 3;  // tasks shown per page — must match _TASK_BATCH_SIZE on server
-        const _ATTN_INTERVAL = 10;  // inject one attention check per N real tasks
+        const _PAGE_SIZE = 3; // tasks shown per page — must match _TASK_BATCH_SIZE on server
+        const _ATTN_INTERVAL = 5; // inject one attention check per N real tasks
 
         // State: flat list of all tasks across all batches
-        let allTasks = [];       // {text, description, status, isAttentionCheck, isAiTask, aiType}
+        let allTasks = []; // {text, description, status, isAttentionCheck, isAiTask, aiType}
         let batchesLoaded = 0;
-        let viewStart = 0;       // first index of the currently visible page
+        let viewStart = 0; // first index of the currently visible page
         let done = false;
         let prefetchPromise = null;
         let prefetchedBatch = null;
         let pendingAttentionChecks = [];
-        let aiTasks = [];        // AI-era tasks, interleaved into the regular stream
+        let aiTasks = []; // AI-era tasks, interleaved into the regular stream
 
         function esc(s) {
-          return String(s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+          return String(s || "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;");
         }
 
         async function fetchBatch(idx) {
-          const prior = allTasks.filter(t => !t.isAttentionCheck).map(t => t.text);
+          const prior = allTasks
+            .filter((t) => !t.isAttentionCheck)
+            .map((t) => t.text);
           const res = await fetch("/api/generate-tasks", {
-            method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ session_token: sessionToken, batch_index: idx, prior_tasks: prior }),
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              session_token: sessionToken,
+              batch_index: idx,
+              prior_tasks: prior,
+            }),
           });
           const data = await res.json();
           if (!data.success) throw new Error(data.error || "fetch failed");
           return {
-            tasks: (data.tasks || []).map(t => ({
-              text:        typeof t === "string" ? t : (t.name || ""),
-              description: typeof t === "string" ? "" : (t.description || ""),
+            tasks: (data.tasks || []).map((t) => ({
+              text: typeof t === "string" ? t : t.name || "",
+              description: typeof t === "string" ? "" : t.description || "",
               status: "unreviewed",
               isAttentionCheck: false,
             })),
@@ -4503,12 +5219,13 @@
         async function fetchAttentionChecks() {
           try {
             const res = await fetch("/api/attention-check-tasks", {
-              method: "POST", headers: { "Content-Type": "application/json" },
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ session_token: sessionToken }),
             });
             const data = await res.json();
             if (data.success) {
-              pendingAttentionChecks = (data.tasks || []).map(t => ({
+              pendingAttentionChecks = (data.tasks || []).map((t) => ({
                 text: t.name || "",
                 description: t.description || "",
                 status: "unreviewed",
@@ -4518,36 +5235,44 @@
           } catch (_) {}
         }
 
-        async function fetchAiTasks() {
-          try {
-            const res = await fetch("/api/ai-era-tasks", {
-              method: "POST", headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ session_token: sessionToken }),
-            });
-            const data = await res.json();
-            if (data.success) {
-              aiTasks = (data.tasks || []).map(t => ({
-                text: t.name || "",
-                description: t.description || "",
-                status: "unreviewed",
-                isAiTask: true,
-                aiType: t.ai_type || "capability",
-              }));
-            }
-          } catch (_) {}
+        let _aiTasksPromise = null;
+        function fetchAiTasks() {
+          _aiTasksPromise = (async () => {
+            try {
+              const res = await fetch("/api/ai-era-tasks", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ session_token: sessionToken }),
+              });
+              const data = await res.json();
+              if (data.success) {
+                aiTasks = (data.tasks || []).map((t) => ({
+                  text: t.name || "",
+                  description: t.description || "",
+                  status: "unreviewed",
+                  isAiTask: true,
+                  aiType: t.ai_type || "capability",
+                }));
+              }
+            } catch (_) {}
+          })();
+          return _aiTasksPromise;
         }
 
         function numClass(status) {
           if (status === "confirmed") return "tvw-num-confirmed";
-          if (status === "edited")    return "tvw-num-edited";
-          if (status === "removed")   return "tvw-num-removed";
+          if (status === "edited") return "tvw-num-edited";
+          if (status === "removed") return "tvw-num-removed";
           return "";
         }
 
         function taskCardHTML(t, idx) {
-          const statusCls = t.status !== "unreviewed" ? ` tvw-card-${t.status}` : "";
-          const badge = t.status === "edited"
-            ? `<span class="tvw-badge tvw-badge-edited">edited</span>` : "";
+          const statusCls =
+            t.status !== "unreviewed" ? ` tvw-card-${t.status}` : "";
+          const badge =
+            t.status === "edited"
+              ? `<span class="tvw-badge tvw-badge-edited">edited</span>`
+              : "";
 
           const actions = `
             <div class="tvw-card-actions">
@@ -4571,14 +5296,22 @@
 
         function updateProgress() {
           const visible = allTasks.slice(viewStart, viewStart + _PAGE_SIZE);
-          const visibleReviewed = visible.filter(t => t.status !== "unreviewed").length;
+          const visibleReviewed = visible.filter(
+            (t) => t.status !== "unreviewed",
+          ).length;
           const visibleTotal = visible.length;
-          const pct = visibleTotal > 0 ? Math.round((visibleReviewed / visibleTotal) * 100) : 0;
+          const pct =
+            visibleTotal > 0
+              ? Math.round((visibleReviewed / visibleTotal) * 100)
+              : 0;
           const fill = document.getElementById("tvw-progress-fill");
           if (fill) fill.style.width = `${pct}%`;
-          const totalReviewed = allTasks.filter(t => t.status !== "unreviewed").length;
+          const totalReviewed = allTasks.filter(
+            (t) => t.status !== "unreviewed",
+          ).length;
           const txt = document.getElementById("tvw-progress-text");
-          if (txt) txt.textContent = `${totalReviewed} of ${allTasks.length} reviewed`;
+          if (txt)
+            txt.textContent = `${totalReviewed} of ${allTasks.length} reviewed`;
         }
 
         function updateFooter() {
@@ -4588,8 +5321,12 @@
           footer.innerHTML = `
             <button class="tvw-skip-btn" id="tvw-skip">Done</button>
             <button class="tvw-continue-btn" id="tvw-continue">Continue →</button>`;
-          footer.querySelector("#tvw-skip")?.addEventListener("click", renderMissing);
-          footer.querySelector("#tvw-continue")?.addEventListener("click", hasNext ? handleNext : renderMissing);
+          footer
+            .querySelector("#tvw-skip")
+            ?.addEventListener("click", renderMissing);
+          footer
+            .querySelector("#tvw-continue")
+            ?.addEventListener("click", hasNext ? handleNext : renderMissing);
         }
 
         function showBatch(start) {
@@ -4614,35 +5351,33 @@
                 descEl.style.color = "#d1d5db";
                 descEl.textContent = "Loading…";
                 if (actions) body.insertBefore(descEl, actions);
-                fetch('/api/regenerate-task-description', {
-                  method: 'POST',
-                  headers: {'Content-Type': 'application/json'},
-                  body: JSON.stringify({session_token: sessionToken, task_name: t.text})
-                }).then(r => r.json()).then(d => {
-                  if (d.success && d.description) {
-                    allTasks[globalIdx].description = d.description;
-                    descEl.style.color = "";
-                    descEl.textContent = d.description;
-                  } else {
+                fetch("/api/regenerate-task-description", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    session_token: sessionToken,
+                    task_name: t.text,
+                  }),
+                })
+                  .then((r) => r.json())
+                  .then((d) => {
+                    if (d.success && d.description) {
+                      allTasks[globalIdx].description = d.description;
+                      descEl.style.color = "";
+                      descEl.textContent = d.description;
+                    } else {
+                      descEl.remove();
+                    }
+                  })
+                  .catch(() => {
                     descEl.remove();
-                  }
-                }).catch(() => { descEl.remove(); });
+                  });
               }
             }
           });
           updateFooter();
           updateProgress();
           scrollToBottom();
-        }
-
-        // Inject pending AI tasks interleaved every _AI_INTERVAL real tasks
-        const _AI_INTERVAL = 2;
-        function maybeInjectAiTask() {
-          if (!aiTasks.length) return;
-          const realCount = allTasks.filter(t => !t.isAttentionCheck).length;
-          if (realCount > 0 && realCount % _AI_INTERVAL === 0) {
-            allTasks.push(aiTasks.shift());
-          }
         }
 
         // Fetch batches until allTasks has at least `needUpTo` tasks (or truly done).
@@ -4658,19 +5393,14 @@
                 try {
                   batch = await (prefetchPromise || fetchBatch(batchesLoaded));
                   prefetchPromise = null;
-                } catch (_) { done = true; }
+                } catch (_) {
+                  done = true;
+                }
               }
-              if (batch && batch.tasks.length) {
-                receiveBatch(batch);
-              } else {
-                done = true;
+              if (batch) {
+                receiveBatch(batch); // receiveBatch sets done if !hasMore
               }
-            } else if (aiTasks.length) {
-              // Regular generation done — drain AI tasks one page at a time
-              while (aiTasks.length && allTasks.length < needUpTo) {
-                allTasks.push(aiTasks.shift());
-              }
-              break;
+              // If batch is undefined (catch above set done=true), loop will exit
             } else {
               break;
             }
@@ -4686,18 +5416,29 @@
           }
           if (allTasks.length < nextStart + _PAGE_SIZE) {
             const btn = document.getElementById("tvw-continue");
-            if (btn) { btn.disabled = true; btn.textContent = "Loading…"; }
+            if (btn) {
+              btn.disabled = true;
+              btn.textContent = "Loading…";
+            }
             await fetchUntilFull(nextStart + _PAGE_SIZE);
           }
-          if (allTasks.length <= nextStart) { renderMissing(); return; }
+          if (allTasks.length <= nextStart) {
+            renderMissing();
+            return;
+          }
           showBatch(nextStart);
         }
 
         function prefetchAhead(idx) {
           if (done || prefetchPromise || prefetchedBatch) return;
           prefetchPromise = fetchBatch(idx)
-            .then(batch => { prefetchPromise = null; prefetchedBatch = batch; })
-            .catch(() => { prefetchPromise = null; });
+            .then((batch) => {
+              prefetchPromise = null;
+              prefetchedBatch = batch;
+            })
+            .catch(() => {
+              prefetchPromise = null;
+            });
         }
 
         function setTaskStatus(idx, status) {
@@ -4716,13 +5457,21 @@
             titleRow.appendChild(badge);
           }
           const title = card.querySelector(".tvw-card-title");
-          if (title) title.style.textDecoration = status === "removed" ? "line-through" : "";
+          if (title)
+            title.style.textDecoration =
+              status === "removed" ? "line-through" : "";
           // Highlight the active button (wish button is toggled separately)
-          card.querySelectorAll(".tvw-action-btn:not(.tvw-wish-btn)").forEach(b => b.classList.remove("tvw-btn-active"));
+          card
+            .querySelectorAll(".tvw-action-btn:not(.tvw-wish-btn)")
+            .forEach((b) => b.classList.remove("tvw-btn-active"));
           const activeBtn = card.querySelector(
-            status === "confirmed" ? ".tvw-accurate-btn" :
-            status === "edited"    ? ".tvw-edit-btn" :
-            status === "removed"   ? ".tvw-remove-btn" : null
+            status === "confirmed"
+              ? ".tvw-accurate-btn"
+              : status === "edited"
+                ? ".tvw-edit-btn"
+                : status === "removed"
+                  ? ".tvw-remove-btn"
+                  : null,
           );
           if (activeBtn) activeBtn.classList.add("tvw-btn-active");
           updateProgress();
@@ -4740,7 +5489,8 @@
           titleEl.replaceWith(input);
           const actions = card.querySelector(".tvw-card-actions");
           if (actions) actions.style.display = "none";
-          input.focus(); input.select();
+          input.focus();
+          input.select();
           function saveEdit() {
             const newText = input.value.trim() || currentText;
             allTasks[idx].text = newText;
@@ -4756,44 +5506,70 @@
               const descEl = card.querySelector(".tvw-card-desc");
               if (descEl) {
                 descEl.textContent = "Updating…";
-                fetch('/api/regenerate-task-description', {
-                  method: 'POST',
-                  headers: {'Content-Type': 'application/json'},
-                  body: JSON.stringify({session_token: sessionToken, task_name: newText})
-                }).then(r => r.json()).then(d => {
-                  if (d.success && d.description) {
-                    allTasks[idx].description = d.description;
-                    descEl.textContent = d.description;
-                  } else {
+                fetch("/api/regenerate-task-description", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    session_token: sessionToken,
+                    task_name: newText,
+                  }),
+                })
+                  .then((r) => r.json())
+                  .then((d) => {
+                    if (d.success && d.description) {
+                      allTasks[idx].description = d.description;
+                      descEl.textContent = d.description;
+                    } else {
+                      descEl.textContent = allTasks[idx].description || "";
+                    }
+                  })
+                  .catch(() => {
                     descEl.textContent = allTasks[idx].description || "";
-                  }
-                }).catch(() => { descEl.textContent = allTasks[idx].description || ""; });
+                  });
               }
             } else {
               // Restore active highlight for current status
               const status = allTasks[idx].status;
-              card.querySelectorAll(".tvw-action-btn").forEach(b => b.classList.remove("tvw-btn-active"));
+              card
+                .querySelectorAll(".tvw-action-btn")
+                .forEach((b) => b.classList.remove("tvw-btn-active"));
               const activeBtn = card.querySelector(
-                status === "confirmed" ? ".tvw-accurate-btn" :
-                status === "edited"    ? ".tvw-edit-btn" :
-                status === "removed"   ? ".tvw-remove-btn" : null
+                status === "confirmed"
+                  ? ".tvw-accurate-btn"
+                  : status === "edited"
+                    ? ".tvw-edit-btn"
+                    : status === "removed"
+                      ? ".tvw-remove-btn"
+                      : null,
               );
               if (activeBtn) activeBtn.classList.add("tvw-btn-active");
             }
           }
           input.addEventListener("blur", saveEdit);
-          input.addEventListener("keydown", ev => {
-            if (ev.key === "Enter")  { ev.preventDefault(); saveEdit(); }
-            if (ev.key === "Escape") { input.value = currentText; saveEdit(); }
+          input.addEventListener("keydown", (ev) => {
+            if (ev.key === "Enter") {
+              ev.preventDefault();
+              saveEdit();
+            }
+            if (ev.key === "Escape") {
+              input.value = currentText;
+              saveEdit();
+            }
           });
         }
 
         function attachCardListeners(idx) {
           const card = document.getElementById(`tvw-card-${idx}`);
           if (!card) return;
-          card.querySelector(".tvw-accurate-btn")?.addEventListener("click", () => setTaskStatus(idx, "confirmed"));
-          card.querySelector(".tvw-edit-btn")?.addEventListener("click",     () => startEdit(idx));
-          card.querySelector(".tvw-remove-btn")?.addEventListener("click",   () => setTaskStatus(idx, "removed"));
+          card
+            .querySelector(".tvw-accurate-btn")
+            ?.addEventListener("click", () => setTaskStatus(idx, "confirmed"));
+          card
+            .querySelector(".tvw-edit-btn")
+            ?.addEventListener("click", () => startEdit(idx));
+          card
+            .querySelector(".tvw-remove-btn")
+            ?.addEventListener("click", () => setTaskStatus(idx, "removed"));
           card.querySelector(".tvw-wish-btn")?.addEventListener("click", () => {
             const isWished = allTasks[idx].wishlisted;
             allTasks[idx].wishlisted = !isWished;
@@ -4813,14 +5589,16 @@
         function receiveBatch(batch) {
           for (const task of batch.tasks) {
             allTasks.push(task);
-            const realCount = allTasks.filter(t => !t.isAttentionCheck && !t.isAiTask).length;
+            const realCount = allTasks.filter(
+              (t) => !t.isAttentionCheck && !t.isAiTask,
+            ).length;
             // Inject attention check every _ATTN_INTERVAL real tasks
-            if (pendingAttentionChecks.length && realCount > 0 && realCount % _ATTN_INTERVAL === 0) {
+            if (
+              pendingAttentionChecks.length &&
+              realCount > 0 &&
+              realCount % _ATTN_INTERVAL === 0
+            ) {
               allTasks.push(pendingAttentionChecks.shift());
-            }
-            // Interleave AI task every _AI_INTERVAL real tasks
-            if (aiTasks.length && realCount > 0 && realCount % _AI_INTERVAL === 0) {
-              allTasks.push(aiTasks.shift());
             }
           }
           if (!batch.hasMore) done = true;
@@ -4828,49 +5606,20 @@
           prefetchAhead(batchesLoaded);
         }
 
-        function renderMissing() {
-          const confirmed = allTasks.filter(t => !t.isAttentionCheck && (t.status === "confirmed" || t.status === "edited"));
-          const removed   = allTasks.filter(t => !t.isAttentionCheck && t.status === "removed");
-
-          const summaryItems = confirmed.map((t, i) =>
-            `<div class="tvw-summary-item${t.status === "edited" ? " tvw-summary-edited" : ""}">
-              <span class="tvw-summary-num">${i + 1}</span>
-              <span class="tvw-summary-text">${esc(t.text)}</span>
-              ${t.status === "edited" ? `<span class="tvw-summary-tag tvw-summary-tag-edited">edited</span>` : ""}
-            </div>`
-          ).join("");
-
-          const removedItems = removed.map(t =>
-            `<div class="tvw-summary-item tvw-summary-removed">
-              <span class="tvw-summary-num">–</span>
-              <span class="tvw-summary-text">${esc(t.text)}</span>
-            </div>`
-          ).join("");
-
-          widget.innerHTML = `
-            ${confirmed.length ? `<div class="tvw-section-label">Your tasks (${confirmed.length})</div><div class="tvw-summary-list">${summaryItems}</div>` : ""}`;
-          scrollToBottom();
-
-          // Auto-submit validation (saves tasks; backend injects the missing-tasks question)
-          const validatedTasks = allTasks
-            .filter(t => !t.isAttentionCheck && (t.status === "confirmed" || t.status === "edited"))
-            .map(t => t.text.trim()).filter(Boolean);
-          const wishlistTasks = allTasks
-            .filter(t => !t.isAttentionCheck && t.wishlisted)
-            .map(t => t.text.trim()).filter(Boolean);
-          fetch("/api/submit-task-validation", {
-            method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ session_token: sessionToken, tasks: validatedTasks, extra_tasks: [], wishlist_tasks: wishlistTasks }),
-          }).catch(() => {});
-
+        function startProbingLoop(onDone) {
           // --- Probing loop: intercept chat form and route through task-followup ---
           const chatForm = document.getElementById("chat-form");
-          const probingTasks = [];
+          const probingTasks = []; // raw user text (for context)
+          const probingTaskNames = []; // formatted "Action + Object + Objective" names
+          const probingDialogue = []; // rolling interviewer/participant turns
           const _origSubmit = chatForm.onsubmit;
 
-          chatForm.onsubmit = async function(e) {
+          chatForm.onsubmit = async function (e) {
             e.preventDefault();
-            if (isSessionCompleted) { chatForm.onsubmit = _origSubmit; return; }
+            if (isSessionCompleted) {
+              chatForm.onsubmit = _origSubmit;
+              return;
+            }
             const text = chatInput.value.trim();
             if (!text) return;
             chatInput.value = "";
@@ -4880,31 +5629,261 @@
             showTyping();
             scrollToBottom();
             try {
+              const dialogueForPrompt = probingDialogue.slice(-8);
               const r = await fetch("/api/task-followup", {
-                method: "POST", headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ session_token: sessionToken, task_text: text, prior_tasks: probingTasks.slice(0, -1) }),
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  session_token: sessionToken,
+                  task_text: text,
+                  prior_tasks: probingTaskNames.length
+                    ? probingTaskNames
+                    : probingTasks.slice(0, -1),
+                  phase: "probing",
+                  recent_dialogue: dialogueForPrompt,
+                }),
               });
               const d = await r.json();
               removeTyping();
-              if (d.reply) appendMessage("bot", d.reply, "probe-b-" + Date.now());
+              probingDialogue.push({ role: "Participant", content: text });
+              if (d.task_name) probingTaskNames.push(d.task_name);
+              if (d.reply) {
+                appendMessage("bot", d.reply, "probe-b-" + Date.now());
+                probingDialogue.push({ role: "Interviewer", content: d.reply });
+              }
               scrollToBottom();
-              if (d.done) chatForm.onsubmit = _origSubmit;
-            } catch(_) { removeTyping(); }
+              if (d.done) {
+                chatForm.onsubmit = _origSubmit;
+                if (onDone) onDone();
+              }
+            } catch (_) {
+              removeTyping();
+            }
           };
+        }
+
+        async function renderAiTaskWidget(onDone) {
+          // Wait for AI tasks fetch to complete if still in flight
+          if (_aiTasksPromise) await _aiTasksPromise;
+          if (!aiTasks.length) {
+            onDone([]);
+            return;
+          }
+
+          const aiWidget = document.createElement("div");
+          aiWidget.className = "aitw-widget";
+          document.getElementById("chat-box").appendChild(aiWidget);
+          scrollToBottom();
+
+          const AITW_PAGE = 3;
+          let pageStart = 0;
+          let selectedIndices = new Set();
+          const taskNames = aiTasks.map((t) => t.text);
+          const taskDescs = aiTasks.map((t) => t.description);
+
+          function renderPage() {
+            const pageTasks = aiTasks.slice(pageStart, pageStart + AITW_PAGE);
+            const isLast = pageStart + AITW_PAGE >= aiTasks.length;
+            aiWidget.innerHTML = `
+              <div class="aitw-header">
+                <span class="aitw-title">Tasks added to your role because of AI</span>
+                <span class="aitw-counter">${selectedIndices.size} selected</span>
+              </div>
+              <div class="aitw-subtitle">Here are tasks that may have been <em>added</em> to your role because of AI — things you now do that you wouldn't have done before. Select all that apply, and click any task name to edit it.</div>
+              <div class="aitw-task-list">
+                ${pageTasks
+                  .map((t, pi) => {
+                    const i = pageStart + pi;
+                    return `
+                  <div class="aitw-task-card${selectedIndices.has(i) ? " selected" : ""}" data-idx="${i}">
+                    <div class="aitw-card-num">${i + 1}</div>
+                    <div class="aitw-card-body">
+                      <div class="aitw-card-title" contenteditable="true" data-idx="${i}" spellcheck="false">${esc(taskNames[i])}</div>
+                      ${taskDescs[i] ? `<div class="aitw-card-desc">${esc(taskDescs[i])}</div>` : ""}
+                    </div>
+                    <div class="aitw-checkbox"></div>
+                  </div>`;
+                  })
+                  .join("")}
+              </div>
+              <div class="aitw-footer">
+                <button class="aitw-skip-btn">${isLast ? "None apply" : "Skip all"}</button>
+                <button class="aitw-submit-btn">${isLast ? "Continue →" : "Next →"}</button>
+              </div>`;
+
+            aiWidget.querySelectorAll(".aitw-task-card").forEach((card) => {
+              card.addEventListener("click", function (e) {
+                if (e.target.classList.contains("aitw-card-title")) return;
+                const idx = parseInt(this.dataset.idx);
+                if (selectedIndices.has(idx)) selectedIndices.delete(idx);
+                else selectedIndices.add(idx);
+                this.classList.toggle("selected");
+                const counter = aiWidget.querySelector(".aitw-counter");
+                if (counter)
+                  counter.textContent = `${selectedIndices.size} selected`;
+              });
+            });
+
+            aiWidget.querySelectorAll(".aitw-card-title").forEach((el) => {
+              el.addEventListener("click", (e) => e.stopPropagation());
+              el.addEventListener("input", function () {
+                taskNames[parseInt(this.dataset.idx)] = this.textContent.trim();
+              });
+            });
+
+            aiWidget
+              .querySelector(".aitw-submit-btn")
+              .addEventListener("click", function () {
+                if (isLast) {
+                  const selected = [...selectedIndices].map((i) => ({
+                    text: taskNames[i],
+                    description: taskDescs[i],
+                  }));
+                  aiWidget.remove();
+                  onDone(selected);
+                } else {
+                  pageStart += AITW_PAGE;
+                  renderPage();
+                  scrollToBottom();
+                }
+              });
+
+            aiWidget
+              .querySelector(".aitw-skip-btn")
+              .addEventListener("click", function () {
+                aiWidget.remove();
+                onDone([]);
+              });
+          }
+
+          renderPage();
+        }
+
+        function renderMissing() {
+          const confirmed = allTasks.filter(
+            (t) =>
+              !t.isAttentionCheck &&
+              (t.status === "confirmed" || t.status === "edited"),
+          );
+
+          const summaryItems = confirmed
+            .map(
+              (t, i) =>
+                `<div class="tvw-summary-item${t.status === "edited" ? " tvw-summary-edited" : ""}">
+              <span class="tvw-summary-num">${i + 1}</span>
+              <span class="tvw-summary-text">${esc(t.text)}</span>
+              ${t.status === "edited" ? `<span class="tvw-summary-tag tvw-summary-tag-edited">edited</span>` : ""}
+            </div>`,
+            )
+            .join("");
+
+          widget.innerHTML = `
+            ${confirmed.length ? `<div class="tvw-section-label">Your tasks (${confirmed.length})</div><div class="tvw-summary-list">${summaryItems}</div>` : ""}`;
+          scrollToBottom();
+
+          const validatedTasks = confirmed
+            .map((t) => t.text.trim())
+            .filter(Boolean);
+          const wishlistTasks = allTasks
+            .filter((t) => !t.isAttentionCheck && t.wishlisted)
+            .map((t) => t.text.trim())
+            .filter(Boolean);
+
+          // 1. Submit validation → backend injects "any tasks we missed?" question
+          fetch("/api/submit-task-validation", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              session_token: sessionToken,
+              tasks: validatedTasks,
+              extra_tasks: [],
+              wishlist_tasks: wishlistTasks,
+            }),
+          }).catch(() => {});
+
+          // 2. Probing loop — when done, move to AI tasks section
+          startProbingLoop(function () {
+            // 3. Transition message
+            appendMessage(
+              "bot",
+              "With AI becoming a part of so many workflows, I'm curious whether it's added any new tasks to your role.",
+              "ai-transition-" + Date.now(),
+            );
+            scrollToBottom();
+
+            // 4. AI task widget (system-suggested tasks shown first)
+            renderAiTaskWidget(function (selectedAiTasks) {
+              // 5. Ask if there are any others the widget didn't cover
+              appendMessage(
+                "bot",
+                "Are there any other AI-related tasks that weren't on that list?",
+                "ai-followup-" + Date.now(),
+              );
+              scrollToBottom();
+
+              const chatForm = document.getElementById("chat-form");
+              const _origSubmit = chatForm.onsubmit;
+              const aiExtraTasks = [];
+
+              chatForm.onsubmit = async function (e) {
+                e.preventDefault();
+                if (isSessionCompleted) {
+                  chatForm.onsubmit = _origSubmit;
+                  return;
+                }
+                const text = chatInput.value.trim();
+                if (!text) return;
+                chatInput.value = "";
+                chatInput.style.height = "auto";
+                appendMessage("user", text, "ai-extra-u-" + Date.now());
+                showTyping();
+                scrollToBottom();
+                try {
+                  const r = await fetch("/api/task-followup", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      session_token: sessionToken,
+                      task_text: text,
+                      prior_tasks: aiExtraTasks,
+                      phase: "ai_extras",
+                    }),
+                  });
+                  const d = await r.json();
+                  removeTyping();
+                  if (d.task_name) aiExtraTasks.push(d.task_name);
+                  if (d.done) {
+                    chatForm.onsubmit = _origSubmit;
+                  } else {
+                    if (d.reply)
+                      appendMessage("bot", d.reply, "ai-extra-b-" + Date.now());
+                    scrollToBottom();
+                  }
+                } catch (_) {
+                  removeTyping();
+                  chatForm.onsubmit = _origSubmit;
+                }
+              };
+            });
+          });
         }
 
         // ---- Initial render ----
         widget.innerHTML = `
           <div class="tvw-header">
-            <span class="tvw-title">Here are tasks I think you do</span>
+            <span class="tvw-title">Here are tasks you might do</span>
             <span class="tvw-progress-text" id="tvw-progress-text">0 reviewed</span>
           </div>
-          <div class="tvw-subtitle">Mark each task as <strong>Accurate</strong> if the task name fits your role (even if the description is slightly off — we only use the name), <strong>Edit</strong> if the task name is wrong or only partially right (the description will update automatically), or <strong>Remove</strong> if you don't do it.</div>
+          <ul class="tvw-subtitle">
+            <li><strong>Accurate</strong> — the task name fits your role (even if the description is slightly off)</li>
+            <li><strong>Edit</strong> — the task name is wrong or only partially right (description will update automatically)</li>
+            <li><strong>Remove</strong> — you don't do this task</li>
+          </ul>
           <div class="tvw-progress-track"><div class="tvw-progress-fill" id="tvw-progress-fill" style="width:0%"></div></div>
           <div class="tvw-task-list" id="tvw-task-list">
             <div class="tvw-loading"><div class="tvw-loading-spinner"></div>Loading tasks…</div>
           </div>
-          <div class="tvw-widget-footer" id="tvw-widget-footer" style="margin-top:16px;padding-top:14px;border-top:1px solid #f3f4f6;display:flex;align-items:center;justify-content:flex-end;gap:8px;"></div>`;
+          <div class="tvw-widget-footer" id="tvw-widget-footer"></div>`;
         scrollToBottom();
 
         try {
@@ -4927,7 +5906,9 @@
 
         // Refresh portrait first so the default buckets reflect latest tasks.
         try {
-          const res = await fetch(`/api/session-state?session_token=${sessionToken}`);
+          const res = await fetch(
+            `/api/session-state?session_token=${sessionToken}`,
+          );
           if (res.ok) {
             const data = await res.json();
             if (data.success) {
@@ -4951,7 +5932,9 @@
             .replace(/"/g, "&quot;");
         }
 
-        const taskInventory = dedupTasks((lastPortrait["Task Inventory"] || []).filter(Boolean));
+        const taskInventory = dedupTasks(
+          (lastPortrait["Task Inventory"] || []).filter(Boolean),
+        );
         let bucketNames = [];
         try {
           if (taskInventory.length >= 2) {
@@ -4959,7 +5942,8 @@
               taskInventory,
               portraitGroupingFeedback(lastPortrait),
             );
-            const tree = (result && Array.isArray(result.tree) ? result.tree : []);
+            const tree =
+              result && Array.isArray(result.tree) ? result.tree : [];
             bucketNames = tree
               .map((n) => String((n && n.name) || "").trim())
               .filter(Boolean);
@@ -4967,7 +5951,9 @@
         } catch (_) {}
 
         if (!bucketNames.length) bucketNames = taskInventory.slice();
-        bucketNames = dedupTasks(bucketNames.map((n) => capitalizeFieldValue(n))).slice(0, 4);
+        bucketNames = dedupTasks(
+          bucketNames.map((n) => capitalizeFieldValue(n)),
+        ).slice(0, 4);
         while (bucketNames.length < 4) {
           bucketNames.push(`Bucket ${bucketNames.length + 1}`);
         }
@@ -4983,7 +5969,9 @@
           return (
             rows.length > 0 &&
             rows.every(
-              (r) => String(r.name || "").trim().length > 0 && (r.mode === "ai" || r.mode === "manual"),
+              (r) =>
+                String(r.name || "").trim().length > 0 &&
+                (r.mode === "ai" || r.mode === "manual"),
             )
           );
         }
@@ -5021,19 +6009,26 @@
               <button type="button" class="aiw-submit" id="aiw-submit" ${canSubmit() ? "" : "disabled"}>Submit</button>
             </div>
           `;
-          widget.querySelectorAll(".aiw-name").forEach((el) => autosizeAiwName(el));
+          widget
+            .querySelectorAll(".aiw-name")
+            .forEach((el) => autosizeAiwName(el));
         }
 
         function submitRows() {
           if (!canSubmit()) return;
           const parts = rows.map((r) => {
-            const modeText = r.mode === "ai" ? "use AI tools right now" : "still mostly manual right now";
+            const modeText =
+              r.mode === "ai"
+                ? "use AI tools right now"
+                : "still mostly manual right now";
             return `${capitalizeFieldValue(r.name.trim())} — ${modeText}`;
           });
           const text = `AI tool usage by bucket: ${parts.join("; ")}.`;
           widget.remove();
           chatInput.value = text;
-          document.getElementById("chat-form").dispatchEvent(new Event("submit"));
+          document
+            .getElementById("chat-form")
+            .dispatchEvent(new Event("submit"));
         }
 
         widget.addEventListener("input", function (e) {
@@ -5062,7 +6057,8 @@
           if (e.target.classList.contains("aiw-remove")) {
             const id = e.target.dataset.id;
             rows = rows.filter((r) => r.id !== id);
-            if (rows.length === 0) rows.push({ id: `aiw-${rowCounter++}`, name: "", mode: null });
+            if (rows.length === 0)
+              rows.push({ id: `aiw-${rowCounter++}`, name: "", mode: null });
             render();
             return;
           }
@@ -5611,7 +6607,8 @@
                   showMessageWithAudio(msg);
                 } else {
                   if (appendMessage("bot", msg.content, msg.id)) {
-                    if (!profileConfirmPending) removeProfileBuildingIndicator();
+                    if (!profileConfirmPending)
+                      removeProfileBuildingIndicator();
                     removeTyping();
                   }
                 }
@@ -5633,9 +6630,10 @@
             maybeShowProfileBuildingIndicatorBeforeConfirm();
           }
           if (data.session_completed && !isSessionCompleted) {
-            // If feedback widget is currently shown, don't end yet —
-            // wait for the user to submit feedback before finalizing.
+            // If feedback widget or AI task widget is currently shown, don't end yet —
+            // wait for the user to finish before finalizing.
             if (document.getElementById("feedback-widget")) return;
+            if (document.querySelector(".aitw-widget")) return;
             updateStatus("");
             isSessionCompleted = true;
             stopTimer();
@@ -5806,22 +6804,9 @@
       }
 
       function showProfileBuildingIndicator() {
-        const existing = document.getElementById("profile-building-indicator");
-        if (existing) {
-          if (!profileBuildingIndicatorShownAt) {
-            profileBuildingIndicatorShownAt = Date.now();
-          }
-          return;
+        if (!profileBuildingIndicatorShownAt) {
+          profileBuildingIndicatorShownAt = Date.now();
         }
-        const box = document.getElementById("chat-box");
-        if (!box) return;
-        const div = document.createElement("div");
-        div.id = "profile-building-indicator";
-        div.className = "profile-building-indicator";
-        div.textContent = "Building your profile...";
-        box.appendChild(div);
-        profileBuildingIndicatorShownAt = Date.now();
-        scrollToBottom();
       }
       function removeProfileBuildingIndicator() {
         const el = document.getElementById("profile-building-indicator");
@@ -5869,10 +6854,7 @@
       }
 
       async function maybeShowProfileBuildingIndicatorBeforeConfirm() {
-        if (!sessionToken) return;
-        if (profileConfirmPending || profileConfirmWidgetSeen) return;
-        if (!document.getElementById("typing-indicator")) return;
-        if (document.getElementById("profile-building-indicator")) return;
+        return; // indicator hidden
         const now = Date.now();
         if (
           preConfirmIndicatorProbeInFlight ||
@@ -6166,7 +7148,10 @@
       }
 
       function normalizeGroupingFeedback(text) {
-        return String(text || "").trim().replace(/\s+/g, " ").slice(0, 400);
+        return String(text || "")
+          .trim()
+          .replace(/\s+/g, " ")
+          .slice(0, 400);
       }
 
       function portraitGroupingFeedback(portrait) {
@@ -6326,7 +7311,10 @@
 
       function renderTaskTreeNodes(nodes, depth, key, prioritySet) {
         if (!Array.isArray(nodes) || nodes.length === 0) return "";
-        const leaves = depth === 0 ? flattenTreeNodes(nodes) : nodes.filter(n => !n.is_group);
+        const leaves =
+          depth === 0
+            ? flattenTreeNodes(nodes)
+            : nodes.filter((n) => !n.is_group);
         const html = leaves
           .map((n) => {
             const name = String(n.name || "").trim();
@@ -6618,7 +7606,9 @@
           .replace(/\s+/g, " ")
           .trim();
         if (!raw) return "";
-        const k = String(key || "").toLowerCase().trim();
+        const k = String(key || "")
+          .toLowerCase()
+          .trim();
         if (k === "role" || k === "functional role") {
           return condenseRoleText(raw);
         }
@@ -6671,9 +7661,13 @@
           return;
         }
         input.style.height = "auto";
-        const nextHeight = Math.min(Math.max(input.scrollHeight, minHeight), maxHeight);
+        const nextHeight = Math.min(
+          Math.max(input.scrollHeight, minHeight),
+          maxHeight,
+        );
         input.style.height = nextHeight + "px";
-        input.style.overflowY = input.scrollHeight > maxHeight ? "auto" : "hidden";
+        input.style.overflowY =
+          input.scrollHeight > maxHeight ? "auto" : "hidden";
       }
 
       function renderProfile(portrait) {
@@ -6771,8 +7765,14 @@
           const tagId = key.replace(/ /g, "-");
           const _sectionHeader = (lbl, fkey) => {
             const cov = _getFieldCoverage(fkey);
-            if (!cov) return `<div class="profile-section-label">${escapeHtml(lbl)}</div>`;
-            const badgeText = cov.status === "covered" ? "✓ Covered" : cov.status === "partial" ? "In Progress" : "Pending";
+            if (!cov)
+              return `<div class="profile-section-label">${escapeHtml(lbl)}</div>`;
+            const badgeText =
+              cov.status === "covered"
+                ? "✓ Covered"
+                : cov.status === "partial"
+                  ? "In Progress"
+                  : "Pending";
             return `<div class="profile-section-header-row">
               <div class="profile-section-label">${escapeHtml(lbl)}</div>
               <span class="profile-coverage-badge ${cov.status}">${badgeText}</span>
@@ -6787,8 +7787,12 @@
             const displayVal = capitalizeFieldValue(val);
             let tenurePillHtml = "";
             if (key === "Role") {
-              const rawTenure = portrait["Tenure"] || displayPortrait["Tenure"] || "";
-              const tenureVal = typeof rawTenure === "string" ? condenseTenureText(rawTenure) : "";
+              const rawTenure =
+                portrait["Tenure"] || displayPortrait["Tenure"] || "";
+              const tenureVal =
+                typeof rawTenure === "string"
+                  ? condenseTenureText(rawTenure)
+                  : "";
               if (tenureVal) {
                 tenurePillHtml = `<div class="profile-tenure-pill" style="margin-top:8px">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -6827,12 +7831,7 @@
               if (haveTree) {
                 const treeCopy = JSON.parse(JSON.stringify(resolvedTree));
                 annotateTree(treeCopy, prioritySet);
-                listHtml = renderTaskTreeNodes(
-                  treeCopy,
-                  0,
-                  key,
-                  prioritySet,
-                );
+                listHtml = renderTaskTreeNodes(treeCopy, 0, key, prioritySet);
               } else {
                 const indexed = items.map((item, i) => ({
                   item,
@@ -7010,7 +8009,9 @@
       async function saveProfile() {
         const portrait = { ...lastPortrait };
         document.querySelectorAll(".profile-edit-input").forEach((input) => {
-          portrait[input.dataset.key] = capitalizeFieldValue(input.value.trim());
+          portrait[input.dataset.key] = capitalizeFieldValue(
+            input.value.trim(),
+          );
         });
         const btn = document.getElementById("profile-save-btn");
         btn.disabled = true;
@@ -7049,12 +8050,12 @@
         }
       }
 
-
       // Shorten a subtopic description to a readable label (text before first colon, or full if short)
       function _subtopicLabel(desc) {
         if (!desc) return "";
         const colonIdx = desc.indexOf(":");
-        const label = colonIdx > 0 && colonIdx < 40 ? desc.slice(0, colonIdx) : desc;
+        const label =
+          colonIdx > 0 && colonIdx < 40 ? desc.slice(0, colonIdx) : desc;
         return label.length > 52 ? label.slice(0, 50) + "…" : label;
       }
 
@@ -7069,10 +8070,19 @@
           else if (coveredCount === subs.length) status = "mapped";
           else if (coveredCount > 0) status = "exploring";
           else status = "pending";
-          return { name: topic.description, subs, status, coveredCount, total: subs.length };
+          return {
+            name: topic.description,
+            subs,
+            status,
+            coveredCount,
+            total: subs.length,
+          };
         });
         // If no topic is partially covered yet, mark the first pending as EXPLORING
-        if (!isSessionCompleted && !cards.some((c) => c.status === "exploring")) {
+        if (
+          !isSessionCompleted &&
+          !cards.some((c) => c.status === "exploring")
+        ) {
           const firstPending = cards.find((c) => c.status === "pending");
           if (firstPending) firstPending.status = "exploring";
         }
@@ -7085,7 +8095,9 @@
           const allSubs = lastSessionTopics.flatMap((t) => t.subtopics || []);
           const total = allSubs.filter((s) => !s.is_emergent).length;
           if (total > 0) {
-            const covered = allSubs.filter((s) => !s.is_emergent && s.is_covered).length;
+            const covered = allSubs.filter(
+              (s) => !s.is_emergent && s.is_covered,
+            ).length;
             return Math.round((covered / total) * 100);
           }
         }
@@ -7098,17 +8110,23 @@
       function _getPortraitDeliverables(portrait) {
         // Build a name→tasks lookup from the task grouping tree
         const savedTree = portrait && portrait["Task Grouping Tree"];
-        const treeSource = (Array.isArray(savedTree) && savedTree.length > 0)
-          ? savedTree
-          : (taskTreeCache && Array.isArray(taskTreeCache.tree) && taskTreeCache.tree.length > 0)
-            ? taskTreeCache.tree
-            : [];
+        const treeSource =
+          Array.isArray(savedTree) && savedTree.length > 0
+            ? savedTree
+            : taskTreeCache &&
+                Array.isArray(taskTreeCache.tree) &&
+                taskTreeCache.tree.length > 0
+              ? taskTreeCache.tree
+              : [];
         const treeMap = {};
         for (const node of treeSource) {
           const name = (node.name || "").trim().toLowerCase();
-          if (name) treeMap[name] = Array.isArray(node.children)
-            ? node.children.map((c) => (typeof c === "string" ? c : c.name || "")).filter(Boolean)
-            : [];
+          if (name)
+            treeMap[name] = Array.isArray(node.children)
+              ? node.children
+                  .map((c) => (typeof c === "string" ? c : c.name || ""))
+                  .filter(Boolean)
+              : [];
         }
 
         // Prefer the explicit Deliverables list
@@ -7124,7 +8142,9 @@
         return treeSource.map((node) => ({
           name: node.name || "",
           tasks: Array.isArray(node.children)
-            ? node.children.map((c) => (typeof c === "string" ? c : c.name || "")).filter(Boolean)
+            ? node.children
+                .map((c) => (typeof c === "string" ? c : c.name || ""))
+                .filter(Boolean)
             : [],
         }));
       }
@@ -7171,14 +8191,18 @@
 
       document.getElementById("progress-btn").onclick = toggleProgressPanel;
 
-      document.getElementById("progress-tabs").addEventListener("click", (e) => {
-        const tabBtn = e.target.closest("[data-tab]");
-        if (!tabBtn) return;
-        progressPanelTab = tabBtn.dataset.tab;
-        document.querySelectorAll(".progress-tab").forEach((t) => t.classList.remove("active"));
-        tabBtn.classList.add("active");
-        renderProgressPanel(lastPortrait);
-      });
+      document
+        .getElementById("progress-tabs")
+        .addEventListener("click", (e) => {
+          const tabBtn = e.target.closest("[data-tab]");
+          if (!tabBtn) return;
+          progressPanelTab = tabBtn.dataset.tab;
+          document
+            .querySelectorAll(".progress-tab")
+            .forEach((t) => t.classList.remove("active"));
+          tabBtn.classList.add("active");
+          renderProgressPanel(lastPortrait);
+        });
 
       function renderProgressPanel(portrait) {
         const panel = document.getElementById("progress-panel");
@@ -7207,7 +8231,8 @@
         }
 
         document.getElementById("progress-body").innerHTML =
-          html || '<div class="prog-empty-state"><p>Start the interview to<br>see your progress.</p></div>';
+          html ||
+          '<div class="prog-empty-state"><p>Start the interview to<br>see your progress.</p></div>';
       }
 
       function _progRoleHtml(role, tenure) {
@@ -7227,7 +8252,10 @@
         let firstUnmapped = true;
         const enriched = deliverables.map((d) => {
           if (d.tasks.length > 0) return { ...d, status: "mapped" };
-          if (firstUnmapped && !isSessionCompleted) { firstUnmapped = false; return { ...d, status: "exploring" }; }
+          if (firstUnmapped && !isSessionCompleted) {
+            firstUnmapped = false;
+            return { ...d, status: "exploring" };
+          }
           return { ...d, status: "pending" };
         });
 
@@ -7246,7 +8274,10 @@
             <div class="prog-deliverable-divider"></div>
             <div class="prog-tasks-label">Tasks (${fallbackTasks.length})</div>
             <ul class="prog-tasks-list exploring">
-              ${fallbackTasks.slice(0, 6).map((t) => `<li>${escapeHtml(t)}</li>`).join("")}
+              ${fallbackTasks
+                .slice(0, 6)
+                .map((t) => `<li>${escapeHtml(t)}</li>`)
+                .join("")}
               ${fallbackTasks.length > 6 ? `<li style="color:#9ca3af">+${fallbackTasks.length - 6} more…</li>` : ""}
             </ul>
           </div>`;
@@ -7254,11 +8285,16 @@
 
         let html = `<div class="prog-section-header">
           <span class="prog-section-title">Deliverables</span>
-          <span class="prog-section-count">${enriched.filter(d => d.status === "mapped").length} of ${enriched.length} mapped</span>
+          <span class="prog-section-count">${enriched.filter((d) => d.status === "mapped").length} of ${enriched.length} mapped</span>
         </div>`;
 
         for (const d of enriched) {
-          const statusLabel = d.status === "mapped" ? "Mapped ✓" : d.status === "exploring" ? "Exploring" : "Pending";
+          const statusLabel =
+            d.status === "mapped"
+              ? "Mapped ✓"
+              : d.status === "exploring"
+                ? "Exploring"
+                : "Pending";
           html += `<div class="prog-deliverable-card ${d.status === "pending" ? "" : d.status}">
             <div class="prog-deliverable-top">
               <span class="prog-deliverable-name">${escapeHtml(d.name)}</span>
@@ -7311,7 +8347,9 @@
         const role = portrait["Role"] || "";
         const tenure = portrait["Tenure"] || "";
         const portraitDeliverables = _getPortraitDeliverables(portrait);
-        const mappedCount = portraitDeliverables.filter((d) => d.tasks.length > 0).length;
+        const mappedCount = portraitDeliverables.filter(
+          (d) => d.tasks.length > 0,
+        ).length;
 
         if (!role && !tasks.length)
           return '<div class="prog-empty-state"><p>The review will be available<br>once the interview progresses.</p></div>';
@@ -7330,7 +8368,9 @@
           html += `<div class="prog-role-card"><div class="prog-role-label">Tasks Identified</div><div class="prog-role-title">${tasks.length} tasks captured</div></div>`;
         }
         if (topicCards && topicCards.length) {
-          const coveredTopics = topicCards.filter((c) => c.status === "mapped").length;
+          const coveredTopics = topicCards.filter(
+            (c) => c.status === "mapped",
+          ).length;
           html += `<div class="prog-role-card"><div class="prog-role-label">Interview Coverage</div><div class="prog-role-title">${coveredTopics} of ${topicCards.length} topics done</div></div>`;
         }
         return html;
@@ -7342,11 +8382,14 @@
         let topic;
         if (fieldKey === "Role" || fieldKey === "Tenure") {
           topic = lastSessionTopics.find((t) =>
-            (t.description || "").toLowerCase().includes("role")
+            (t.description || "").toLowerCase().includes("role"),
           );
-        } else if (fieldKey === "Deliverables" || fieldKey === "Task Inventory") {
+        } else if (
+          fieldKey === "Deliverables" ||
+          fieldKey === "Task Inventory"
+        ) {
           topic = lastSessionTopics.find((t) =>
-            (t.description || "").toLowerCase().includes("task")
+            (t.description || "").toLowerCase().includes("task"),
           );
         }
         if (!topic) return null;
@@ -7357,7 +8400,10 @@
         const total = relevantSubs.length;
         if (total === 0) return null;
         const covered = relevantSubs.filter((s) => s.is_covered).length;
-        return { status: covered === total ? "covered" : covered > 0 ? "partial" : "pending" };
+        return {
+          status:
+            covered === total ? "covered" : covered > 0 ? "partial" : "pending",
+        };
       }
 
       // Returns Map<name.toLowerCase(), status> for each deliverable in the portrait
@@ -7378,7 +8424,6 @@
         }
         return result;
       }
-
     </script>
   </body>
 </html>

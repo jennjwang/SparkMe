@@ -43,7 +43,9 @@ NON_SENSITIVE_VARS+="STRATEGIC_PLANNER_MIN_NOVELTY=3,"
 
 # Session Defaults
 NON_SENSITIVE_VARS+="SESSION_TIMEOUT_MINUTES=30,"
-NON_SENSITIVE_VARS+="MEMORY_THRESHOLD_FOR_UPDATE=15"
+NON_SENSITIVE_VARS+="MEMORY_THRESHOLD_FOR_UPDATE=15,"
+NON_SENSITIVE_VARS+="GCP_PROJECT=${PROJECT_ID},"
+NON_SENSITIVE_VARS+="GCP_REGION=${REGION}"
 
 echo "================================================"
 echo "Deploying to GCP Cloud Run with Cloud Storage"
@@ -94,8 +96,7 @@ gcloud run deploy $SERVICE_NAME \
   --cpu 2 \
   --timeout 300 \
   --set-env-vars "$NON_SENSITIVE_VARS" \
-  --set-secrets "OPENAI_API_KEY=openai-api-key:latest" \
-  --set-secrets "FLASK_SECRET_KEY=flask-secret-key:latest" \
+  --set-secrets "OPENAI_API_KEY=openai-api-key:latest,FLASK_SECRET_KEY=flask-secret-key:latest,ANTHROPIC_API_KEY=anthropic-api-key:latest" \
   --add-volume name=data,type=cloud-storage,bucket=$BUCKET_NAME \
   --add-volume-mount volume=data,mount-path=/app/data
 

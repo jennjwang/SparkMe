@@ -38,6 +38,7 @@ def client():
     main_flask.chat_history_offsets.clear()
     main_flask.session_audio_cache.clear()
     main_flask.last_messages_by_session.clear()
+    main_flask.task_followup_history_by_session.clear()
 
     main_flask.app.config["TESTING"] = True
     with main_flask.app.test_client() as test_client:
@@ -47,6 +48,7 @@ def client():
     main_flask.chat_history_offsets.clear()
     main_flask.session_audio_cache.clear()
     main_flask.last_messages_by_session.clear()
+    main_flask.task_followup_history_by_session.clear()
 
 
 class TestEndSessionApi:

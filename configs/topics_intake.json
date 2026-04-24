@@ -1,1 +1,14 @@
-[]
+[
+    {
+        "topic": "Role and Background",
+        "subtopics": [
+            {
+                "description": "Understand what the participant does at work and how long they have been in this profession.",
+                "coverage_criteria": [
+                    "The participant has named their job title or role (e.g. 'nurse', 'software engineer', 'PhD student'). Any brief mention is sufficient — do not probe for more detail.",
+                    "The participant has indicated approximately how long they have been in this profession or field — a rough range is sufficient (e.g. 'a few years', '10 years', 'just started')."
+                ]
+            }
+        ]
+    }
+]

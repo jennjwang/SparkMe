@@ -1440,7 +1440,7 @@ class Interviewer(BaseAgent, Participant):
         if message is None and self._is_fresh_intake_session():
             opening_question = (
                 "Thanks for making time today. "
-                "Could you briefly describe your job and what you do at work?"
+                "Could you briefly describe your job, what you do at work, and how long you've been in this field?"
             )
             SessionLogger.log_to_file(
                 "execution_log",
@@ -1630,7 +1630,7 @@ class Interviewer(BaseAgent, Participant):
                     role="Interviewer",
                     content=(
                         "Based on your description, here are some core tasks I think someone "
-                        "in your role does — do these match what you actually work on?"
+                        "in your role does — do these match what you actually work on right now?"
                     ),
                 )
                 self.interview_session.trigger_task_validation_widget()
