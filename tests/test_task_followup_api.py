@@ -141,3 +141,31 @@ def test_task_followup_prompt_includes_recent_turn_context(client):
     assert "Participant: I attend CS seminars." in second_prompt
     assert "Interviewer: You mentioned CS seminars - what outcome are you usually aiming for?" in second_prompt
 
+
+def test_task_followup_reply_strips_em_dash_characters(client):
+    token = "tok-followup-no-dash"
+    _register_session(token)
+
+    fake_response = SimpleNamespace(
+        content='{"reply":"Coding with AI assistance is a big shift — are you mostly using it for implementation?","task_name":"Code software features using AI assistance to ship faster","done":false}'
+    )
+
+    with patch("src.utils.llm.engines.get_engine", return_value=MagicMock()), patch(
+        "src.utils.llm.engines.invoke_engine",
+        return_value=fake_response,
+    ):
+        res = client.post(
+            "/api/task-followup",
+            json={
+                "session_token": token,
+                "task_text": "I use AI to code a lot more now.",
+                "prior_tasks": [],
+                "phase": "probing",
+            },
+        )
+
+    body = res.get_json()
+    assert res.status_code == 200
+    assert body["success"] is True
+    assert "—" not in body["reply"]
+    assert "–" not in body["reply"]

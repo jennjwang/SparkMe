@@ -2358,6 +2358,7 @@ def task_followup():
         "- task_name: starts with a verb, includes action + object + objective (purpose/outcome), aim for 8–12 words\n"
         "- For CASE B, follow-up must be specific to this participant's latest message and show understanding\n"
         "- Do NOT repeat the task name verbatim in the reply\n"
+        "- Do NOT use em dashes or en dashes in the reply; use plain punctuation\n"
         "- Return ONLY valid JSON, no markdown fences, no extra text"
     )
 
@@ -2385,6 +2386,10 @@ def task_followup():
     except Exception as e:
         app.logger.error(f"[task_followup] error: {e}", exc_info=True)
 
+    # Keep replies punctuation-simple for frontend readability.
+    reply = reply.replace("—", ",").replace("–", ",")
+    reply = " ".join(reply.split())
+
     # Ensure non-done responses continue the probing flow with one question.
     if not done and "?" not in reply:
         reply = f"{reply.rstrip('. ')}. What other tasks are part of your work?"
@@ -2397,7 +2402,7 @@ def task_followup():
 
     if done and phase == 'ai_extras':
         def _end():
-            iv.end_with_thankyou(send_message=False)
+            iv.end_with_thankyou(send_message=True)
         if hasattr(wrapper, 'loop'):
             wrapper.loop.call_soon_threadsafe(_end)
         else:

@@ -1386,9 +1386,9 @@ class InterviewSession:
             self.add_message_to_chat_history(
                 role="Interviewer",
                 content=(
-                    "Thank you so much — this is really helpful. "
-                    "Your responses have been saved and you're all set. "
-                    "Have a great rest of your day!"
+                    "That's everything — thank you so much for your time. "
+                    "This has been really helpful. "
+                    "Your responses have been saved and you're all set!"
                 ),
             )
         self.session_in_progress = False

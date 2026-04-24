@@ -3413,7 +3413,7 @@
       .aitw-footer {
         display: flex;
         align-items: center;
-        justify-content: flex-end;
+        justify-content: space-between;
         gap: 8px;
         margin-top: 20px;
         padding-top: 16px;
@@ -5707,7 +5707,7 @@
                   .join("")}
               </div>
               <div class="aitw-footer">
-                <button class="aitw-skip-btn">${isLast ? "None apply" : "Skip all"}</button>
+                <button class="aitw-skip-btn">Done</button>
                 <button class="aitw-submit-btn">${isLast ? "Continue →" : "Next →"}</button>
               </div>`;
 
@@ -5731,16 +5731,20 @@
               });
             });
 
+            function finishWidget() {
+              const selected = [...selectedIndices].map((i) => ({
+                text: taskNames[i],
+                description: taskDescs[i],
+              }));
+              aiWidget.remove();
+              onDone(selected);
+            }
+
             aiWidget
               .querySelector(".aitw-submit-btn")
               .addEventListener("click", function () {
                 if (isLast) {
-                  const selected = [...selectedIndices].map((i) => ({
-                    text: taskNames[i],
-                    description: taskDescs[i],
-                  }));
-                  aiWidget.remove();
-                  onDone(selected);
+                  finishWidget();
                 } else {
                   pageStart += AITW_PAGE;
                   renderPage();
@@ -5748,12 +5752,10 @@
                 }
               });
 
+            // "Done" exits with whatever is selected so far (including nothing)
             aiWidget
               .querySelector(".aitw-skip-btn")
-              .addEventListener("click", function () {
-                aiWidget.remove();
-                onDone([]);
-              });
+              .addEventListener("click", finishWidget);
           }
 
           renderPage();
