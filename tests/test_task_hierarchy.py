@@ -546,8 +546,8 @@ class TestOrganizeTasks:
             mock_get_engine.return_value = MagicMock()
             organize_tasks(tasks, screen=False)
         prompt = mock_invoke.call_args.args[1]
-        assert "impersonal task statements" in prompt
-        assert '"I", "my", "we", "our"' in prompt
+        assert "impersonal third-person gerund statements" in prompt
+        assert '"I", "my", "me", "we", "our", "your"' in prompt
 
     def test_empty_input(self):
         assert organize_tasks([]) == []
@@ -784,6 +784,10 @@ class TestOrganizeTasks:
         )
 
     def test_screenshot_slack_variants_are_deduped(self):
+        # "Communicating with colleagues via Slack messages" and
+        # "Slack messaging with colleagues" are synonymous — the LLM dedup
+        # pass is responsible for catching this (the fuzzy pass can't bridge
+        # synonym-based equivalences like "communicating" ↔ "messaging").
         tasks = [
             "Attending meetings to coordinate work and collaborate with colleagues",
             "Having meetings with post docs",
@@ -799,12 +803,16 @@ class TestOrganizeTasks:
             "Developing new research ideas",
             "Slack messaging with colleagues",
         ]
+        # LLM dedup merges the two Slack variants (indices 8 and 12).
+        dedup_entries = [{"indices": [i]} for i in range(len(tasks)) if i not in (8, 12)]
+        dedup_entries.append({
+            "indices": [8, 12],
+            "merged_statement": "Communicating with colleagues via Slack messages",
+            "merge_reason": "same activity, different phrasing",
+        })
         dedup_resp = MagicMock()
-        dedup_resp.content = (
-            "<duplicates>"
-            + json.dumps([{"indices": [i]} for i in range(len(tasks))])
-            + "</duplicates>"
-        )
+        dedup_resp.content = "<duplicates>" + json.dumps(dedup_entries) + "</duplicates>"
+
         group_resp = _make_engine_response(
             [
                 {
@@ -827,7 +835,6 @@ class TestOrganizeTasks:
                 {"name": "Preparing presentation materials", "children": []},
                 {"name": "Providing career development guidance for trainees", "children": []},
                 {"name": "Developing new research ideas", "children": []},
-                {"name": "Slack messaging with colleagues", "children": []},
             ]
         )
         with patch("src.utils.task_hierarchy.get_engine") as mock_get_engine, \
@@ -837,9 +844,11 @@ class TestOrganizeTasks:
 
         top_level_names = [n["name"] for n in result]
         assert "Communicating with colleagues via Slack messages" in top_level_names
-        # Regression: this duplicate variant should be absorbed instead of
-        # surviving as a separate top-level leaf.
+        # Absorbed variant must not survive as a separate top-level leaf.
         assert "Slack messaging with colleagues" not in top_level_names
+        # Absorbed original must appear in merged_from of the winner node.
+        slack_node = next(n for n in result if n["name"] == "Communicating with colleagues via Slack messages")
+        assert "Slack messaging with colleagues" in slack_node.get("merged_from", [])
 
     def test_organize_tasks_latest_screenshot_regression_with_singleton_llm_dedup(self):
         tasks = [
