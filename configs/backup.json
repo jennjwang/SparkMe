@@ -1,5 +1,54 @@
 [
   {
+    "topic": "Task Inventory",
+    "allow_emergent": false,
+    "allow_strategic_planner": false,
+    "priority_weight": 1.0,
+    "subtopics": [
+      {
+        "description": "Deliverable-first week mapping: identify what the participant delivered or completed last week, then work backwards to discover the underlying tasks — building the base task inventory collaboratively.",
+        "coverage_criteria": [
+          "STEP 1 (goals first) — REQUIRED: Ask 'What were your goals for the last week?' or 'What were you trying to get done last week?' This anchors the conversation in intent before outcomes. The participant has stated at least one goal or priority they had in mind for the week. A broad answer ('finish a draft', 'prep for a meeting', 'make progress on X') is sufficient.",
+          "STEP 2 (deliverable probe) — REQUIRED: Once goals are on the table, probe what actually got done: 'And what did you actually deliver or complete?' This surfaces the gap or alignment between intent and outcome — both are useful. The participant has named at least one concrete output or completed item: something they finished, submitted, presented, sent, or handed off.",
+          "STEP 3 (task extraction from deliverables) — REQUIRED: For each deliverable named, probe backwards with 'What did you need to do to get that done?' Tasks emerge naturally from this. Hook follow-ups directly to what they said: 'You mentioned [specific deliverable] — what do you usually need to do before or after that?' At least one deliverable has been traced back to at least one clear action+object task. Do NOT ask generic structural questions (e.g., 'walk me through a typical day') after deliverables have been named — that's the same information goal in disguise.",
+          "STEP 4 (instance-to-pattern check) — REQUIRED when relevant: For any deliverable that sounds one-off, confirm whether it recurs: 'Is that something you do regularly, or was that a one-time thing?' Confirmed recurring deliverables and their underlying tasks form the base inventory. One-off items are noted but not anchored as recurring tasks.",
+          "Every task surfaced should have at least two components: an ACTION (what the participant does) and an OBJECT (what they act on). An OBJECTIVE (why) is optional. The interviewer MUST attempt to infer missing details from prior context before asking. Ask about objective only when it is genuinely needed to disambiguate the task, and at most once."
+        ],
+        "priority_weight": 1.0
+      },
+      {
+        "description": "Task List Completion: sweeping for lower-cadence tasks, confirming the list is exhaustive, and ensuring each task has a clear action and object (objective optional).",
+        "coverage_criteria": [
+          "STEP 2 (frequency sweep) — REQUIRED: Ask exactly one cadence-specific question about lower-frequency work (monthly/quarterly/few-times-a-year). The question must reference cadence/frequency directly. Do NOT use a generic catch-all like 'anything else?' as the primary wording.",
+          "STEP 3 (closure rule) — CONDITIONAL after STEP 2: If the participant gives a clear no-new-work response (e.g., 'no', 'that's it', 'nothing else', 'just that'), mark this subtopic complete immediately. Do NOT ask another catch-all, completeness, or rephrased variant. Also treat explicit repetition/frustration signals with no new tasks (e.g., 'you keep asking this', 'am I not giving enough detail?') as closure and move on.",
+          "COMPLETION — this subtopic is DONE when the most recent cadence sweep/closure response adds no new tasks. If the participant introduces new work, capture clear action/object (and objective when available) for the new task(s), then ask one final completion confirmation only if needed.",
+          "If the user gives two consecutive sub-5-word replies with no new task information, stop probing and treat the completeness confirmation as passed.",
+          "Every task in the inventory should have at least two components: an ACTION (what the participant does) and an OBJECT (what they act on). An OBJECTIVE (why — the goal or outcome) is helpful but optional. The interviewer MUST attempt to infer missing details from prior context before asking. If action+object are clear, treat the task as covered even when purpose is broad, variable, or hard to articulate (e.g., 'it depends', 'to answer their question'). Ask about objective only when it is genuinely needed to disambiguate the task, and ask at most once."
+        ],
+        "priority_weight": 1.0
+      },
+      {
+        "description": "Time allocation: how much time they spend on each task, as a percentage of their total work week. A time-split widget is shown to the participant to collect the actual percentages. IMPORTANT: The interviewer MUST send a message targeting this subtopic — for example, 'Now let's see how your time breaks down across these tasks — here's a quick widget for you to fill in.' This message triggers the widget. Do NOT ask for per-task percentages one by one in conversation. Do NOT skip this subtopic even if task-list completeness was already confirmed in the Breadth subtopic.",
+        "coverage_criteria": [
+          "PREREQUISITE: The task list has been confirmed complete per the COMPLETION criterion of the Task List Completion subtopic — i.e. the most recent completeness confirmation was answered without introducing any new tasks. Do NOT proceed to this subtopic if the participant's last reply to a completeness question introduced new work. If the task list is not yet confirmed complete, ask the completeness question first.",
+          "The participant has provided explicit percentage or fraction breakdowns showing how their work time is divided across tasks — for example, 'I spend about 50% on X and 30% on Y', or a submitted widget with per-task percentages. Evaluate this criterion by scanning the conversation for explicit numeric time splits: if NO percentages or fractions appear in the participant's messages, this criterion is FALSE regardless of any other confirmations. A 'yes' or 'no that's it' reply to a completeness question does NOT satisfy this criterion.",
+          "Grouped categories are valid for time allocation (the split does NOT need to map 1:1 to every Task Inventory line item). If the provided percentages plausibly cover a full typical week (approximately 95-105% total, or explicitly stated as complete), mark this subtopic complete and move on immediately. A single task at 100% is a valid complete split — do NOT ask for sub-task or sub-category breakdowns.",
+          "Do NOT ask post-split follow-up questions in this subtopic once a plausible breakdown is provided. Specifically avoid representativeness/completeness prompts like 'does that breakdown feel representative of most weeks?' or 'what isn't captured there?', and NEVER ask the participant to break a task down further into sub-tasks or sub-categories. Record the split and move on immediately. Only if a required number is missing or inconsistent may you ask one targeted clarification about that specific gap."
+        ],
+        "priority_weight": 0.5
+      },
+      {
+        "description": "Priority tasks: identify which task(s) matter most and ensure each priority task is specific.",
+        "coverage_criteria": [
+          "STEP 1 (open ask) — REQUIRED: Ask once, open-endedly, which task feels most important (e.g., 'Which of those feels most important to you?' or 'Which one matters most?'). If the participant already named a clear priority earlier (including high-stakes framing like 'presenting and writing are high stakes'), treat STEP 1 as satisfied without asking again. Do NOT ask a yes/no confirmation variant ('Would you say that's your main priority?') — restating their answer as a check is a duplicate.",
+          "STEP 2 (specificity sweep) — REQUIRED only for priority tasks not already clarified: Scan every priority task named in STEP 1. For any task whose action and object were already made specific earlier in this conversation (e.g., during deliverable-first task extraction), treat it as already covered — do NOT re-ask. Only ask a clarifying question for tasks that still have a vague action ('do', 'handle', 'work on', 'deal with') or a vague object ('analysis', 'meetings', 'emails', 'documents', 'work', 'projects', 'research' without a concrete qualifier) AND where that vagueness was not already resolved. One clarification per vague task, one per turn. If the participant answers with 'all of the above', 'all of it', 'everything', 'all three', or any equivalent — that IS a complete answer: the object is the entire thing they named. Accept it immediately and move on. Do NOT rephrase the same clarifying question. Cap at 1 clarification attempt per task regardless of answer quality — if the participant engaged with the question at all, accept their answer and move on.",
+          "COMPLETION: Once STEP 1 is answered and STEP 2's sweep is done (or all priority tasks are already specific), this subtopic is DONE. Transition to Time Allocation."
+        ],
+        "priority_weight": 0.8
+      }
+    ]
+  },
+  {
     "description": "Priority tasks: identify which task(s) matter most, ensure each priority task is specific, and capture a workflow description for the priority task(s).",
     "coverage_criteria": [
       "STEP 1 (open ask) — REQUIRED: Ask once, open-endedly, which task feels most important (e.g., 'Which of those feels most important to you?' or 'Which one matters most?'). If the participant already named a clear priority earlier (including high-stakes framing like 'presenting and writing are high stakes'), treat STEP 1 as satisfied without asking again. Do NOT ask a yes/no confirmation variant ('Would you say that's your main priority?') — restating their answer as a check is a duplicate.",

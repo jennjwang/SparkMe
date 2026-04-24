@@ -117,3 +117,38 @@ class ClaudeVertexEngine:
             }
 
         return model_response
+
+
+class ClaudeDirectEngine:
+    """Calls the Anthropic API directly (for Claude 4.x and newer models)."""
+
+    def __init__(self, model_name: str, **kwargs):
+        try:
+            from anthropic import Anthropic
+        except ImportError:
+            raise ImportError("Install the 'anthropic' package: pip install anthropic")
+
+        self.model_name = model_name
+        self.max_tokens = kwargs.get("max_tokens_to_sample", 4096)
+        api_key = os.getenv("ANTHROPIC_API_KEY")
+        if not api_key:
+            raise ValueError("ANTHROPIC_API_KEY environment variable is not set")
+        self.client = Anthropic(api_key=api_key)
+
+    def invoke(self, prompt, **kwargs) -> ModelResponse:
+        response = self.client.messages.create(
+            model=self.model_name,
+            max_tokens=self.max_tokens,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        content = response.content[0].text if response.content else ""
+        model_response = ModelResponse(content)
+        if hasattr(response, "usage"):
+            model_response.response_metadata = {
+                "token_usage": {
+                    "prompt_tokens": response.usage.input_tokens,
+                    "completion_tokens": response.usage.output_tokens,
+                    "total_tokens": response.usage.input_tokens + response.usage.output_tokens,
+                }
+            }
+        return model_response

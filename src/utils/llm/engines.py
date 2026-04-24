@@ -4,7 +4,7 @@ from langchain_openai import ChatOpenAI
 from langchain_google_vertexai import VertexAI
 
 from src.utils.llm.models.data import ModelResponse
-from src.utils.llm.models.claude import ClaudeVertexEngine, claude_vertex_model_mapping
+from src.utils.llm.models.claude import ClaudeVertexEngine, ClaudeDirectEngine, claude_vertex_model_mapping
 from src.utils.llm.models.gemini import GeminiVertexEngine, gemini_models
 from src.utils.llm.models.deepseek import DeepSeekEngine, deepseek_models
 from src.utils.llm.models.vllm import VLLMEngine
@@ -66,7 +66,12 @@ def get_engine(model_name, **kwargs):
     if model_name == "gpt-4o-mini":
         model_name = "gpt-4o-mini-2024-07-18"
     
-    # Handle Claude models via Vertex AI
+    # Claude 4.x+ via direct Anthropic API
+    if any(f"claude-{gen}" in model_name for gen in ("sonnet-4", "opus-4", "haiku-4")):
+        kwargs["max_tokens_to_sample"] = token_limit
+        return ClaudeDirectEngine(model_name=model_name, **kwargs)
+
+    # Claude 3.x via Vertex AI
     if model_name in claude_vertex_model_mapping or "claude" in model_name:
         kwargs["max_tokens_to_sample"] = token_limit
         return ClaudeVertexEngine(model_name=model_name, **kwargs)

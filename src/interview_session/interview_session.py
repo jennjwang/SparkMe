@@ -245,6 +245,9 @@ class InterviewSession:
         # Profile confirm widget (shown after first topic is covered)
         self._profile_confirm_widget_sent = False
 
+        # Task validation widget (shown after job-description answer in intake)
+        self._task_validation_widget_sent = False
+
         # Report auto-update states
         self.auto_report_update_in_progress = False
         self.memory_threshold = int(
@@ -587,6 +590,7 @@ class InterviewSession:
             MessageType.AI_USAGE_WIDGET,
             MessageType.FEEDBACK_WIDGET,
             MessageType.PROFILE_CONFIRM_WIDGET,
+            MessageType.TASK_VALIDATION_WIDGET,
         ):
             save_feedback_to_csv(
                 self.chat_history[-1], message, self.user_id, self.session_id)
@@ -599,6 +603,7 @@ class InterviewSession:
             MessageType.AI_USAGE_WIDGET,
             MessageType.FEEDBACK_WIDGET,
             MessageType.PROFILE_CONFIRM_WIDGET,
+            MessageType.TASK_VALIDATION_WIDGET,
         ):
 
             # Add message to chat history
@@ -608,6 +613,7 @@ class InterviewSession:
                 MessageType.AI_USAGE_WIDGET,
                 MessageType.FEEDBACK_WIDGET,
                 MessageType.PROFILE_CONFIRM_WIDGET,
+                MessageType.TASK_VALIDATION_WIDGET,
             ):
                 SessionLogger.log_to_file(
                     "chat_history", f"{message.role}: {message.content}")
@@ -1347,6 +1353,48 @@ class InterviewSession:
         SessionLogger.log_to_file(
             "execution_log",
             "[FEEDBACK] Feedback widget emitted; awaiting submission."
+        )
+
+    def trigger_task_validation_widget(self):
+        """Emit the task-validation widget after the user answers the job-description question.
+
+        Safe to call multiple times — only the first call emits the widget.
+        """
+        if self._task_validation_widget_sent:
+            return
+        self._task_validation_widget_sent = True
+        self._last_message_time = datetime.now()
+        self.add_message_to_chat_history(
+            role="Interviewer",
+            content="",
+            message_type=MessageType.TASK_VALIDATION_WIDGET,
+        )
+        SessionLogger.log_to_file(
+            "execution_log",
+            "[TASK_VALIDATION] Task validation widget emitted."
+        )
+
+    def end_with_thankyou(self, send_message: bool = True):
+        """Send a thank-you message and end the session without showing the feedback widget.
+
+        Pass send_message=False to end silently (e.g. when the frontend already
+        showed a goodbye message directly and a second one would be a duplicate).
+        """
+        self._session_ending = True
+        self._feedback_widget_sent = True  # prevent feedback widget from firing later
+        if send_message:
+            self.add_message_to_chat_history(
+                role="Interviewer",
+                content=(
+                    "Thank you so much — this is really helpful. "
+                    "Your responses have been saved and you're all set. "
+                    "Have a great rest of your day!"
+                ),
+            )
+        self.session_in_progress = False
+        SessionLogger.log_to_file(
+            "execution_log",
+            "[SESSION] Session ended with thank-you message (no feedback widget)."
         )
 
     def trigger_profile_confirm_widget(self):

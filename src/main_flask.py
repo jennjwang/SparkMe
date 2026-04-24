@@ -948,6 +948,7 @@ def get_messages():
         'ai_usage_widget',
         'feedback_widget',
         'profile_confirm_widget',
+        'task_validation_widget',
     }
     if has_user_buffer and full_history:
         # Reconnect: replay deliverable messages from full chat_history so the
@@ -1869,6 +1870,482 @@ def update_portrait():
             grouping_feedback=str(portrait.get('Task Grouping Feedback', '') or ''),
         )
     return jsonify({'success': True})
+
+_TASK_GEN_MODEL = os.getenv("TASK_GEN_MODEL", "claude-sonnet-4-6")
+_TASK_BATCH_SIZE = 3    # tasks shown per batch; each LLM call generates exactly this many
+_TASK_MIN_BATCHES = 10  # LLM cannot stop before this many batches (~30 tasks min)
+_TASK_MAX_BATCHES = 30  # hard cap to avoid infinite generation
+
+
+def _parse_tasks_json(raw: str) -> dict:
+    """Extract and parse the last valid JSON object containing a 'tasks' key.
+
+    Handles LLM responses that include self-correction text or extra content
+    by scanning from right to left for the most complete valid JSON object.
+    """
+    import re as _re
+    import json as _json
+    # Strip markdown fences
+    raw = _re.sub(r"^```[a-z]*\n?", "", raw.strip())
+    raw = _re.sub(r"\n?```$", "", raw).strip()
+    # Try each { position from right to left using raw_decode
+    for m in reversed(list(_re.finditer(r'\{', raw))):
+        try:
+            obj, _ = _json.JSONDecoder().raw_decode(raw, m.start())
+            if isinstance(obj, dict) and 'tasks' in obj:
+                return obj
+        except Exception:
+            continue
+    # Last resort: plain json.loads on the full string
+    return _json.loads(raw)
+
+
+def _extract_job_description(iv) -> str:
+    """Return the user's first conversational answer from chat history."""
+    for msg in iv.chat_history:
+        if msg.role == "User" and msg.type == "conversation" and msg.content.strip():
+            return msg.content.strip()
+    return ""
+
+
+_SESSION_PERSPECTIVES = [
+    "Emphasize tasks that are recurring and form the backbone of the daily or weekly routine.",
+    "Emphasize tasks that involve coordinating with, communicating with, or depending on other people.",
+    "Emphasize tasks that are less frequent but carry high stakes or require significant effort.",
+    "Emphasize tasks that involve documentation, tracking, or managing information.",
+    "Emphasize tasks that involve external parties such as clients, partners, vendors, or the public.",
+    "Emphasize tasks that are often invisible or taken for granted but are essential to the role.",
+    "Emphasize tasks that require specialized judgment, expertise, or domain knowledge.",
+    "Emphasize tasks related to planning, prioritizing, and managing workloads or timelines.",
+    "Emphasize tasks that involve using specific tools, systems, or technology.",
+    "Emphasize tasks that have direct impact on outcomes, quality, or the work of others.",
+    "Emphasize tasks that involve learning, staying current, or improving skills and knowledge.",
+    "Emphasize tasks that come up reactively — in response to problems, requests, or unexpected events.",
+]
+
+
+def _session_perspective(session_token: str) -> str:
+    """Pick a stable perspective for this session based on the session token."""
+    import hashlib
+    h = int(hashlib.md5(session_token.encode()).hexdigest(), 16)
+    return _SESSION_PERSPECTIVES[h % len(_SESSION_PERSPECTIVES)]
+
+
+def _llm_generate_task_batch(
+    job_description: str,
+    prior_tasks: list[str],
+    batch_index: int,
+    session_perspective: str = "",
+) -> tuple[list[str], bool]:
+    """Generate the next batch of tasks, ordered by importance, deduped against prior_tasks."""
+    import re as _re
+    from src.utils.llm.engines import get_engine, invoke_engine
+
+    prior_block = ""
+    if prior_tasks:
+        prior_list = "\n".join(f"- {t}" for t in prior_tasks)
+        prior_block = (
+            f"\nTasks already shown (STRICT: do NOT repeat or rephrase any of these — "
+            f"treat semantically similar tasks as duplicates):\n{prior_list}\n"
+        )
+
+    stop_hint = (
+        "Set has_more to false only when all meaningful, distinct task areas are covered "
+        "and there are genuinely no more important tasks to add. Otherwise set has_more to true."
+    )
+
+    if batch_index == 0:
+        coverage_hint = (
+            f"Return the {_TASK_BATCH_SIZE} most important, high-frequency tasks for this role — "
+            "the core work this person spends the most time on, ranked by importance."
+        )
+    elif batch_index == 1:
+        coverage_hint = (
+            f"Return the next {_TASK_BATCH_SIZE} most significant tasks not yet listed — "
+            "important responsibilities ranked by how central they are to the role."
+        )
+    else:
+        coverage_hint = (
+            f"Return {_TASK_BATCH_SIZE} tasks that cover areas of this role not yet represented above. "
+            "Think about what a complete picture of this occupation looks like — "
+            "what tasks would be missing if you stopped here?"
+        )
+
+    perspective_line = f"Session focus: {session_perspective}\n" if session_perspective else ""
+
+    prompt = (
+        f"Occupation context: \"{job_description}\"\n"
+        f"{perspective_line}"
+        f"{prior_block}\n"
+        f"{coverage_hint}\n\n"
+        "Rules:\n"
+        "- Focus on tasks typical of the general occupation/role category, not details specific to this individual\n"
+        "- Tasks must be DISTINCT — no two tasks should describe the same activity even with different wording\n"
+        "- Each task: 5–12 words, starts with an action verb, sentence case (only first word and proper nouns capitalized)\n"
+        "- Be specific — include object and context where helpful\n"
+        "  Good: 'Review pull requests and leave code comments'\n"
+        "  Bad: 'Review code'\n"
+        f"- {stop_hint}\n"
+        "- Each task needs a name (5–12 words) and a description (1 sentence, what it involves).\n"
+        "- Return ONLY valid JSON (no markdown fences):\n"
+        f'  {{"tasks": [{{"name": "Task name here", "description": "One sentence describing what this involves."}}, ...], "has_more": true}}'
+    )
+
+    engine = get_engine(model_name=_TASK_GEN_MODEL, temperature=0.9)
+    response = invoke_engine(engine, prompt)
+    raw = (response.content if hasattr(response, "content") else str(response)).strip()
+
+    try:
+        parsed = _parse_tasks_json(raw)
+        tasks_raw = parsed.get("tasks") or []
+        tasks = []
+        for t in tasks_raw:
+            if isinstance(t, dict):
+                name = str(t.get("name", "")).strip()
+                desc = str(t.get("description", "")).strip()
+                if name and len(name.split()) >= 3:
+                    tasks.append({"name": name, "description": desc})
+            elif isinstance(t, str) and len(t.strip().split()) >= 3:
+                tasks.append({"name": t.strip(), "description": ""})
+        has_more = bool(parsed.get("has_more", True))
+        return tasks, has_more
+    except Exception:
+        _JSON_KEYS = {"tasks", "name", "description", "has_more", "ai_type",
+                      "capability", "governance", "true", "false", "null"}
+        names = _re.findall(r'"([^"]{4,80})"', raw)
+        return [
+            {"name": n.strip(), "description": ""}
+            for n in names
+            if n.strip() and n.strip().lower() not in _JSON_KEYS
+            and len(n.strip().split()) >= 3
+        ], True
+
+
+@app.route('/api/generate-tasks', methods=['POST'])
+@agent_or_login_required
+def generate_tasks():
+    """Generate one batch of tasks for the task-validation widget.
+
+    Accepts batch_index (0-based) and prior_tasks (already shown) so each call
+    is small (~3 tasks) and fast. The frontend pre-fetches the next batch while
+    the user reviews the current one, giving near-zero perceived latency.
+    """
+    data = request.get_json(silent=True) or {}
+    session_token = data.get('session_token')
+    batch_index = int(data.get('batch_index', 0))
+    prior_tasks = data.get('prior_tasks') or []
+    if not isinstance(prior_tasks, list):
+        prior_tasks = []
+
+    wrapper = get_session_wrapper(session_token)
+    if not wrapper:
+        return jsonify({'success': False, 'error': 'Invalid or expired session'}), 400
+
+    iv = wrapper.interview_session
+    job_description = _extract_job_description(iv)
+    if not job_description:
+        return jsonify({'success': False, 'error': 'No job description found in session'}), 400
+
+    # Hard cap: if we've already generated enough batches, stop
+    if batch_index >= _TASK_MAX_BATCHES:
+        return jsonify({'success': True, 'tasks': [], 'has_more': False})
+
+    try:
+        perspective = _session_perspective(session_token or "")
+        tasks, has_more = _llm_generate_task_batch(job_description, prior_tasks, batch_index, perspective)
+    except Exception as e:
+        app.logger.error(f"[generate_tasks] LLM error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': 'Task generation failed'}), 500
+
+    # Don't let the LLM stop before _TASK_MIN_BATCHES batches
+    if batch_index + 1 < _TASK_MIN_BATCHES:
+        has_more = True
+
+    # Enforce hard cap
+    if batch_index + 1 >= _TASK_MAX_BATCHES:
+        has_more = False
+
+    return jsonify({'success': True, 'tasks': tasks, 'has_more': has_more})
+
+
+@app.route('/api/ai-era-tasks', methods=['POST'])
+@agent_or_login_required
+def ai_era_tasks():
+    """Generate tasks this person does *because of* AI — new capabilities + governance responsibilities."""
+    from src.utils.llm.engines import get_engine, invoke_engine
+
+    data = request.get_json(silent=True) or {}
+    session_token = data.get('session_token')
+
+    wrapper = get_session_wrapper(session_token)
+    if not wrapper:
+        return jsonify({'success': False, 'error': 'Invalid or expired session'}), 400
+
+    iv = wrapper.interview_session
+    job_description = _extract_job_description(iv)
+    if not job_description:
+        return jsonify({'success': False, 'error': 'No job description found'}), 400
+
+    prompt = (
+        f"Occupation context: \"{job_description}\"\n\n"
+        "Generate tasks that someone in this role does TODAY because of AI tools — tasks that either:\n"
+        "  (a) are newly possible or dramatically easier due to AI (expanded capabilities), OR\n"
+        "  (b) have emerged as oversight, governance, or quality-control responsibilities because AI is now involved in the workflow.\n\n"
+        "Generate exactly 6 tasks: 3 expanded-capability tasks and 3 governance/oversight tasks.\n\n"
+        "Rules:\n"
+        "- The task NAME must make it explicit that AI is involved — include 'using AI', 'with AI', or the specific AI tool\n"
+        "  Good: 'Synthesize literature reviews using AI tools', 'Review AI-generated code for correctness'\n"
+        "  Bad: 'Accelerate literature synthesis', 'Review code'\n"
+        "- Be specific to this occupation — not generic\n"
+        "- Each task: 5–12 words, starts with an action verb, sentence case (only first word and proper nouns capitalized)\n"
+        "- Each needs a name and a one-sentence description\n"
+        "- Label each with type: 'capability' or 'governance'\n"
+        "- Return ONLY valid JSON (no markdown fences):\n"
+        '  {"tasks": [{"name": "...", "description": "...", "ai_type": "capability"}, ...]}'
+    )
+
+    try:
+        engine = get_engine(model_name=_TASK_GEN_MODEL, temperature=0.9)
+        response = invoke_engine(engine, prompt)
+        raw = (response.content if hasattr(response, 'content') else str(response)).strip()
+        parsed = _parse_tasks_json(raw)
+        tasks = []
+        for t in (parsed.get("tasks") or []):
+            name = str(t.get("name", "")).strip()
+            desc = str(t.get("description", "")).strip()
+            ai_type = str(t.get("ai_type", "capability")).strip()
+            if name:
+                tasks.append({"name": name, "description": desc, "ai_type": ai_type})
+    except Exception as e:
+        app.logger.error(f"[ai_era_tasks] error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': 'Generation failed'}), 500
+
+    return jsonify({'success': True, 'tasks': tasks})
+
+
+@app.route('/api/attention-check-tasks', methods=['POST'])
+@agent_or_login_required
+def attention_check_tasks():
+    """Generate 2–3 tasks that are clearly unrelated to the user's profession (attention checks)."""
+    from src.utils.llm.engines import get_engine, invoke_engine
+
+    data = request.get_json(silent=True) or {}
+    session_token = data.get('session_token')
+
+    wrapper = get_session_wrapper(session_token)
+    if not wrapper:
+        return jsonify({'success': False, 'error': 'Invalid or expired session'}), 400
+
+    iv = wrapper.interview_session
+    job_description = _extract_job_description(iv)
+    if not job_description:
+        return jsonify({'success': False, 'error': 'No job description found'}), 400
+
+    prompt = (
+        f"Occupation context: \"{job_description}\"\n\n"
+        "Generate exactly 3 work tasks that are CLEARLY AND OBVIOUSLY unrelated to this occupation — "
+        "tasks someone in this role would never do as part of their job. "
+        "These are attention-check items to verify the participant is reading carefully.\n\n"
+        "Rules:\n"
+        "- Each task must be unambiguously wrong for this profession (e.g. a software engineer would never 'Perform appendectomy surgery')\n"
+        "- Still write them in the same format: 5–12 words, starts with an action verb, sentence case\n"
+        "- Each needs a name (5–12 words) and a description (1 sentence describing what the task actually involves — write it as if it were a real task, same length and detail as any other task description)\n"
+        "- Return ONLY valid JSON (no markdown fences):\n"
+        '  {"tasks": [{"name": "Task name here", "description": "One sentence describing what this involves."}, ...]}'
+    )
+
+    try:
+        engine = get_engine(model_name=_TASK_GEN_MODEL, temperature=0.9)
+        response = invoke_engine(engine, prompt)
+        raw = (response.content if hasattr(response, 'content') else str(response)).strip()
+        parsed = _parse_tasks_json(raw)
+        tasks = []
+        for t in (parsed.get("tasks") or []):
+            name = str(t.get("name", "")).strip()
+            desc = str(t.get("description", "")).strip()
+            if name:
+                tasks.append({"name": name, "description": desc, "is_attention_check": True})
+    except Exception as e:
+        app.logger.error(f"[attention_check_tasks] error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': 'Generation failed'}), 500
+
+    return jsonify({'success': True, 'tasks': tasks})
+
+
+@app.route('/api/regenerate-task-description', methods=['POST'])
+@agent_or_login_required
+def regenerate_task_description():
+    """Return a fresh one-sentence description for a user-edited task name."""
+    import re as _re
+    from src.utils.llm.engines import get_engine, invoke_engine
+
+    data = request.get_json(silent=True) or {}
+    session_token = data.get('session_token')
+    task_name = (data.get('task_name') or '').strip()
+
+    if not task_name:
+        return jsonify({'success': False, 'error': 'task_name is required'}), 400
+
+    wrapper = get_session_wrapper(session_token)
+    if not wrapper:
+        return jsonify({'success': False, 'error': 'Invalid or expired session'}), 400
+
+    iv = wrapper.interview_session
+    job_description = _extract_job_description(iv)
+
+    prompt = (
+        f'Job context: "{job_description}"\n'
+        f'Task name: "{task_name}"\n\n'
+        "Write exactly one sentence (under 20 words) describing what this task involves for this person. "
+        "Start with a verb. Return ONLY the sentence, no JSON, no quotes."
+    )
+
+    try:
+        engine = get_engine(model_name=_TASK_GEN_MODEL, temperature=0.9)
+        response = invoke_engine(engine, prompt)
+        desc = (response.content if hasattr(response, 'content') else str(response)).strip()
+        desc = _re.sub(r'^["\']|["\']$', '', desc).strip()
+    except Exception as e:
+        app.logger.error(f"[regenerate_task_description] error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': 'Description generation failed'}), 500
+
+    return jsonify({'success': True, 'description': desc})
+
+
+@app.route('/api/task-followup', methods=['POST'])
+@agent_or_login_required
+def task_followup():
+    """Return a brief interviewer response during the post-TVW probing phase.
+
+    Detects whether the user is adding a new task or signalling they are done.
+    Returns {reply, done} — when done=true the session is ended server-side.
+    """
+    import re as _re
+    from src.utils.llm.engines import get_engine, invoke_engine
+
+    data = request.get_json(silent=True) or {}
+    session_token = data.get('session_token')
+    task_text = (data.get('task_text') or '').strip()
+    prior_tasks = data.get('prior_tasks') or []
+
+    if not task_text:
+        return jsonify({'success': False, 'error': 'task_text required'}), 400
+
+    wrapper = get_session_wrapper(session_token)
+    if not wrapper:
+        return jsonify({'success': False, 'error': 'Invalid or expired session'}), 400
+
+    iv = wrapper.interview_session
+    job_description = _extract_job_description(iv)
+
+    prior_block = ""
+    if prior_tasks:
+        prior_block = "Tasks already collected:\n" + "\n".join(f"- {t}" for t in prior_tasks) + "\n\n"
+
+    prompt = (
+        f"You are a warm, concise interviewer wrapping up a task inventory.\n\n"
+        f"Occupation context: \"{job_description}\"\n"
+        f"{prior_block}"
+        f"Participant's latest message: \"{task_text}\"\n\n"
+        "Decide which case applies:\n\n"
+        "CASE A — participant is DONE (signals no more tasks: e.g. 'no', 'that's it', 'nothing else', "
+        "'I think that's everything', 'nope', 'all good', 'nothing more'):\n"
+        "  Respond warmly in 1 sentence. Vary the phrasing — do NOT use 'Perfect' or 'Got it'. "
+        "  Return JSON: {\"reply\": \"...\", \"done\": true}\n\n"
+        "CASE B — participant is adding a task (describes work they do):\n"
+        "  Write a natural, specific acknowledgment that reflects what they said — "
+        "  vary it: sometimes add a brief relevant observation, sometimes show genuine interest. "
+        "  NEVER use generic filler phrases like 'Got it', 'Good one', 'Thanks for sharing', or 'Noted'.\n"
+        "  If the task is vague: ask ONE short focused clarifying question. "
+        "  Always end with a varied phrasing of 'anything else?' — e.g. 'Anything else come to mind?', "
+        "  'What else?', 'Is there anything else?'\n"
+        "  Return JSON: {\"reply\": \"...\", \"done\": false}\n\n"
+        "Rules:\n"
+        "- reply: 1–2 sentences max\n"
+        "- Do NOT repeat the task name back verbatim\n"
+        "- Return ONLY valid JSON, no markdown fences, no extra text"
+    )
+
+    done = False
+    reply = "Got it. Is there anything else to add?"
+    try:
+        engine = get_engine(model_name=_TASK_GEN_MODEL, temperature=0.9)
+        response = invoke_engine(engine, prompt)
+        raw = (response.content if hasattr(response, 'content') else str(response)).strip()
+        raw = _re.sub(r"^```[a-z]*\n?", "", raw)
+        raw = _re.sub(r"\n?```$", "", raw).strip()
+        parsed = json.loads(raw)
+        reply = str(parsed.get('reply', reply)).strip()
+        done = bool(parsed.get('done', False))
+    except Exception as e:
+        app.logger.error(f"[task_followup] error: {e}", exc_info=True)
+
+    if done:
+        def _end():
+            iv.end_with_thankyou(send_message=False)
+        if hasattr(wrapper, 'loop'):
+            wrapper.loop.call_soon_threadsafe(_end)
+        else:
+            _end()
+
+    return jsonify({'success': True, 'reply': reply, 'done': done})
+
+
+@app.route('/api/submit-task-validation', methods=['POST'])
+@agent_or_login_required
+def submit_task_validation():
+    """Store the validated task list and trigger session end (feedback widget)."""
+    data = request.get_json(silent=True) or {}
+    session_token = data.get('session_token')
+    validated_tasks = data.get('tasks') or []
+    extra_tasks = data.get('extra_tasks') or []
+    wishlist_tasks = data.get('wishlist_tasks') or []
+
+    if not isinstance(validated_tasks, list):
+        return jsonify({'success': False, 'error': 'tasks must be a list'}), 400
+
+    wrapper = get_session_wrapper(session_token)
+    if not wrapper:
+        return jsonify({'success': False, 'error': 'Invalid or expired session'}), 400
+
+    iv = wrapper.interview_session
+    all_tasks = [str(t).strip() for t in validated_tasks + extra_tasks if str(t).strip()]
+    wishlist = [str(t).strip() for t in wishlist_tasks if str(t).strip()]
+
+    # Persist tasks into the user portrait
+    agenda = getattr(iv, 'session_agenda', None)
+    if agenda is not None:
+        portrait = dict(agenda.user_portrait or {})
+        portrait['Task Inventory'] = all_tasks
+        if wishlist:
+            portrait['Task Wishlist'] = wishlist
+        portrait = normalize_user_portrait(portrait)
+        agenda.user_portrait = portrait
+        portrait_path = os.path.join(
+            os.getenv('LOGS_DIR', 'logs'), iv.user_id, 'user_portrait.json'
+        )
+        os.makedirs(os.path.dirname(portrait_path), exist_ok=True)
+        with open(portrait_path, 'w') as f:
+            json.dump(portrait, f, indent=2)
+        app.logger.info(
+            f"[submit_task_validation] Saved {len(all_tasks)} tasks for user {iv.user_id}"
+        )
+
+    # Ask the participant if anything was missed before ending
+    def _inject_question():
+        iv.add_message_to_chat_history(
+            role="Interviewer",
+            content="Are there any tasks central to your role that we haven't covered?",
+            message_type="conversation",
+        )
+
+    if hasattr(wrapper, 'loop'):
+        wrapper.loop.call_soon_threadsafe(_inject_question)
+    else:
+        _inject_question()
+
+    return jsonify({'success': True, 'task_count': len(all_tasks)})
+
 
 @app.route('/api/debug-session', methods=['GET'])
 @login_required  # PROTECTED

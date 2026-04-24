@@ -1440,7 +1440,7 @@ class Interviewer(BaseAgent, Participant):
         if message is None and self._is_fresh_intake_session():
             opening_question = (
                 "Thanks for making time today. "
-                "To start, how would you describe your current role or title?"
+                "Could you briefly describe your job and what you do at work?"
             )
             SessionLogger.log_to_file(
                 "execution_log",
@@ -1619,13 +1619,29 @@ class Interviewer(BaseAgent, Participant):
         ):
             if speculative_task is not None and not speculative_task.done():
                 speculative_task.cancel()
-            SessionLogger.log_to_file(
-                "execution_log",
-                "[GUARD] No active topics remain after scribe update — ending turn without another question."
-            )
-            self._guarded_send_goodbye(self._default_completion_goodbye())
-            if not getattr(self.interview_session, "_feedback_widget_sent", False):
-                self.interview_session.trigger_feedback_widget()
+            # First time all topics are covered: show task validation widget.
+            # After widget is submitted the feedback widget is triggered server-side.
+            if not getattr(self.interview_session, "_task_validation_widget_sent", False):
+                SessionLogger.log_to_file(
+                    "execution_log",
+                    "[GUARD] No active topics remain — triggering task validation widget."
+                )
+                self.interview_session.add_message_to_chat_history(
+                    role="Interviewer",
+                    content=(
+                        "Based on your description, here are some core tasks I think someone "
+                        "in your role does — do these match what you actually work on?"
+                    ),
+                )
+                self.interview_session.trigger_task_validation_widget()
+            else:
+                SessionLogger.log_to_file(
+                    "execution_log",
+                    "[GUARD] No active topics remain after task validation — ending session."
+                )
+                self._guarded_send_goodbye(self._default_completion_goodbye())
+                if not getattr(self.interview_session, "_feedback_widget_sent", False):
+                    self.interview_session.trigger_feedback_widget()
             self._turn_to_respond = False
             return
 

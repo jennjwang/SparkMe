@@ -15,6 +15,7 @@ class MessageType(str, Enum):
     AI_USAGE_WIDGET = "ai_usage_widget"  # triggers AI-vs-manual bucket selection widget
     FEEDBACK_WIDGET = "feedback_widget"  # triggers end-of-session feedback form in UI
     PROFILE_CONFIRM_WIDGET = "profile_confirm_widget"  # triggers role/profile review panel after first topic
+    TASK_VALIDATION_WIDGET = "task_validation_widget"  # triggers batch task validation UI after job description
 
 class Message(BaseModel):
     id: str
