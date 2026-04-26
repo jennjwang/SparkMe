@@ -19,6 +19,7 @@ import argparse
 import time
 import logging
 import secrets
+import re
 from datetime import datetime, timezone
 # import hashlib  # unused when name-only login is active
 import json
@@ -58,8 +59,9 @@ from src.content.session_agenda.session_agenda import normalize_user_portrait
 
 SESSION_TIMEOUT_SECONDS = 3600  # 1 hour
 START_TIME = time.time()
-AVAILABLE_TIME_OPTIONS_MINUTES = {10, 15, 20, 30, 45, 60}
 DEFAULT_AVAILABLE_TIME_MINUTES = 20
+MIN_AVAILABLE_TIME_MINUTES = 5
+MAX_AVAILABLE_TIME_MINUTES = 120
 
 class AppConfig:
     """Application configuration"""
@@ -138,6 +140,12 @@ def _generate_unique_user_id(users: dict, digits: int = 10) -> str:
         if candidate not in users:
             return candidate
     return secrets.token_urlsafe(16)
+
+
+def _safe_user_id_from_prolific_pid(prolific_pid: str) -> str:
+    """Use the Prolific PID as the app user id, normalized for filesystem paths."""
+    safe = re.sub(r"[^A-Za-z0-9_.-]+", "_", str(prolific_pid or "").strip())
+    return safe.strip("._-") or _generate_random_numeric_string(10)
 
 def save_users(users):
     """Save users to JSON file"""
@@ -318,16 +326,14 @@ def _register_pending_turn(session_token: str, turn_id: str, payload: Dict[str, 
 
 
 def _normalize_available_time_minutes(raw_value: Optional[object], fallback: Optional[int] = None) -> Optional[int]:
-    """Normalize available_time input to an allowed minute bucket."""
+    """Normalize available_time input to a bounded number of minutes."""
     if raw_value is None:
         return None
     try:
-        minutes = int(raw_value)
+        minutes = int(float(raw_value))
     except (TypeError, ValueError):
         return fallback
-    if minutes in AVAILABLE_TIME_OPTIONS_MINUTES:
-        return minutes
-    return fallback
+    return max(MIN_AVAILABLE_TIME_MINUTES, min(MAX_AVAILABLE_TIME_MINUTES, minutes))
 
 
 def _serialize_session_start_time(value: Optional[datetime]) -> tuple[Optional[str], Optional[int]]:
@@ -442,20 +448,17 @@ def agent_or_login_required(f):
 # AUTHENTICATION ROUTES (NO @login_required)
 # =============================================================================
 
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    """Login page"""
-    if not REQUIRE_LOGIN:
-        return redirect(url_for('index'))
-    if current_user.is_authenticated:
-        return redirect(url_for('index'))  # Changed: redirect to index with instructions
-    
-    if request.method == 'POST':
-        username = request.form.get('username', '').strip()
-        if not username:
-            username = _generate_random_numeric_string(8)
 
-        users = load_users()
+def _login_user_record(
+    username: str,
+    *,
+    user_id: Optional[str] = None,
+    prolific_pid: str = "",
+    prolific_study_id: str = "",
+    prolific_session_id: str = "",
+):
+    users = load_users()
+    if not user_id:
         user_id = None
         if not LOGIN_ALWAYS_NEW_USER_ID:
             # Legacy mode: reuse an existing account for the same username.
@@ -463,25 +466,74 @@ def login():
                 if user_data.get('username') == username:
                     user_id = uid
                     break
-
         if not user_id:
-            # Default mode: always issue a brand-new internal ID at login so
-            # sessions never inherit prior users' state through reused IDs.
             user_id = _generate_unique_user_id(users, digits=10)
-            users[user_id] = {
-                'username': username,
-                'created_at': time.time()
-            }
-            save_users(users)
-            os.makedirs(os.path.join(os.getenv('LOGS_DIR', 'logs'), user_id), exist_ok=True)
-            os.makedirs(os.path.join(os.getenv('DATA_DIR', 'data'), user_id), exist_ok=True)
-            app.logger.info(f"New user created: {username} ({user_id})")
-        else:
-            app.logger.info(f"Existing user login: {username} ({user_id})")
 
-        user = User(user_id, username)
-        login_user(user)
-        app.logger.info(f"User logged in: {username} ({user_id})")
+    existing = users.get(user_id)
+    if existing:
+        existing['username'] = username
+        if prolific_pid:
+            existing['prolific_pid'] = prolific_pid
+        if prolific_study_id:
+            existing['prolific_study_id'] = prolific_study_id
+        if prolific_session_id:
+            existing['prolific_session_id'] = prolific_session_id
+        save_users(users)
+        app.logger.info(f"Existing user login: {username} ({user_id})")
+    else:
+        user_record = {'username': username, 'created_at': time.time()}
+        if prolific_pid:
+            user_record['prolific_pid'] = prolific_pid
+        if prolific_study_id:
+            user_record['prolific_study_id'] = prolific_study_id
+        if prolific_session_id:
+            user_record['prolific_session_id'] = prolific_session_id
+        users[user_id] = user_record
+        save_users(users)
+        os.makedirs(os.path.join(os.getenv('LOGS_DIR', 'logs'), user_id), exist_ok=True)
+        os.makedirs(os.path.join(os.getenv('DATA_DIR', 'data'), user_id), exist_ok=True)
+        app.logger.info(f"New user created: {username} ({user_id}) prolific_pid={prolific_pid or 'none'}")
+
+    user = User(user_id, username)
+    login_user(user)
+    app.logger.info(f"User logged in: {username} ({user_id})")
+    return user
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """Login page"""
+    if not REQUIRE_LOGIN:
+        return redirect(url_for('index'))
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))  # Changed: redirect to index with instructions
+
+    query_prolific_pid = request.args.get('PROLIFIC_PID', '').strip()
+    if request.method == 'GET' and query_prolific_pid:
+        _login_user_record(
+            query_prolific_pid,
+            user_id=_safe_user_id_from_prolific_pid(query_prolific_pid),
+            prolific_pid=query_prolific_pid,
+            prolific_study_id=request.args.get('STUDY_ID', '').strip(),
+            prolific_session_id=request.args.get('SESSION_ID', '').strip(),
+        )
+        return redirect(url_for('index', show_intro='1'))
+    
+    if request.method == 'POST':
+        prolific_pid = request.form.get('prolific_pid', '').strip()
+        if prolific_pid:
+            username = prolific_pid
+            user_id = _safe_user_id_from_prolific_pid(prolific_pid)
+        else:
+            username = request.form.get('username', '').strip() or _generate_random_numeric_string(8)
+            user_id = None
+
+        _login_user_record(
+            username,
+            user_id=user_id,
+            prolific_pid=prolific_pid,
+            prolific_study_id=request.form.get('study_id', '').strip(),
+            prolific_session_id=request.form.get('prolific_session_id', '').strip(),
+        )
 
         # Always route through the interviewer-info page first.
         return redirect(url_for('index', show_intro='1'))
@@ -500,6 +552,9 @@ def login():
     return render_template(
         'login.html',
         suggested_username=_generate_random_numeric_string(8),
+        prolific_pid=query_prolific_pid,
+        study_id=request.args.get('STUDY_ID', '').strip(),
+        prolific_session_id=request.args.get('SESSION_ID', '').strip(),
     )
 
 # --- /register route (commented out — superseded by name-only login) ---
@@ -582,7 +637,12 @@ def index():
 @login_required  # MUST BE LOGGED IN
 def unified_chat():
     """Unified chat interface"""
-    return render_template('chat.html', username=get_current_user().username)
+    return render_template(
+        'chat.html',
+        username=get_current_user().username,
+        prolific_completion_code=os.getenv('PROLIFIC_COMPLETION_CODE', ''),
+        attn_check_max_fails=int(os.getenv('ATTN_CHECK_MAX_FAILS', '1')),
+    )
 
 @app.route('/visualizer')
 def visualizer():
@@ -2021,21 +2081,20 @@ def _llm_generate_task_batch(
         "and there are genuinely no more important tasks to add. Otherwise set has_more to true."
     )
 
-    if batch_index == 0:
+    _CORE_BATCHES = 2  # first 2 batches (6 tasks) = core, rest = diversify
+    if batch_index < _CORE_BATCHES:
+        rank = batch_index + 1
         coverage_hint = (
-            f"Return the {_TASK_BATCH_SIZE} most important, high-frequency tasks for this role — "
-            "the core work this person spends the most time on, ranked by importance."
-        )
-    elif batch_index == 1:
-        coverage_hint = (
-            f"Return the next {_TASK_BATCH_SIZE} most significant tasks not yet listed — "
-            "important responsibilities ranked by how central they are to the role."
+            f"Return the {_TASK_BATCH_SIZE} {'most' if batch_index == 0 else 'next most'} important "
+            f"core tasks for this role — the work this person spends the most time on. "
+            f"Rank strictly by centrality and frequency (batch {rank} of {_CORE_BATCHES} core batches)."
         )
     else:
         coverage_hint = (
-            f"Return {_TASK_BATCH_SIZE} tasks that cover areas of this role not yet represented above. "
-            "Think about what a complete picture of this occupation looks like — "
-            "what tasks would be missing if you stopped here?"
+            f"The first {_CORE_BATCHES * _TASK_BATCH_SIZE} tasks covered the core of this role. "
+            f"Now return {_TASK_BATCH_SIZE} tasks from a DIFFERENT area not yet represented — "
+            "vary the type of work: coordination, documentation, external-facing, reactive, specialized, etc. "
+            "Think about what a complete picture of this occupation looks like across all dimensions."
         )
 
     perspective_line = f"Session focus: {session_perspective}\n" if session_perspective else ""
@@ -2138,11 +2197,19 @@ def generate_tasks():
 @app.route('/api/ai-era-tasks', methods=['POST'])
 @agent_or_login_required
 def ai_era_tasks():
-    """Generate tasks this person does *because of* AI — new capabilities + governance responsibilities."""
+    """Generate a batch of AI-era tasks. Supports pagination via batch_index + prior_tasks."""
     from src.utils.llm.engines import get_engine, invoke_engine
+
+    _AI_BATCH_SIZE = 3
+    _AI_MAX_BATCHES = 6   # up to 18 tasks total
 
     data = request.get_json(silent=True) or {}
     session_token = data.get('session_token')
+    batch_index = int(data.get('batch_index', 0))
+    prior_tasks = data.get('prior_tasks') or []
+
+    if batch_index >= _AI_MAX_BATCHES:
+        return jsonify({'success': True, 'tasks': [], 'has_more': False})
 
     wrapper = get_session_wrapper(session_token)
     if not wrapper:
@@ -2153,28 +2220,57 @@ def ai_era_tasks():
     if not job_description:
         return jsonify({'success': False, 'error': 'No job description found'}), 400
 
+    prior_block = ""
+    if prior_tasks:
+        prior_list = "\n".join(f"- {t}" for t in prior_tasks)
+        prior_block = (
+            f"\nTasks already shown (do NOT repeat or rephrase any of these):\n{prior_list}\n"
+        )
+
+    if batch_index == 0:
+        focus = (
+            f"Generate the {_AI_BATCH_SIZE} most common new capabilities AI has given people in this role — "
+            "things they can now do that weren't possible or practical before."
+        )
+    elif batch_index == 1:
+        focus = (
+            f"Generate the {_AI_BATCH_SIZE} most common new oversight or quality-control responsibilities "
+            "this role now has because AI is in the workflow — reviewing, verifying, or taking ownership of AI outputs."
+        )
+    else:
+        focus = (
+            f"Generate {_AI_BATCH_SIZE} more AI-related tasks not yet listed — mix of capabilities and responsibilities. "
+            "Cover areas not yet represented: different types of work, tools, or contexts."
+        )
+
+    stop_hint = (
+        "Set has_more to true unless you have genuinely exhausted every distinct AI-related task area for this role "
+        "across capability, oversight, tool use, quality control, and workflow integration. "
+        "Err strongly on the side of true — there are almost always more areas to cover."
+    )
+
     prompt = (
-        f"Occupation context: \"{job_description}\"\n\n"
-        "First, identify the broad occupational category this person belongs to "
-        "(e.g. 'researcher', 'software engineer', 'nurse', 'teacher', 'manager'). "
-        "Then generate tasks that are broadly true for people in that category today because of AI — tasks that either:\n"
-        "  (a) are newly possible or dramatically easier due to AI (expanded capabilities), OR\n"
-        "  (b) have emerged as oversight, governance, or quality-control responsibilities because AI is now in the workflow.\n\n"
-        "Generate exactly 6 tasks: 3 expanded-capability tasks and 3 governance/oversight tasks.\n\n"
+        f"Occupation context: \"{job_description}\"\n"
+        f"{prior_block}\n"
+        f"{focus}\n\n"
         "Rules:\n"
         "- Tasks should apply broadly to the occupational category, NOT be hyper-specific to this individual's niche\n"
-        "  Good for a researcher: 'Verify AI-generated literature summaries against source papers'\n"
-        "  Too specific: 'Audit AI-generated participant-facing materials for bias in human-subjects research'\n"
+        "  Good (researcher): 'Check AI-written summaries for errors before using them'\n"
+        "  Too specific (researcher): 'Review AI outputs for bias in human-subjects consent forms'\n"
+        "  Good (manager): 'Use AI to draft updates for the team'\n"
+        "  Too specific (manager): 'Summarize Q3 sales pipeline reports using AI for the VP'\n"
         "- The task NAME must make it explicit that AI is involved — include 'using AI', 'with AI', or a specific AI tool\n"
         "- Each task: 5–12 words, starts with an action verb, sentence case\n"
-        "- Each needs a name and a one-sentence description\n"
+        "- Use plain, everyday language — no jargon or technical phrasing\n"
+        "- Each needs a name and a one-sentence description (also plain language)\n"
         "- Label each with type: 'capability' or 'governance'\n"
+        f"- {stop_hint}\n"
         "- Return ONLY valid JSON (no markdown fences):\n"
-        '  {"tasks": [{"name": "...", "description": "...", "ai_type": "capability"}, ...]}'
+        '  {"tasks": [{"name": "...", "description": "...", "ai_type": "capability"}, ...], "has_more": true}'
     )
 
     try:
-        engine = get_engine(model_name=_TASK_GEN_MODEL, temperature=0.9)
+        engine = get_engine(model_name=_TASK_GEN_MODEL, temperature=1.0)
         response = invoke_engine(engine, prompt)
         raw = (response.content if hasattr(response, 'content') else str(response)).strip()
         parsed = _parse_tasks_json(raw)
@@ -2185,11 +2281,14 @@ def ai_era_tasks():
             ai_type = str(t.get("ai_type", "capability")).strip()
             if name:
                 tasks.append({"name": name, "description": desc, "ai_type": ai_type})
+        has_more = bool(parsed.get("has_more", batch_index + 1 < _AI_MAX_BATCHES))
+        if batch_index + 1 >= _AI_MAX_BATCHES:
+            has_more = False
     except Exception as e:
         app.logger.error(f"[ai_era_tasks] error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
-    return jsonify({'success': True, 'tasks': tasks})
+    return jsonify({'success': True, 'tasks': tasks, 'has_more': has_more})
 
 
 @app.route('/api/attention-check-tasks', methods=['POST'])
@@ -2236,6 +2335,56 @@ def attention_check_tasks():
                 tasks.append({"name": name, "description": desc, "is_attention_check": True})
     except Exception as e:
         app.logger.error(f"[attention_check_tasks] error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+    return jsonify({'success': True, 'tasks': tasks})
+
+
+@app.route('/api/ai-attention-check-tasks', methods=['POST'])
+@agent_or_login_required
+def ai_attention_check_tasks():
+    """Generate 3 distractor tasks for the AI task widget — things clearly not AI-related for this role."""
+    from src.utils.llm.engines import get_engine, invoke_engine
+
+    data = request.get_json(silent=True) or {}
+    session_token = data.get('session_token')
+
+    wrapper = get_session_wrapper(session_token)
+    if not wrapper:
+        return jsonify({'success': False, 'error': 'Invalid or expired session'}), 400
+
+    iv = wrapper.interview_session
+    job_description = _extract_job_description(iv)
+    if not job_description:
+        return jsonify({'success': False, 'error': 'No job description found'}), 400
+
+    prompt = (
+        f"Occupation context: \"{job_description}\"\n\n"
+        "Generate exactly 3 tasks that are CLEARLY NOT AI-related — tasks someone in this role might do, "
+        "but that involve no AI whatsoever (no AI tools, no AI outputs, no AI oversight). "
+        "These are attention-check items to verify the participant is reading carefully and only selecting tasks that involve AI.\n\n"
+        "Rules:\n"
+        "- Each task must be a plausible work task for this role, but with zero AI involvement\n"
+        "- Do NOT include 'AI', 'using AI', 'with AI', or any AI tool in the task name or description\n"
+        "- Write them in the same format as the other tasks: 5–12 words, starts with an action verb, sentence case\n"
+        "- Each needs a name and a one-sentence description\n"
+        "- Return ONLY valid JSON (no markdown fences):\n"
+        '  {"tasks": [{"name": "Task name here", "description": "One sentence describing what this involves."}, ...]}'
+    )
+
+    try:
+        engine = get_engine(model_name=_TASK_GEN_MODEL, temperature=0.9)
+        response = invoke_engine(engine, prompt)
+        raw = (response.content if hasattr(response, 'content') else str(response)).strip()
+        parsed = _parse_tasks_json(raw)
+        tasks = []
+        for t in (parsed.get("tasks") or []):
+            name = str(t.get("name", "")).strip()
+            desc = str(t.get("description", "")).strip()
+            if name:
+                tasks.append({"name": name, "description": desc, "is_attention_check": True})
+    except Exception as e:
+        app.logger.error(f"[ai_attention_check_tasks] error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
     return jsonify({'success': True, 'tasks': tasks})
@@ -2309,11 +2458,44 @@ def task_followup():
     iv = wrapper.interview_session
     job_description = _extract_job_description(iv)
 
+    is_ai_extras = phase == 'ai_extras'
+    inventory_scope = "an AI-related task inventory" if is_ai_extras else "a task inventory"
+    remaining_goal = (
+        "capture remaining AI-related tasks only, meaning new things AI enables them to do "
+        "or new responsibilities around reviewing, verifying, or overseeing AI outputs"
+        if is_ai_extras
+        else "capture remaining tasks"
+    )
+    collected_label = "AI-related tasks already collected" if is_ai_extras else "Tasks already collected"
+    other_tasks_question = (
+        "Any other AI-related tasks come to mind?"
+        if is_ai_extras
+        else "What other tasks are part of your work?"
+    )
+    new_task_scope = (
+        "participant is adding a NEW AI-related task (describes work involving AI tools, AI outputs, or AI oversight)"
+        if is_ai_extras
+        else "participant is adding a NEW task (describes distinct work they do)"
+    )
+    scope_rule = (
+        "- This phase is ONLY about AI-related tasks. Do NOT broaden to general work tasks or ask what other tasks take up their time.\n"
+        "- When asking for more, vary the wording and keep it brief. Do not repeat the exact same 'other AI-related tasks' sentence after every answer.\n"
+        if is_ai_extras
+        else ""
+    )
+    case_c_instruction = (
+        "  Respond briefly to the answer, then ask a short, varied AI-scoped continuation question. "
+        "Examples: 'Anything else AI-related come to mind?', 'Any other AI-enabled work or AI oversight tasks?', "
+        "or 'Is there another AI-related task we have not covered?'. Do NOT reuse the same wording from the previous interviewer turn.\n"
+        if is_ai_extras
+        else f"  Respond in 1 sentence that briefly reflects understanding, then ask this scoped question: {other_tasks_question}\n"
+    )
+
     history = _task_followup_history(session_token, phase)
     if recent_dialogue:
         history[:] = recent_dialogue[-_TASK_FOLLOWUP_HISTORY_MAX_MESSAGES:]
     elif not history:
-        seed = _latest_interviewer_message_from_chat(iv)
+        seed = other_tasks_question if is_ai_extras else _latest_interviewer_message_from_chat(iv)
         if seed:
             history.append({"role": "Interviewer", "content": seed})
 
@@ -2321,11 +2503,11 @@ def task_followup():
 
     prior_block = ""
     if prior_tasks:
-        prior_block = "Tasks already collected:\n" + "\n".join(f"- {t}" for t in prior_tasks) + "\n\n"
+        prior_block = f"{collected_label}:\n" + "\n".join(f"- {t}" for t in prior_tasks) + "\n\n"
 
     prompt = (
-        "You are a warm, concise interviewer collecting a task inventory.\n"
-        "Goal: capture remaining tasks while sounding like you understood what the participant just said.\n\n"
+        f"You are a warm, concise interviewer collecting {inventory_scope}.\n"
+        f"Goal: {remaining_goal} while sounding like you understood what the participant just said.\n\n"
         f"Occupation context: \"{job_description}\"\n"
         f"{prior_block}"
         f"Recent task-followup conversation (oldest to newest):\n{history_block}\n\n"
@@ -2336,9 +2518,11 @@ def task_followup():
         "'all good', 'nothing more', 'no more'.\n"
         "  IMPORTANT: short affirmations like 'both', 'yes', 'yeah', 'correct' are DONE only when they "
         "clearly answer a prior 'any other tasks?' prompt.\n"
+        "  If this is the AI-related task phase, briefly acknowledge that the AI task list is complete and "
+        "transition naturally to closing the interview.\n"
         "  Respond warmly in 1 sentence. Vary the phrasing — do NOT use 'Perfect' or 'Got it'. "
         "  Return JSON: {\"reply\": \"...\", \"done\": true}\n\n"
-        "CASE B — participant is adding a NEW task (describes distinct work they do):\n"
+        f"CASE B — {new_task_scope}:\n"
         "  Ask exactly one follow-up question about that task.\n"
         "  The question must show understanding by anchoring to a concrete detail from their latest message.\n"
         "  Do NOT use generic filler phrases like 'Got it', 'Good one', 'Thanks for sharing', or 'Noted'.\n"
@@ -2351,9 +2535,10 @@ def task_followup():
         "  Return JSON: {\"reply\": \"...\", \"task_name\": \"...\", \"done\": false}\n\n"
         "CASE C — participant is answering your previous follow-up/clarifier (including short replies like "
         "'both', 'yes', 'correct', or noun phrases like 'experimental results') and did NOT introduce a new task:\n"
-        "  Respond in 1 sentence that briefly reflects understanding, then ask if there are other tasks.\n"
+        f"{case_c_instruction}"
         "  Return JSON: {\"reply\": \"...\", \"done\": false}\n\n"
         "Rules:\n"
+        f"{scope_rule}"
         "- reply: 1 sentence max; at most one question mark\n"
         "- task_name: starts with a verb, includes action + object + objective (purpose/outcome), aim for 8–12 words\n"
         "- For CASE B, follow-up must be specific to this participant's latest message and show understanding\n"
@@ -2363,7 +2548,7 @@ def task_followup():
     )
 
     done = False
-    reply = "What other tasks are part of your work?"
+    reply = other_tasks_question
     task_name = None
     try:
         engine = get_engine(model_name=_TASK_GEN_MODEL, temperature=0.9)
@@ -2392,7 +2577,7 @@ def task_followup():
 
     # Ensure non-done responses continue the probing flow with one question.
     if not done and "?" not in reply:
-        reply = f"{reply.rstrip('. ')}. What other tasks are part of your work?"
+        reply = f"{reply.rstrip('. ')}. {other_tasks_question}"
 
     history.append({"role": "Participant", "content": task_text})
     if reply:
@@ -2422,6 +2607,8 @@ def submit_task_validation():
     validated_tasks = data.get('tasks') or []
     extra_tasks = data.get('extra_tasks') or []
     wishlist_tasks = data.get('wishlist_tasks') or []
+    attn_failed = int(data.get('attn_failed', 0))
+    attn_total = int(data.get('attn_total', 0))
 
     if not isinstance(validated_tasks, list):
         return jsonify({'success': False, 'error': 'tasks must be a list'}), 400
@@ -2454,6 +2641,32 @@ def submit_task_validation():
         app.logger.info(
             f"[submit_task_validation] Saved {len(all_tasks)} tasks for user {iv.user_id}"
         )
+
+    # Persist attention check result to user record
+    attn_disqualified = False
+    attn_max = int(os.getenv('ATTN_CHECK_MAX_FAILS', '1'))
+    if attn_total > 0:
+        users = load_users()
+        if iv.user_id in users:
+            users[iv.user_id]['attn_failed'] = attn_failed
+            users[iv.user_id]['attn_total'] = attn_total
+            save_users(users)
+        app.logger.info(
+            f"[submit_task_validation] attn {attn_failed}/{attn_total} failed "
+            f"(max allowed: {attn_max}) for user {iv.user_id}"
+        )
+        if attn_failed > attn_max:
+            attn_disqualified = True
+
+    if attn_disqualified:
+        # End the session now — skip probing loop and AI tasks
+        def _end_early():
+            iv.end_with_thankyou(send_message=False)
+        if hasattr(wrapper, 'loop'):
+            wrapper.loop.call_soon_threadsafe(_end_early)
+        else:
+            _end_early()
+        return jsonify({'success': True, 'task_count': len(all_tasks), 'attn_disqualified': True})
 
     # Ask the participant if anything was missed before ending
     def _inject_question():

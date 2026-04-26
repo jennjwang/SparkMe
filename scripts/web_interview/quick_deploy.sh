@@ -11,6 +11,18 @@ SERVICE_NAME="sparkme-web-interview"
 REGION="us-central1"
 BUCKET_NAME="sparkme-web-interview-${PROJECT_ID}"
 
+if ! command -v gcloud >/dev/null 2>&1; then
+  echo "ERROR: gcloud CLI is not installed or not on PATH."
+  echo "Install it first: https://cloud.google.com/sdk/docs/install"
+  exit 1
+fi
+
+if [[ -z "${PROLIFIC_COMPLETION_CODE:-}" ]]; then
+  echo "ERROR: PROLIFIC_COMPLETION_CODE must be set before deploying."
+  echo "Example: PROLIFIC_COMPLETION_CODE=YOUR_CODE scripts/web_interview/quick_deploy.sh"
+  exit 1
+fi
+
 # We build a comma-separated string of env vars to pass to Cloud Run
 NON_SENSITIVE_VARS=""
 NON_SENSITIVE_VARS+="MODEL_NAME=gpt-5.1,"
@@ -45,7 +57,11 @@ NON_SENSITIVE_VARS+="STRATEGIC_PLANNER_MIN_NOVELTY=3,"
 NON_SENSITIVE_VARS+="SESSION_TIMEOUT_MINUTES=30,"
 NON_SENSITIVE_VARS+="MEMORY_THRESHOLD_FOR_UPDATE=15,"
 NON_SENSITIVE_VARS+="GCP_PROJECT=${PROJECT_ID},"
-NON_SENSITIVE_VARS+="GCP_REGION=${REGION}"
+NON_SENSITIVE_VARS+="GCP_REGION=${REGION},"
+
+# Prolific study settings
+NON_SENSITIVE_VARS+="PROLIFIC_COMPLETION_CODE=${PROLIFIC_COMPLETION_CODE},"
+NON_SENSITIVE_VARS+="ATTN_CHECK_MAX_FAILS=${ATTN_CHECK_MAX_FAILS:-0}"
 
 echo "================================================"
 echo "Deploying to GCP Cloud Run with Cloud Storage"

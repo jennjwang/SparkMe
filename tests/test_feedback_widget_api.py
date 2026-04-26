@@ -205,6 +205,71 @@ class TestGetMessagesReplayForWidgets:
         assert MessageType.TIME_SPLIT_WIDGET not in returned_types
 
 
+class TestSubmitTaskValidationApi:
+    def test_attention_check_disqualifies_when_failures_exceed_configured_max(self, client, monkeypatch):
+        token = "tok-attn-disqualify"
+        session = SimpleNamespace(
+            session_id=3001,
+            user_id="u3001",
+            session_agenda=None,
+            end_with_thankyou=MagicMock(),
+        )
+        _register_session(token, session, with_loop=False)
+        monkeypatch.setenv("ATTN_CHECK_MAX_FAILS", "0")
+
+        with patch.object(main_flask, "load_users", return_value={"u3001": {"username": "p"}}), patch.object(
+            main_flask,
+            "save_users",
+        ) as mock_save:
+            res = client.post(
+                "/api/submit-task-validation",
+                json={
+                    "session_token": token,
+                    "tasks": ["Real task"],
+                    "attn_failed": 1,
+                    "attn_total": 1,
+                },
+            )
+
+        body = res.get_json()
+        assert res.status_code == 200
+        assert body["success"] is True
+        assert body["attn_disqualified"] is True
+        session.end_with_thankyou.assert_called_once_with(send_message=False)
+        mock_save.assert_called_once()
+
+    def test_attention_check_allows_failures_at_configured_max(self, client, monkeypatch):
+        token = "tok-attn-allowed"
+        session = SimpleNamespace(
+            session_id=3002,
+            user_id="u3002",
+            session_agenda=None,
+            add_message_to_chat_history=MagicMock(),
+        )
+        _register_session(token, session, with_loop=False)
+        monkeypatch.setenv("ATTN_CHECK_MAX_FAILS", "1")
+
+        with patch.object(main_flask, "load_users", return_value={"u3002": {"username": "p"}}), patch.object(
+            main_flask,
+            "save_users",
+        ):
+            res = client.post(
+                "/api/submit-task-validation",
+                json={
+                    "session_token": token,
+                    "tasks": ["Real task"],
+                    "attn_failed": 1,
+                    "attn_total": 1,
+                },
+            )
+
+        body = res.get_json()
+        assert res.status_code == 200
+        assert body["success"] is True
+        assert body.get("attn_disqualified") is not True
+        session.add_message_to_chat_history.assert_called_once()
+
+
 class TestOrganizeTasksApi:
     def test_organize_tasks_rejects_non_list_tasks(self, client):
         token = "tok-organize-bad"

@@ -198,6 +198,9 @@
         id="login-form"
       >
         <input type="hidden" name="next" value="{{ request.args.get('next', '') }}" />
+        <input type="hidden" name="prolific_pid" value="{{ prolific_pid or '' }}" />
+        <input type="hidden" name="study_id" value="{{ study_id or '' }}" />
+        <input type="hidden" name="prolific_session_id" value="{{ prolific_session_id or '' }}" />
         <input
           id="username-input"
           type="hidden"

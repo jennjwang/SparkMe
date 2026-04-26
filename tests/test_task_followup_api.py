@@ -142,6 +142,104 @@ def test_task_followup_prompt_includes_recent_turn_context(client):
     assert "Interviewer: You mentioned CS seminars - what outcome are you usually aiming for?" in second_prompt
 
 
+def test_ai_task_followup_prompt_stays_ai_scoped(client):
+    token = "tok-ai-followup-scope"
+    _register_session(token)
+
+    fake_response = SimpleNamespace(
+        content='{"reply":"Using AI to draft bug fixes sounds useful - what do you usually check before applying them?","task_name":"Draft bug fixes using AI to speed implementation","done":false}'
+    )
+
+    with patch("src.utils.llm.engines.get_engine", return_value=MagicMock()), patch(
+        "src.utils.llm.engines.invoke_engine",
+        return_value=fake_response,
+    ) as mock_invoke:
+        res = client.post(
+            "/api/task-followup",
+            json={
+                "session_token": token,
+                "task_text": "I ask AI for suggested bug fixes.",
+                "prior_tasks": ["Review AI-generated code suggestions"],
+                "phase": "ai_extras",
+            },
+        )
+
+    body = res.get_json()
+    assert res.status_code == 200
+    assert body["success"] is True
+    prompt = mock_invoke.call_args.args[1]
+    assert "collecting an AI-related task inventory" in prompt
+    assert "AI-related tasks already collected:" in prompt
+    assert "This phase is ONLY about AI-related tasks" in prompt
+    assert "Do NOT broaden to general work tasks" in prompt
+    assert "vary the wording and keep it brief" in prompt
+    assert "Do NOT reuse the same wording from the previous interviewer turn" in prompt
+    assert "Interviewer: Any other AI-related tasks come to mind?" in prompt
+    assert "Interviewer: Are there any tasks you can think of that we haven't covered?" not in prompt
+
+
+def test_ai_task_followup_fallback_question_is_ai_scoped(client):
+    token = "tok-ai-followup-fallback"
+    _register_session(token)
+
+    fake_response = SimpleNamespace(
+        content='{"reply":"That helps","done":false}'
+    )
+
+    with patch("src.utils.llm.engines.get_engine", return_value=MagicMock()), patch(
+        "src.utils.llm.engines.invoke_engine",
+        return_value=fake_response,
+    ):
+        res = client.post(
+            "/api/task-followup",
+            json={
+                "session_token": token,
+                "task_text": "Mostly for checking generated summaries.",
+                "prior_tasks": [],
+                "phase": "ai_extras",
+            },
+        )
+
+    body = res.get_json()
+    assert res.status_code == 200
+    assert body["success"] is True
+    assert body["reply"].endswith("Any other AI-related tasks come to mind?")
+    assert "other tasks are part of your work" not in body["reply"]
+
+
+def test_ai_task_followup_done_prompt_requests_graceful_close(client):
+    token = "tok-ai-followup-done"
+    session, _ = _register_session(token)
+
+    fake_response = SimpleNamespace(
+        content='{"reply":"Thanks, that gives me a complete picture of the AI-related tasks we needed to cover.","done":true}'
+    )
+
+    with patch("src.utils.llm.engines.get_engine", return_value=MagicMock()), patch(
+        "src.utils.llm.engines.invoke_engine",
+        return_value=fake_response,
+    ) as mock_invoke:
+        res = client.post(
+            "/api/task-followup",
+            json={
+                "session_token": token,
+                "task_text": "that's it",
+                "prior_tasks": ["Review AI-generated citations"],
+                "phase": "ai_extras",
+            },
+        )
+
+    body = res.get_json()
+    assert res.status_code == 200
+    assert body["success"] is True
+    assert body["done"] is True
+    assert body["reply"]
+    session.end_with_thankyou.assert_called_once()
+
+    prompt = mock_invoke.call_args.args[1]
+    assert "transition naturally to closing the interview" in prompt
+
+
 def test_task_followup_reply_strips_em_dash_characters(client):
     token = "tok-followup-no-dash"
     _register_session(token)

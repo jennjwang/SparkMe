@@ -2643,6 +2643,10 @@
         background: #f3f4f6;
         color: #9ca3af;
       }
+      .tvw-badge-convo {
+        background: #eff6ff;
+        color: #1d4ed8;
+      }
       .tvw-card-desc {
         font-size: 12.5px;
         color: #6b7280;
@@ -3297,10 +3301,42 @@
         font-weight: 500;
       }
       .aitw-subtitle {
-        font-size: 13px;
-        color: #6b7280;
-        margin: 6px 0 16px;
+        font-size: 14px;
+        color: #374151;
+        margin: 6px 0 10px;
         line-height: 1.6;
+      }
+      .aitw-instruction {
+        font-size: 12px;
+        color: #9ca3af;
+        margin: 0 0 16px;
+      }
+      .aitw-current-tasks {
+        background: #f9fafb;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 10px 14px 12px;
+        margin-bottom: 16px;
+      }
+      .aitw-current-label {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        color: #9ca3af;
+        margin-bottom: 8px;
+      }
+      .aitw-current-list {
+        margin: 0;
+        padding-left: 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .aitw-current-list li {
+        font-size: 13px;
+        color: #374151;
+        line-height: 1.5;
       }
       .aitw-task-list {
         display: flex;
@@ -3447,6 +3483,36 @@
       }
       .aitw-submit-btn:hover {
         background: #374151;
+      }
+
+      /* ---- AI Task Summary ---- */
+      .ai-summary-widget {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        padding: 16px 18px;
+        margin: 8px 0 4px;
+        max-width: 560px;
+      }
+      .ai-summary-label {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        color: #9ca3af;
+        margin-bottom: 10px;
+      }
+      .ai-summary-list {
+        margin: 0;
+        padding-left: 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .ai-summary-list li {
+        font-size: 14px;
+        color: #111827;
+        line-height: 1.5;
       }
 
       /* ---- AI Usage Widget ---- */
@@ -4015,8 +4081,21 @@
       </div>
     </div>
     <div class="profile-backdrop" id="profile-backdrop"></div>
+    <div
+      id="page-config"
+      style="display: none"
+      data-prolific-completion-code="{{ prolific_completion_code }}"
+      data-attn-check-max-fails="{{ attn_check_max_fails }}"
+    ></div>
 
     <script>
+      const _pageCfg = document.getElementById("page-config").dataset;
+      const PROLIFIC_COMPLETION_CODE = _pageCfg.prolificCompletionCode || "";
+      const ATTN_CHECK_MAX_FAILS = parseInt(
+        _pageCfg.attnCheckMaxFails || "1",
+        10,
+      );
+
       let sessionToken = null;
       let sessionStartTime = null;
       let sessionTargetMs = null;
@@ -4037,9 +4116,9 @@
       let sessionRecoverAttempts = 0;
       const MAX_SESSION_RECOVER_ATTEMPTS = 1;
       const MIN_SESSION_DURATION_MS = 0;
-      const VALID_AVAILABLE_TIME_OPTIONS = new Set([10, 15, 20, 30, 45, 60]);
       let profileConfirmPending = false;
       let profileConfirmWidgetSeen = false;
+      let attnFailed = 0;
       let botMessageBuffer = [];
       let profilePanelRevealInFlight = false;
       let profileConfirmSnapshot = null;
@@ -4053,6 +4132,31 @@
 
       function updateStatus(msg) {
         document.getElementById("status").textContent = msg;
+      }
+
+      function availableMinutesFromUrl() {
+        const raw = new URLSearchParams(window.location.search).get(
+          "available_time",
+        );
+        const parsed = Number.parseInt(raw || "", 10);
+        if (!Number.isFinite(parsed)) return 20;
+        return Math.min(120, Math.max(5, parsed));
+      }
+
+      function roundUpToPageSize(value, pageSize) {
+        return Math.ceil(value / pageSize) * pageSize;
+      }
+
+      function regularTaskTarget(pageSize) {
+        const minutes = availableMinutesFromUrl();
+        const raw = Math.round(minutes * 0.75);
+        return roundUpToPageSize(Math.min(36, Math.max(6, raw)), pageSize);
+      }
+
+      function aiTaskTarget(pageSize) {
+        const minutes = availableMinutesFromUrl();
+        const raw = Math.round(minutes * 0.35);
+        return roundUpToPageSize(Math.min(18, Math.max(3, raw)), pageSize);
       }
 
       function startTimer() {
@@ -5170,7 +5274,9 @@
         scrollToBottom();
 
         const _PAGE_SIZE = 3; // tasks shown per page — must match _TASK_BATCH_SIZE on server
-        const _ATTN_INTERVAL = 5; // inject one attention check per N real tasks
+        const _ATTN_INTERVAL = 8; // inject one attention check per N real tasks
+        const _TARGET_REAL_TASKS = regularTaskTarget(_PAGE_SIZE);
+        const _TARGET_AI_TASKS = aiTaskTarget(_PAGE_SIZE);
 
         // State: flat list of all tasks across all batches
         let allTasks = []; // {text, description, status, isAttentionCheck, isAiTask, aiType}
@@ -5180,7 +5286,6 @@
         let prefetchPromise = null;
         let prefetchedBatch = null;
         let pendingAttentionChecks = [];
-        let aiTasks = []; // AI-era tasks, interleaved into the regular stream
 
         function esc(s) {
           return String(s || "")
@@ -5235,28 +5340,97 @@
           } catch (_) {}
         }
 
-        let _aiTasksPromise = null;
-        function fetchAiTasks() {
-          _aiTasksPromise = (async () => {
-            try {
-              const res = await fetch("/api/ai-era-tasks", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ session_token: sessionToken }),
-              });
-              const data = await res.json();
-              if (data.success) {
-                aiTasks = (data.tasks || []).map((t) => ({
-                  text: t.name || "",
-                  description: t.description || "",
-                  status: "unreviewed",
-                  isAiTask: true,
-                  aiType: t.ai_type || "capability",
-                }));
+        // AI task widget state — managed inside renderAiTaskWidget, kept here for scope
+        let _aiWidgetTasks = [];
+        let _aiWidgetHasMore = true;
+        let _aiWidgetBatchIdx = 0;
+        let _aiWidgetFetching = null; // Promise of in-flight fetch
+        let _aiPendingDistractors = []; // attention-check items for AI widget
+
+        async function _fetchAiDistractors() {
+          try {
+            const res = await fetch("/api/ai-attention-check-tasks", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ session_token: sessionToken }),
+            });
+            const data = await res.json();
+            if (data.success) {
+              _aiPendingDistractors = (data.tasks || []).map((t) => ({
+                text: t.name || "",
+                description: t.description || "",
+                isAttentionCheck: true,
+              }));
+            }
+          } catch (_) {}
+        }
+
+        async function _fetchAiTaskBatch() {
+          if (!_aiWidgetHasMore) return;
+          const currentReal = _aiWidgetTasks.filter(
+            (t) => !t.isAttentionCheck,
+          ).length;
+          if (currentReal >= _TARGET_AI_TASKS) {
+            _aiWidgetHasMore = false;
+            return;
+          }
+          const prior = _aiWidgetTasks
+            .filter((t) => !t.isAttentionCheck)
+            .map((t) => t.text);
+          const res = await fetch("/api/ai-era-tasks", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              session_token: sessionToken,
+              batch_index: _aiWidgetBatchIdx,
+              prior_tasks: prior,
+            }),
+          });
+          const data = await res.json();
+          if (data.success) {
+            for (const t of data.tasks || []) {
+              const currentReal = _aiWidgetTasks.filter(
+                (x) => !x.isAttentionCheck,
+              ).length;
+              if (currentReal >= _TARGET_AI_TASKS) {
+                _aiWidgetHasMore = false;
+                break;
               }
-            } catch (_) {}
-          })();
-          return _aiTasksPromise;
+              _aiWidgetTasks.push({
+                text: t.name || "",
+                description: t.description || "",
+                aiType: t.ai_type || "capability",
+                isAttentionCheck: false,
+              });
+              // Inject distractor every _ATTN_INTERVAL real tasks
+              const realCount = _aiWidgetTasks.filter(
+                (x) => !x.isAttentionCheck,
+              ).length;
+              if (
+                _aiPendingDistractors.length &&
+                realCount > 0 &&
+                realCount % _ATTN_INTERVAL === 0
+              ) {
+                _aiWidgetTasks.push(_aiPendingDistractors.shift());
+              }
+            }
+            _aiWidgetHasMore =
+              !!data.has_more &&
+              _aiWidgetTasks.filter((t) => !t.isAttentionCheck).length <
+                _TARGET_AI_TASKS;
+            _aiWidgetBatchIdx++;
+          }
+          _aiWidgetFetching = null;
+        }
+
+        function _ensureAiTaskBatch() {
+          if (!_aiWidgetFetching && _aiWidgetHasMore) {
+            _aiWidgetFetching = _fetchAiTaskBatch().catch(() => {
+              _aiWidgetHasMore = false;
+              _aiWidgetFetching = null;
+            });
+          }
+          return _aiWidgetFetching || Promise.resolve();
         }
 
         function numClass(status) {
@@ -5272,7 +5446,9 @@
           const badge =
             t.status === "edited"
               ? `<span class="tvw-badge tvw-badge-edited">edited</span>`
-              : "";
+              : t.isConversation
+                ? `<span class="tvw-badge tvw-badge-convo">you mentioned this</span>`
+                : "";
 
           const actions = `
             <div class="tvw-card-actions">
@@ -5588,6 +5764,13 @@
 
         function receiveBatch(batch) {
           for (const task of batch.tasks) {
+            const currentReal = allTasks.filter(
+              (t) => !t.isAttentionCheck && !t.isAiTask,
+            ).length;
+            if (currentReal >= _TARGET_REAL_TASKS) {
+              done = true;
+              break;
+            }
             allTasks.push(task);
             const realCount = allTasks.filter(
               (t) => !t.isAttentionCheck && !t.isAiTask,
@@ -5601,7 +5784,10 @@
               allTasks.push(pendingAttentionChecks.shift());
             }
           }
-          if (!batch.hasMore) done = true;
+          const realCount = allTasks.filter(
+            (t) => !t.isAttentionCheck && !t.isAiTask,
+          ).length;
+          if (!batch.hasMore || realCount >= _TARGET_REAL_TASKS) done = true;
           batchesLoaded++;
           prefetchAhead(batchesLoaded);
         }
@@ -5662,34 +5848,45 @@
           };
         }
 
-        async function renderAiTaskWidget(onDone) {
-          // Wait for AI tasks fetch to complete if still in flight
-          if (_aiTasksPromise) await _aiTasksPromise;
-          if (!aiTasks.length) {
-            onDone([]);
-            return;
-          }
+        async function renderAiTaskWidget(currentTasks, onDone) {
+          // Batch state was already seeded by prefetch — don't reset it
 
           const aiWidget = document.createElement("div");
           aiWidget.className = "aitw-widget";
           document.getElementById("chat-box").appendChild(aiWidget);
           scrollToBottom();
 
+          // Wait for first batch if not already prefetched
+          if (!_aiWidgetTasks.length) {
+            aiWidget.innerHTML = `<div style="padding:16px;color:#6b7280;font-size:13px;">Loading…</div>`;
+            try {
+              await _ensureAiTaskBatch();
+              if (_aiWidgetFetching) await _aiWidgetFetching;
+            } catch (_) {}
+          }
+
+          if (!_aiWidgetTasks.length) {
+            aiWidget.remove();
+            onDone([]);
+            return;
+          }
+
           const AITW_PAGE = 3;
           let pageStart = 0;
           let selectedIndices = new Set();
-          const taskNames = aiTasks.map((t) => t.text);
-          const taskDescs = aiTasks.map((t) => t.description);
 
           function renderPage() {
-            const pageTasks = aiTasks.slice(pageStart, pageStart + AITW_PAGE);
-            const isLast = pageStart + AITW_PAGE >= aiTasks.length;
+            const tasks = _aiWidgetTasks;
+            const pageTasks = tasks.slice(pageStart, pageStart + AITW_PAGE);
+            const isLast =
+              !_aiWidgetHasMore && pageStart + AITW_PAGE >= tasks.length;
+
             aiWidget.innerHTML = `
               <div class="aitw-header">
-                <span class="aitw-title">Tasks added to your role because of AI</span>
+                <span class="aitw-title">How AI may have changed your role</span>
                 <span class="aitw-counter">${selectedIndices.size} selected</span>
               </div>
-              <div class="aitw-subtitle">Here are tasks that may have been <em>added</em> to your role because of AI — things you now do that you wouldn't have done before. Select all that apply, and click any task name to edit it.</div>
+              <div class="aitw-subtitle">Select all that apply, and click any task name to edit it.</div>
               <div class="aitw-task-list">
                 ${pageTasks
                   .map((t, pi) => {
@@ -5698,8 +5895,8 @@
                   <div class="aitw-task-card${selectedIndices.has(i) ? " selected" : ""}" data-idx="${i}">
                     <div class="aitw-card-num">${i + 1}</div>
                     <div class="aitw-card-body">
-                      <div class="aitw-card-title" contenteditable="true" data-idx="${i}" spellcheck="false">${esc(taskNames[i])}</div>
-                      ${taskDescs[i] ? `<div class="aitw-card-desc">${esc(taskDescs[i])}</div>` : ""}
+                      <div class="aitw-card-title" contenteditable="true" data-idx="${i}" spellcheck="false">${esc(t.text)}</div>
+                      ${t.description ? `<div class="aitw-card-desc">${esc(t.description)}</div>` : ""}
                     </div>
                     <div class="aitw-checkbox"></div>
                   </div>`;
@@ -5727,35 +5924,51 @@
             aiWidget.querySelectorAll(".aitw-card-title").forEach((el) => {
               el.addEventListener("click", (e) => e.stopPropagation());
               el.addEventListener("input", function () {
-                taskNames[parseInt(this.dataset.idx)] = this.textContent.trim();
+                _aiWidgetTasks[parseInt(this.dataset.idx)].text =
+                  this.textContent.trim();
               });
             });
 
             function finishWidget() {
-              const selected = [...selectedIndices].map((i) => ({
-                text: taskNames[i],
-                description: taskDescs[i],
-              }));
+              const selected = [...selectedIndices]
+                .filter((i) => !_aiWidgetTasks[i].isAttentionCheck)
+                .map((i) => ({
+                  text: _aiWidgetTasks[i].text,
+                  description: _aiWidgetTasks[i].description,
+                }));
               aiWidget.remove();
               onDone(selected);
             }
 
             aiWidget
               .querySelector(".aitw-submit-btn")
-              .addEventListener("click", function () {
+              .addEventListener("click", async function () {
                 if (isLast) {
                   finishWidget();
                 } else {
                   pageStart += AITW_PAGE;
+                  // If we've reached the edge of loaded tasks, fetch next batch
+                  if (pageStart >= _aiWidgetTasks.length) {
+                    this.disabled = true;
+                    this.textContent = "Loading…";
+                    try {
+                      await _ensureAiTaskBatch();
+                      if (_aiWidgetFetching) await _aiWidgetFetching;
+                    } catch (_) {}
+                  }
+                  // Prefetch next batch in background
+                  _ensureAiTaskBatch();
                   renderPage();
                   scrollToBottom();
                 }
               });
 
-            // "Done" exits with whatever is selected so far (including nothing)
             aiWidget
               .querySelector(".aitw-skip-btn")
               .addEventListener("click", finishWidget);
+
+            // Prefetch next batch in background while user reviews current page
+            _ensureAiTaskBatch();
           }
 
           renderPage();
@@ -5791,6 +6004,13 @@
             .map((t) => t.text.trim())
             .filter(Boolean);
 
+          // Count attention checks that were incorrectly accepted (should have been removed)
+          const attnChecks = allTasks.filter((t) => t.isAttentionCheck);
+          attnFailed = attnChecks.filter(
+            (t) => t.status === "confirmed" || t.status === "edited",
+          ).length;
+          const locallyDisqualified = attnFailed > ATTN_CHECK_MAX_FAILS;
+
           // 1. Submit validation → backend injects "any tasks we missed?" question
           fetch("/api/submit-task-validation", {
             method: "POST",
@@ -5800,32 +6020,83 @@
               tasks: validatedTasks,
               extra_tasks: [],
               wishlist_tasks: wishlistTasks,
+              attn_failed: attnFailed,
+              attn_total: attnChecks.length,
             }),
-          }).catch(() => {});
+          })
+            .then((r) => r.json())
+            .then((result) => {
+              if (result.attn_disqualified) {
+                isSessionCompleted = true;
+                stopTimer();
+                updateEndSessionButton();
+                disableChatInputs();
+                showEndBanner();
+              }
+            })
+            .catch(() => {
+              if (locallyDisqualified) {
+                isSessionCompleted = true;
+                stopTimer();
+                updateEndSessionButton();
+                disableChatInputs();
+                showEndBanner();
+              }
+            });
+
+          if (locallyDisqualified) {
+            isSessionCompleted = true;
+            stopTimer();
+            updateEndSessionButton();
+            disableChatInputs();
+            showEndBanner();
+            return;
+          }
 
           // 2. Probing loop — when done, move to AI tasks section
           startProbingLoop(function () {
             // 3. Transition message
             appendMessage(
               "bot",
-              "With AI becoming a part of so many workflows, I'm curious whether it's added any new tasks to your role.",
+              "With AI becoming part of so many workflows, I want to ask about how it may have changed your role — both in terms of new things you're now able to do, and any new responsibilities around reviewing or overseeing AI outputs.",
               "ai-transition-" + Date.now(),
             );
             scrollToBottom();
 
-            // 4. AI task widget (system-suggested tasks shown first)
-            renderAiTaskWidget(function (selectedAiTasks) {
-              // 5. Ask if there are any others the widget didn't cover
+            // 4. AI task widget
+            const _confirmedNames = confirmed.map((t) => t.text);
+            renderAiTaskWidget(_confirmedNames, function (selectedAiTasks) {
+              // 5. Show selected AI tasks summary (if any), then ask about others
+              if (selectedAiTasks.length) {
+                const summaryItems = selectedAiTasks
+                  .map(
+                    (t, i) =>
+                      `<div class="tvw-summary-item">
+                    <span class="tvw-summary-num">${i + 1}</span>
+                    <span class="tvw-summary-text">${esc(t.text)}</span>
+                  </div>`,
+                  )
+                  .join("");
+                const summaryEl = document.createElement("div");
+                summaryEl.className = "task-validation-widget";
+                summaryEl.innerHTML =
+                  `<div class="tvw-section-label">AI-related tasks (${selectedAiTasks.length})</div>` +
+                  `<div class="tvw-summary-list">${summaryItems}</div>`;
+                document.getElementById("chat-box").appendChild(summaryEl);
+                scrollToBottom();
+              }
               appendMessage(
                 "bot",
-                "Are there any other AI-related tasks that weren't on that list?",
+                "Are there any other AI-related tasks — either new things AI has enabled you to do, or new responsibilities you've taken on because of AI — that weren't on that list?",
                 "ai-followup-" + Date.now(),
               );
               scrollToBottom();
 
               const chatForm = document.getElementById("chat-form");
               const _origSubmit = chatForm.onsubmit;
-              const aiExtraTasks = [];
+              const aiExtraTasks = selectedAiTasks
+                .map((t) => String(t.text || "").trim())
+                .filter(Boolean);
 
               chatForm.onsubmit = async function (e) {
                 e.preventDefault();
@@ -5855,6 +6126,9 @@
                   removeTyping();
                   if (d.task_name) aiExtraTasks.push(d.task_name);
                   if (d.done) {
+                    if (d.reply)
+                      appendMessage("bot", d.reply, "ai-extra-b-" + Date.now());
+                    scrollToBottom();
                     chatForm.onsubmit = _origSubmit;
                   } else {
                     if (d.reply)
@@ -5877,7 +6151,7 @@
             <span class="tvw-progress-text" id="tvw-progress-text">0 reviewed</span>
           </div>
           <ul class="tvw-subtitle">
-            <li><strong>Accurate</strong> — the task name fits your role (even if the description is slightly off)</li>
+            <li><strong>Accurate</strong> — this is something you're doing right now (even if the description is not 100% accurate)</li>
             <li><strong>Edit</strong> — the task name is wrong or only partially right (description will update automatically)</li>
             <li><strong>Remove</strong> — you don't do this task</li>
           </ul>
@@ -5889,9 +6163,28 @@
         scrollToBottom();
 
         try {
-          // Fetch first task batch — attention checks and AI tasks load in background
+          // Prepend tasks explicitly mentioned in the conversation (from Session Scribe portrait)
+          const conversationTasks = (
+            (lastPortrait && lastPortrait["Task Inventory"]) ||
+            []
+          )
+            .map((t) => String(t).trim())
+            .filter(Boolean);
+          for (const text of conversationTasks) {
+            allTasks.push({
+              text,
+              description: "",
+              status: "unreviewed",
+              isAttentionCheck: false,
+              isConversation: true,
+            });
+          }
+
+          // Fetch LLM-generated batches — attention checks and AI tasks load in background
           fetchAttentionChecks();
-          fetchAiTasks();
+          // Prefetch first two AI task batches and distractors while user reviews main task list
+          _fetchAiDistractors();
+          _ensureAiTaskBatch().then(() => _ensureAiTaskBatch());
           await fetchUntilFull(_PAGE_SIZE);
           if (!allTasks.length) {
             widget.innerHTML = `<div style="padding:16px;color:#6b7280;font-size:13px;">Could not generate tasks. Please continue in chat.</div>`;
@@ -6422,7 +6715,7 @@
               data.available_time ?? availableTime ?? "",
               10,
             );
-            if (VALID_AVAILABLE_TIME_OPTIONS.has(targetMinutes)) {
+            if (Number.isFinite(targetMinutes) && targetMinutes > 0) {
               sessionTargetMs = targetMinutes * 60 * 1000;
             } else {
               sessionTargetMs = null;
@@ -6899,11 +7192,32 @@
         removeTyping();
         const banner = document.createElement("div");
         banner.className = "session-end-banner";
-        banner.innerHTML =
-          '<div class="end-text">Session ended</div>' +
-          '<div class="end-subtext">Thank you for your participation!</div>';
-        document.querySelector(".chat-inner").appendChild(banner);
-        scrollToBottom();
+
+        const passed = attnFailed <= ATTN_CHECK_MAX_FAILS;
+        if (PROLIFIC_COMPLETION_CODE && passed) {
+          banner.innerHTML =
+            '<div class="end-text">Session ended</div>' +
+            '<div class="end-subtext">Thank you! Redirecting you back to Prolific…</div>';
+          document.querySelector(".chat-inner").appendChild(banner);
+          scrollToBottom();
+          setTimeout(function () {
+            window.location.href =
+              "https://app.prolific.com/submissions/complete?cc=" +
+              PROLIFIC_COMPLETION_CODE;
+          }, 3000);
+        } else if (!passed) {
+          banner.innerHTML =
+            '<div class="end-text">Session ended</div>' +
+            "<div class=\"end-subtext\">Unfortunately, we weren't able to include your responses in this study. You don't need to do anything else.</div>";
+          document.querySelector(".chat-inner").appendChild(banner);
+          scrollToBottom();
+        } else {
+          banner.innerHTML =
+            '<div class="end-text">Session ended</div>' +
+            '<div class="end-subtext">Thank you for your participation!</div>';
+          document.querySelector(".chat-inner").appendChild(banner);
+          scrollToBottom();
+        }
       }
 
       document.getElementById("chat-form").onsubmit = async function (e) {
