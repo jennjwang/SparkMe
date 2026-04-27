@@ -59,7 +59,7 @@ from src.content.session_agenda.session_agenda import normalize_user_portrait
 
 SESSION_TIMEOUT_SECONDS = 3600  # 1 hour
 START_TIME = time.time()
-DEFAULT_AVAILABLE_TIME_MINUTES = 20
+DEFAULT_AVAILABLE_TIME_MINUTES = 10
 MIN_AVAILABLE_TIME_MINUTES = 5
 MAX_AVAILABLE_TIME_MINUTES = 120
 
@@ -229,7 +229,6 @@ class SessionWrapper:
         self.created_at = time.time()
 
 active_sessions: Dict[str, SessionWrapper] = {}
-last_messages_by_session: Dict[str, Dict[str, str]] = {}
 session_audio_cache: Dict[str, Dict[str, object]] = {}
 # Rolling dialogue state for /api/task-followup, keyed by session + phase.
 task_followup_history_by_session: Dict[str, Dict[str, list[Dict[str, str]]]] = {}
@@ -246,7 +245,7 @@ _TASK_FOLLOWUP_HISTORY_MAX_MESSAGES = 12
 
 def _normalize_task_followup_phase(raw_phase: object) -> str:
     phase = str(raw_phase or "probing").strip().lower()
-    return phase if phase in {"probing", "ai_extras"} else "probing"
+    return phase if phase in {"probing", "ai_extras", "ai_open"} else "probing"
 
 
 def _normalize_task_followup_dialogue(raw_dialogue: object) -> list[Dict[str, str]]:
@@ -393,15 +392,6 @@ def create_interview_session(user_id: str, session_type: str = "intake",
         },
         max_turns=config.max_turns
     )
-    # Inject cache prewarm hook so portrait updates can seed organize-tasks cache.
-    def _prewarm_callback(tasks, grouping_feedback: str = ""):
-        _, cached = _organize_tasks_cached(
-            tasks,
-            grouping_feedback=grouping_feedback,
-        )
-        return cached
-    interview_session._task_tree_prewarm_callback = _prewarm_callback
-    
     wrapper = SessionWrapper(
         session_token=session_token,
         interview_session=interview_session,
@@ -508,13 +498,33 @@ def login():
         return redirect(url_for('index'))  # Changed: redirect to index with instructions
 
     query_prolific_pid = request.args.get('PROLIFIC_PID', '').strip()
+
+    # Also extract PROLIFIC_PID from the `next` redirect URL (Prolific→/chat→/login flow)
+    _next_url = request.args.get('next', '')
+    if not query_prolific_pid and _next_url:
+        from urllib.parse import urlparse, parse_qs
+        _next_qs = parse_qs(urlparse(_next_url).query)
+        query_prolific_pid = (_next_qs.get('PROLIFIC_PID') or [''])[0].strip()
+        if not query_prolific_pid:
+            # handle un-decoded next params
+            query_prolific_pid = (_next_qs.get('PROLIFIC_PID%3D') or [''])[0].strip()
+
     if request.method == 'GET' and query_prolific_pid:
+        # Extract study/session IDs from either top-level params or the next URL
+        _next_qs_full = {}
+        if _next_url:
+            from urllib.parse import urlparse, parse_qs
+            _next_qs_full = parse_qs(urlparse(_next_url).query)
+        study_id = (request.args.get('STUDY_ID', '').strip()
+                    or (_next_qs_full.get('STUDY_ID') or [''])[0].strip())
+        session_id = (request.args.get('SESSION_ID', '').strip()
+                      or (_next_qs_full.get('SESSION_ID') or [''])[0].strip())
         _login_user_record(
             query_prolific_pid,
             user_id=_safe_user_id_from_prolific_pid(query_prolific_pid),
             prolific_pid=query_prolific_pid,
-            prolific_study_id=request.args.get('STUDY_ID', '').strip(),
-            prolific_session_id=request.args.get('SESSION_ID', '').strip(),
+            prolific_study_id=study_id,
+            prolific_session_id=session_id,
         )
         return redirect(url_for('index', show_intro='1'))
     
@@ -890,7 +900,7 @@ def agent_control():
     return jsonify({'success': True, 'paused': session.paused})
 
 @app.route('/api/send-message', methods=['POST'])
-@login_required  # PROTECTED
+@agent_or_login_required
 def send_message():
     """Send a text message to the interview session"""
     data = request.json
@@ -1065,6 +1075,7 @@ def get_messages():
         'conversation',
         'time_split_widget',
         'ai_usage_widget',
+        'ai_task_widget',
         'feedback_widget',
         'profile_confirm_widget',
         'task_validation_widget',
@@ -1219,11 +1230,16 @@ def get_messages():
             if msg.get('role') in ('Interviewer', 'assistant') and msg.get('id') and msg.get('content'):
                 _prestart_tts(session_token, msg['id'], msg['content'], wrapper)
 
+    end_reason = getattr(getattr(session, 'session_agenda', None), 'end_reason', 'completed')
+    job_description_ready = bool(_extract_job_description(session))
+
     return jsonify({
         'success': True,
         'messages': messages,
         'session_active': session.session_in_progress,
-        'session_completed': is_session_done
+        'session_completed': is_session_done,
+        'end_reason': end_reason,
+        'job_description_ready': job_description_ready,
     })
 
 @app.route('/api/acknowledge-messages', methods=['POST'])
@@ -1640,215 +1656,8 @@ def session_state():
         'timestamp': __import__('datetime').datetime.now().isoformat(),
     })
 
-_TASK_TREE_CACHE: "OrderedDict[tuple, list]" = OrderedDict()
-_TASK_TREE_CACHE_MAX = 256
-_TASK_TREE_CACHE_LOCK = threading.Lock()
-_TASK_TREE_INFLIGHT: "Dict[tuple, concurrent.futures.Future]" = {}
-try:
-    _TASK_TREE_INFLIGHT_WAIT_SECONDS = max(
-        1.0,
-        float(os.getenv("TASK_TREE_INFLIGHT_WAIT_SECONDS", "60")),
-    )
-except (TypeError, ValueError):
-    _TASK_TREE_INFLIGHT_WAIT_SECONDS = 60.0
-_TASK_HIERARCHY_MODEL_NAME = os.getenv("TASK_HIERARCHY_MODEL_NAME", "gpt-5.4")
 
 
-def _task_tree_signature(
-    tasks,
-    model_name: str = "",
-    grouping_feedback: str = "",
-):
-    """Canonicalize task list → tuple key (case/whitespace/order-insensitive)."""
-    seen = set()
-    norm = []
-    for t in tasks:
-        s = ' '.join(str(t or '').strip().lower().split())
-        if s and s not in seen:
-            seen.add(s)
-            norm.append(s)
-    norm.sort()
-    model_key = ' '.join(str(model_name or '').strip().lower().split())
-    feedback_key = ' '.join(str(grouping_feedback or '').strip().lower().split())
-    return (model_key, feedback_key, *norm)
-
-
-def _saved_grouping_tree_if_matches(portrait, tasks):
-    """Return portrait['Task Grouping Tree'] iff its leaves match the current task set.
-
-    Lets a user-authored hierarchy (including drag-and-drop regroupings saved via
-    /api/update-portrait) override the LLM organizer whenever the underlying
-    inventory is unchanged. Returns None otherwise so the caller falls back to
-    _organize_tasks_cached.
-    """
-    if not isinstance(portrait, dict):
-        return None
-    saved = portrait.get('Task Grouping Tree')
-    if not isinstance(saved, list) or not saved:
-        return None
-
-    def _collect_leaves(nodes):
-        out = []
-        for n in nodes or []:
-            if not isinstance(n, dict):
-                continue
-            children = n.get('children') or []
-            if isinstance(children, list) and children:
-                out.extend(_collect_leaves(children))
-            else:
-                name = str(n.get('name') or '').strip()
-                if name:
-                    out.append(name)
-        return out
-
-    def _norm(s):
-        return ' '.join(str(s or '').strip().lower().split())
-
-    leaf_keys = {_norm(t) for t in _collect_leaves(saved) if _norm(t)}
-    want_keys = {_norm(t) for t in (tasks or []) if _norm(t)}
-    if leaf_keys and leaf_keys == want_keys:
-        return saved
-    return None
-
-
-def _organize_tasks_cached(tasks, grouping_feedback: str = ""):
-    """Organize tasks with process-wide cache shared across all callers."""
-    from src.utils.task_hierarchy import organize_tasks
-
-    seen = set()
-    task_list = []
-    for t in tasks:
-        s = " ".join(str(t).strip().split())
-        if not s:
-            continue
-        key = s.lower()
-        if key in seen:
-            continue
-        seen.add(key)
-        task_list.append(s)
-    feedback = ' '.join(str(grouping_feedback or '').strip().split())[:600]
-    model_name = _TASK_HIERARCHY_MODEL_NAME
-    sig = _task_tree_signature(
-        task_list,
-        model_name=model_name,
-        grouping_feedback=feedback,
-    )
-    inflight = None
-    leader = False
-    if sig:
-        with _TASK_TREE_CACHE_LOCK:
-            cached = _TASK_TREE_CACHE.get(sig)
-            if cached is not None:
-                _TASK_TREE_CACHE.move_to_end(sig)
-                return cached, True
-            inflight = _TASK_TREE_INFLIGHT.get(sig)
-            if inflight is None:
-                inflight = concurrent.futures.Future()
-                _TASK_TREE_INFLIGHT[sig] = inflight
-                leader = True
-
-    if sig and inflight is not None and not leader:
-        try:
-            shared_tree = inflight.result(timeout=_TASK_TREE_INFLIGHT_WAIT_SECONDS)
-            return shared_tree, True
-        except Exception:
-            # If the shared compute failed or timed out, clear stale inflight
-            # marker and compute locally as a fallback.
-            with _TASK_TREE_CACHE_LOCK:
-                if _TASK_TREE_INFLIGHT.get(sig) is inflight and not inflight.done():
-                    _TASK_TREE_INFLIGHT.pop(sig, None)
-            inflight = None
-
-    try:
-        tree = organize_tasks(
-            task_list,
-            model_name=model_name,
-            screen=True,
-            grouping_feedback=feedback,
-            append_uncovered_tasks=False,
-        )
-    except Exception as e:
-        if sig and leader and inflight is not None and not inflight.done():
-            with _TASK_TREE_CACHE_LOCK:
-                _TASK_TREE_INFLIGHT.pop(sig, None)
-            inflight.set_exception(e)
-        raise
-
-    if sig:
-        leader_inflight = None
-        with _TASK_TREE_CACHE_LOCK:
-            _TASK_TREE_CACHE[sig] = tree
-            _TASK_TREE_CACHE.move_to_end(sig)
-            while len(_TASK_TREE_CACHE) > _TASK_TREE_CACHE_MAX:
-                _TASK_TREE_CACHE.popitem(last=False)
-            if leader:
-                leader_inflight = _TASK_TREE_INFLIGHT.pop(sig, None)
-        if leader and leader_inflight is not None and not leader_inflight.done():
-            leader_inflight.set_result(tree)
-
-    return tree, False
-
-
-def _prewarm_task_tree_cache_async(tasks, grouping_feedback: str = ""):
-    """Seed task-tree cache in a background thread."""
-    task_list = [str(t).strip() for t in (tasks or []) if str(t).strip()]
-    if len(task_list) < 2:
-        return
-
-    def _run():
-        try:
-            _, cached = _organize_tasks_cached(
-                task_list,
-                grouping_feedback=grouping_feedback,
-            )
-            app.logger.info(
-                "[task_tree_prewarm] tasks=%d cached_hit=%s",
-                len(task_list),
-                cached,
-            )
-        except Exception as e:
-            app.logger.error(f"[task_tree_prewarm] failed: {e}", exc_info=True)
-
-    threading.Thread(target=_run, daemon=True, name="TaskTreePrewarm").start()
-
-
-@app.route('/api/organize-tasks', methods=['POST'])
-@agent_or_login_required
-def organize_tasks_route():
-    """Group a flat task list into a hierarchy (parent / subtask tree) via LLM.
-
-    Results are cached process-wide by the canonical signature of the input
-    list so that the time-split widget, feedback widget, and profile panel all
-    see the same tree for the same set of tasks.
-    Optional `grouping_feedback` lets callers request a feedback-guided regroup.
-    """
-    data = request.get_json(silent=True) or {}
-    tasks = data.get('tasks') or []
-    if not isinstance(tasks, list):
-        return jsonify({'success': False, 'error': 'tasks must be a list'}), 400
-
-    grouping_feedback = data.get('grouping_feedback') or ""
-    if not isinstance(grouping_feedback, str):
-        return jsonify({'success': False, 'error': 'grouping_feedback must be a string'}), 400
-
-    tree, cached = _organize_tasks_cached(
-        tasks,
-        grouping_feedback=grouping_feedback,
-    )
-    feedback_applied = bool(grouping_feedback.strip())
-    acknowledgement = (
-        'Thanks - I regrouped the subtasks using your feedback.'
-        if feedback_applied
-        else 'Thanks - I organized your subtasks.'
-    )
-    return jsonify({
-        'success': True,
-        'tree': tree,
-        'cached': cached,
-        'grouping_feedback_applied': feedback_applied,
-        'acknowledgement': acknowledgement,
-        'message': acknowledgement,
-    })
 
 
 @app.route('/api/time-split-ready', methods=['POST'])
@@ -1899,40 +1708,17 @@ def time_split_ready():
         portrait = agenda.user_portrait if agenda and isinstance(agenda.user_portrait, dict) else {}
         raw_tasks = portrait.get('Task Inventory') if isinstance(portrait, dict) else []
         tasks = [str(t).strip() for t in (raw_tasks or []) if str(t).strip()]
-        grouping_feedback = str(
-            portrait.get('Task Grouping Feedback', '')
-            if isinstance(portrait, dict)
-            else ''
-        )
-
-        tree = []
-        cached = False
-        saved_tree = _saved_grouping_tree_if_matches(portrait, tasks)
-        if saved_tree is not None:
-            tree = saved_tree
-            cached = True
-        elif len(tasks) >= 2:
-            tree, cached = await asyncio.to_thread(
-                _organize_tasks_cached,
-                tasks,
-                grouping_feedback,
-            )
-        elif tasks:
-            tree = [{'name': t, 'children': []} for t in tasks]
 
         app.logger.info(
-            "[time_split_ready] scribe_wait=%.2fs portrait_wait=%.2fs refreshed=%s tasks=%d cached=%s",
+            "[time_split_ready] scribe_wait=%.2fs portrait_wait=%.2fs refreshed=%s tasks=%d",
             scribe_wait_s,
             portrait_wait_s,
             refreshed,
             len(tasks),
-            cached,
         )
         return {
             'ready': True,
             'user_portrait': portrait,
-            'tree': tree,
-            'cached': cached,
             'task_count': len(tasks),
         }
 
@@ -1943,7 +1729,7 @@ def time_split_ready():
         future.cancel()
         return jsonify({
             'success': False,
-            'error': 'Timed out waiting for fresh portrait and task tree',
+            'error': 'Timed out waiting for fresh portrait',
         }), 504
     except Exception as e:
         app.logger.error(f"[time_split_ready] Failed: {e}", exc_info=True)
@@ -1952,14 +1738,12 @@ def time_split_ready():
     if not payload.get('ready'):
         return jsonify({
             'success': False,
-            'error': 'Timed out waiting for fresh portrait and task tree',
+            'error': 'Timed out waiting for fresh portrait',
         }), 504
 
     return jsonify({
         'success': True,
         'user_portrait': payload.get('user_portrait', {}),
-        'tree': payload.get('tree', []),
-        'cached': bool(payload.get('cached', False)),
         'task_count': int(payload.get('task_count', 0)),
     })
 
@@ -1984,10 +1768,6 @@ def update_portrait():
         os.makedirs(os.path.dirname(portrait_path), exist_ok=True)
         with open(portrait_path, 'w') as f:
             json.dump(portrait, f, indent=2)
-        _prewarm_task_tree_cache_async(
-            portrait.get('Task Inventory') or [],
-            grouping_feedback=str(portrait.get('Task Grouping Feedback', '') or ''),
-        )
     return jsonify({'success': True})
 
 # Pick best available model based on credentials present
@@ -2035,6 +1815,33 @@ def _extract_job_description(iv) -> str:
     return ""
 
 
+def _extract_user_mentioned_tasks(iv) -> list[str]:
+    """Extract tasks explicitly mentioned in the conversation via the user portrait.
+
+    Falls back to the raw chat transcript if the portrait has no Task Inventory yet.
+    """
+    # Prefer portrait Task Inventory (already parsed by scribe)
+    try:
+        portrait = iv.session_agenda.user_portrait
+        if isinstance(portrait, dict):
+            tasks = portrait.get("Task Inventory") or []
+            result = [str(t).strip() for t in tasks if str(t).strip()]
+            if result:
+                return result
+    except Exception:
+        pass
+
+    # Fallback: pull all user messages from chat history
+    msgs = [
+        msg.content.strip()
+        for msg in iv.chat_history
+        if msg.role == "User" and getattr(msg, "type", "conversation") == "conversation"
+        and msg.content.strip()
+    ]
+    return msgs
+
+
+
 _SESSION_PERSPECTIVES = [
     "Emphasize tasks that are recurring and form the backbone of the daily or weekly routine.",
     "Emphasize tasks that involve coordinating with, communicating with, or depending on other people.",
@@ -2063,6 +1870,7 @@ def _llm_generate_task_batch(
     prior_tasks: list[str],
     batch_index: int,
     session_perspective: str = "",
+    mentioned_tasks: list[str] | None = None,
 ) -> tuple[list[str], bool]:
     """Generate the next batch of tasks, ordered by importance, deduped against prior_tasks."""
     import re as _re
@@ -2074,6 +1882,17 @@ def _llm_generate_task_batch(
         prior_block = (
             f"\nTasks already shown (STRICT: do NOT repeat or rephrase any of these — "
             f"treat semantically similar tasks as duplicates):\n{prior_list}\n"
+        )
+
+    # On batch 0, surface tasks explicitly mentioned in the conversation first.
+    mentioned_block = ""
+    if batch_index == 0 and mentioned_tasks:
+        ml = "\n".join(f"- {t}" for t in mentioned_tasks[:20])
+        mentioned_block = (
+            f"\nTasks this person explicitly mentioned doing:\n{ml}\n"
+            f"IMPORTANT: Your output MUST include all of these (verbatim or lightly cleaned up "
+            f"to fit the 5–12 word action+object format), unless they are already in the "
+            f"'Tasks already shown' list above. Do not omit any.\n"
         )
 
     stop_hint = (
@@ -2102,7 +1921,8 @@ def _llm_generate_task_batch(
     prompt = (
         f"Occupation context: \"{job_description}\"\n"
         f"{perspective_line}"
-        f"{prior_block}\n"
+        f"{prior_block}"
+        f"{mentioned_block}\n"
         f"{coverage_hint}\n\n"
         "Rules:\n"
         "- Focus on tasks typical of the general occupation/role category, not details specific to this individual\n"
@@ -2134,17 +1954,43 @@ def _llm_generate_task_batch(
             elif isinstance(t, str) and len(t.strip().split()) >= 3:
                 tasks.append({"name": t.strip(), "description": ""})
         has_more = bool(parsed.get("has_more", True))
-        return tasks, has_more
     except Exception:
         _JSON_KEYS = {"tasks", "name", "description", "has_more", "ai_type",
                       "capability", "governance", "true", "false", "null"}
         names = _re.findall(r'"([^"]{4,80})"', raw)
-        return [
+        tasks = [
             {"name": n.strip(), "description": ""}
             for n in names
             if n.strip() and n.strip().lower() not in _JSON_KEYS
             and len(n.strip().split()) >= 3
-        ], True
+        ]
+        has_more = True
+
+    # Fill any missing descriptions in one extra LLM call rather than making
+    # the frontend fire per-card requests later.
+    missing = [t for t in tasks if not t["description"]]
+    if missing:
+        numbered = "\n".join(f"{i+1}. {t['name']}" for i, t in enumerate(missing))
+        fill_prompt = (
+            f'Job context: "{job_description}"\n\n'
+            "For each task below write exactly one sentence (under 20 words) describing what it involves. "
+            "Start each with a verb. Return ONLY a JSON object mapping task name to description:\n"
+            '{"task name": "description", ...}\n\n'
+            f"Tasks:\n{numbered}"
+        )
+        try:
+            fill_engine = get_engine(model_name=_TASK_GEN_MODEL, temperature=0.7)
+            fill_response = invoke_engine(fill_engine, fill_prompt)
+            fill_raw = (fill_response.content if hasattr(fill_response, "content") else str(fill_response)).strip()
+            fill_raw = _re.sub(r'^```[a-z]*\n?', '', fill_raw)
+            fill_raw = _re.sub(r'\n?```$', '', fill_raw).strip()
+            fill_map = json.loads(fill_raw)
+            for t in missing:
+                t["description"] = str(fill_map.get(t["name"], "")).strip()
+        except Exception:
+            pass  # leave descriptions empty; frontend batch-fetch is the safety net
+
+    return tasks, has_more
 
 
 @app.route('/api/generate-tasks', methods=['POST'])
@@ -2178,7 +2024,10 @@ def generate_tasks():
 
     try:
         perspective = _session_perspective(session_token or "")
-        tasks, has_more = _llm_generate_task_batch(job_description, prior_tasks, batch_index, perspective)
+        mentioned = _extract_user_mentioned_tasks(iv) if batch_index == 0 else None
+        tasks, has_more = _llm_generate_task_batch(
+            job_description, prior_tasks, batch_index, perspective, mentioned
+        )
     except Exception as e:
         app.logger.error(f"[generate_tasks] LLM error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -2274,13 +2123,21 @@ def ai_era_tasks():
         response = invoke_engine(engine, prompt)
         raw = (response.content if hasattr(response, 'content') else str(response)).strip()
         parsed = _parse_tasks_json(raw)
+        _AI_KEYWORDS = {"ai", "artificial intelligence", "chatgpt", "gpt", "claude",
+                        "copilot", "gemini", "llm", "machine learning", "ml model",
+                        "language model", "generative", "automation"}
         tasks = []
         for t in (parsed.get("tasks") or []):
             name = str(t.get("name", "")).strip()
             desc = str(t.get("description", "")).strip()
             ai_type = str(t.get("ai_type", "capability")).strip()
-            if name:
-                tasks.append({"name": name, "description": desc, "ai_type": ai_type})
+            if not name:
+                continue
+            name_lower = name.lower()
+            if not any(kw in name_lower for kw in _AI_KEYWORDS):
+                app.logger.warning(f"[ai_era_tasks] Dropping task with no AI mention: {name!r}")
+                continue
+            tasks.append({"name": name, "description": desc, "ai_type": ai_type})
         has_more = bool(parsed.get("has_more", batch_index + 1 < _AI_MAX_BATCHES))
         if batch_index + 1 >= _AI_MAX_BATCHES:
             has_more = False
@@ -2311,7 +2168,7 @@ def attention_check_tasks():
 
     prompt = (
         f"Occupation context: \"{job_description}\"\n\n"
-        "Generate exactly 3 work tasks that are CLEARLY AND OBVIOUSLY unrelated to this occupation — "
+        "Generate exactly 8 work tasks that are CLEARLY AND OBVIOUSLY unrelated to this occupation — "
         "tasks someone in this role would never do as part of their job. "
         "These are attention-check items to verify the participant is reading carefully.\n\n"
         "Rules:\n"
@@ -2343,7 +2200,7 @@ def attention_check_tasks():
 @app.route('/api/ai-attention-check-tasks', methods=['POST'])
 @agent_or_login_required
 def ai_attention_check_tasks():
-    """Generate 3 distractor tasks for the AI task widget — things clearly not AI-related for this role."""
+    """Generate 3 distractor tasks for the AI task widget — AI tasks from unrelated occupations that don't apply to this role."""
     from src.utils.llm.engines import get_engine, invoke_engine
 
     data = request.get_json(silent=True) or {}
@@ -2360,12 +2217,14 @@ def ai_attention_check_tasks():
 
     prompt = (
         f"Occupation context: \"{job_description}\"\n\n"
-        "Generate exactly 3 tasks that are CLEARLY NOT AI-related — tasks someone in this role might do, "
-        "but that involve no AI whatsoever (no AI tools, no AI outputs, no AI oversight). "
-        "These are attention-check items to verify the participant is reading carefully and only selecting tasks that involve AI.\n\n"
+        "Generate exactly 3 AI-related tasks that someone in a COMPLETELY DIFFERENT occupation would do — "
+        "tasks that involve AI but would make no sense for the role described above. "
+        "These are attention-check items: the participant should NOT select them because they don't apply to their job.\n\n"
         "Rules:\n"
-        "- Each task must be a plausible work task for this role, but with zero AI involvement\n"
-        "- Do NOT include 'AI', 'using AI', 'with AI', or any AI tool in the task name or description\n"
+        "- Each task must come from an occupation clearly unrelated to the one described (e.g. if the role is a researcher, "
+        "draw from roles like nurse, warehouse worker, retail manager, truck driver, chef, or construction supervisor)\n"
+        "- Each task MUST involve AI — include 'using AI', 'with AI', or a specific AI tool in the name\n"
+        "- The task must be plausible for that other occupation, but obviously irrelevant to the participant's actual role\n"
         "- Write them in the same format as the other tasks: 5–12 words, starts with an action verb, sentence case\n"
         "- Each needs a name and a one-sentence description\n"
         "- Return ONLY valid JSON (no markdown fences):\n"
@@ -2393,16 +2252,21 @@ def ai_attention_check_tasks():
 @app.route('/api/regenerate-task-description', methods=['POST'])
 @agent_or_login_required
 def regenerate_task_description():
-    """Return a fresh one-sentence description for a user-edited task name."""
+    """Return fresh one-sentence descriptions for one or more task names (batched)."""
     import re as _re
     from src.utils.llm.engines import get_engine, invoke_engine
 
     data = request.get_json(silent=True) or {}
     session_token = data.get('session_token')
-    task_name = (data.get('task_name') or '').strip()
+    # Accept single task_name (legacy) or task_names list (batch)
+    task_names_raw = data.get('task_names') or []
+    single = data.get('task_name') or ''
+    if single and not task_names_raw:
+        task_names_raw = [single]
+    task_names = [str(t).strip() for t in task_names_raw if str(t).strip()]
 
-    if not task_name:
-        return jsonify({'success': False, 'error': 'task_name is required'}), 400
+    if not task_names:
+        return jsonify({'success': False, 'error': 'task_name or task_names required'}), 400
 
     wrapper = get_session_wrapper(session_token)
     if not wrapper:
@@ -2411,23 +2275,105 @@ def regenerate_task_description():
     iv = wrapper.interview_session
     job_description = _extract_job_description(iv)
 
-    prompt = (
-        f'Job context: "{job_description}"\n'
-        f'Task name: "{task_name}"\n\n'
-        "Write exactly one sentence (under 20 words) describing what this task involves for this person. "
-        "Start with a verb. Return ONLY the sentence, no JSON, no quotes."
-    )
+    if len(task_names) == 1:
+        prompt = (
+            f'Job context: "{job_description}"\n'
+            f'Task name: "{task_names[0]}"\n\n'
+            "Write exactly one sentence (under 20 words) describing what this task involves. "
+            "Start with a verb. Return ONLY the sentence, no JSON, no quotes."
+        )
+        try:
+            engine = get_engine(model_name=_TASK_GEN_MODEL, temperature=0.9)
+            response = invoke_engine(engine, prompt)
+            desc = (response.content if hasattr(response, 'content') else str(response)).strip()
+            desc = _re.sub(r'^["\']|["\']$', '', desc).strip()
+        except Exception as e:
+            app.logger.error(f"[regenerate_task_description] error: {e}", exc_info=True)
+            return jsonify({'success': False, 'error': 'Description generation failed'}), 500
+        return jsonify({'success': True, 'description': desc, 'descriptions': {task_names[0]: desc}})
 
+    # Batch: one LLM call for all names
+    numbered = "\n".join(f"{i+1}. {name}" for i, name in enumerate(task_names))
+    prompt = (
+        f'Job context: "{job_description}"\n\n'
+        f"For each task below, write exactly one sentence (under 20 words) describing what it involves. "
+        f"Start each with a verb. Return ONLY a JSON object mapping each task name to its description:\n"
+        f'{{"task name": "description sentence", ...}}\n\n'
+        f"Tasks:\n{numbered}"
+    )
     try:
         engine = get_engine(model_name=_TASK_GEN_MODEL, temperature=0.9)
         response = invoke_engine(engine, prompt)
-        desc = (response.content if hasattr(response, 'content') else str(response)).strip()
-        desc = _re.sub(r'^["\']|["\']$', '', desc).strip()
+        raw = (response.content if hasattr(response, 'content') else str(response)).strip()
+        raw = _re.sub(r'^```[a-z]*\n?', '', raw)
+        raw = _re.sub(r'\n?```$', '', raw).strip()
+        parsed = json.loads(raw)
+        descriptions = {str(k).strip(): str(v).strip() for k, v in parsed.items()}
+        # Fill gaps with empty string for any name not returned
+        for name in task_names:
+            descriptions.setdefault(name, "")
     except Exception as e:
-        app.logger.error(f"[regenerate_task_description] error: {e}", exc_info=True)
-        return jsonify({'success': False, 'error': 'Description generation failed'}), 500
+        app.logger.error(f"[regenerate_task_description] batch error: {e}", exc_info=True)
+        descriptions = {name: "" for name in task_names}
 
-    return jsonify({'success': True, 'description': desc})
+    return jsonify({'success': True, 'descriptions': descriptions})
+
+
+@app.route('/api/ai-widget-intro', methods=['POST'])
+@agent_or_login_required
+def ai_widget_intro():
+    """Generate the intro message shown before the AI task widget.
+
+    Reads the user's open-question answer and, if they disclaim AI use,
+    returns a reframed message explaining indirect AI impact. Otherwise
+    returns the default message.
+    """
+    from src.utils.llm.engines import get_engine, invoke_engine
+
+    data = request.get_json(silent=True) or {}
+    session_token = data.get('session_token')
+    open_answer = str(data.get('open_answer') or '').strip()
+
+    wrapper = get_session_wrapper(session_token)
+    if not wrapper:
+        return jsonify({'success': False, 'error': 'Invalid or expired session'}), 400
+
+    iv = wrapper.interview_session
+    job_description = _extract_job_description(iv)
+
+    _DEFAULT = "Here are some AI-related tasks that may fit your work. Do any of these apply?"
+
+    if not open_answer:
+        return jsonify({'success': True, 'message': _DEFAULT})
+
+    prompt = f"""A research participant was asked: "What are new things AI has enabled you to do, or new responsibilities you've taken on because of AI?"
+
+Their answer: "{open_answer}"
+
+Job context: {job_description or '(unknown)'}
+
+Task: Decide whether the participant is disclaiming AI use (e.g., saying they don't use AI, haven't adopted it, or AI hasn't affected their work). If yes, write a single warm, conversational sentence that:
+- Acknowledges their answer without repeating it back
+- Explains that AI may still be affecting their work indirectly — e.g. because colleagues or collaborators use it, because their field is changing, or because they've had to adapt their work around AI tools others use
+- Ends with "Do any of these apply?" so it leads naturally into a list of AI-related tasks
+
+If the participant is NOT disclaiming AI use (i.e., they gave a positive or neutral answer), respond with exactly: DEFAULT
+
+Respond with ONLY the sentence (or the word DEFAULT). No quotes, no explanation."""
+
+    try:
+        engine = get_engine(model_name=_TASK_GEN_MODEL, temperature=0.7)
+        response = invoke_engine(engine, prompt)
+        raw = (response.content if hasattr(response, 'content') else str(response)).strip().strip('"\'')
+        if raw == 'DEFAULT' or not raw:
+            msg = _DEFAULT
+        else:
+            msg = raw
+    except Exception as e:
+        app.logger.error(f"[ai_widget_intro] error: {e}", exc_info=True)
+        msg = _DEFAULT
+
+    return jsonify({'success': True, 'message': msg})
 
 
 @app.route('/api/task-followup', methods=['POST'])
@@ -2458,6 +2404,71 @@ def task_followup():
     iv = wrapper.interview_session
     job_description = _extract_job_description(iv)
 
+    # ── ai_open phase: brief clarifying conversation before the AI task widget ──
+    if phase == 'ai_open':
+        history = _task_followup_history(session_token, phase)
+        if recent_dialogue:
+            history[:] = recent_dialogue[-_TASK_FOLLOWUP_HISTORY_MAX_MESSAGES:]
+
+        history_block = _format_task_followup_history(history)
+        turn_count = sum(1 for h in history if h['role'] == 'Participant')
+
+        prompt = (
+            f"You are a warm, concise interviewer. You just asked the participant:\n"
+            f"\"With AI becoming part of so many workflows, what are new things AI has enabled you to do, "
+            f"or new responsibilities you've taken on because of AI?\"\n\n"
+            f"Occupation context: \"{job_description}\"\n\n"
+            f"Conversation so far (oldest to newest):\n{history_block}\n\n"
+            f"Participant's latest message: \"{task_text}\"\n\n"
+            f"Number of participant turns so far (including this one): {turn_count + 1}\n\n"
+            "Decide which case applies:\n\n"
+            "CASE A — enough context gathered, move on:\n"
+            "  Apply this when ANY of these are true:\n"
+            "  - The participant named at least one specific AI-related activity (e.g. a tool, a use case, a task) AND this is turn 2 or later.\n"
+            "  - This is turn 3 or later, regardless of answer quality.\n"
+            "  - The participant said they don't use AI or AI hasn't changed their work.\n"
+            "  Give a brief, warm acknowledgment (1 sentence, no question).\n"
+            "  Return JSON: {\"reply\": \"...\", \"done\": true}\n\n"
+            "CASE B — need one clarifying question:\n"
+            "  Apply this only when: the answer is too vague to understand what AI role it plays "
+            "(e.g. 'a lot more', 'I use it sometimes', 'yes definitely') AND this is turn 1.\n"
+            "  Ask ONE short, specific follow-up that anchors on a concrete detail they mentioned. "
+            "Do not ask generic questions like 'can you tell me more?'.\n"
+            "  Return JSON: {\"reply\": \"...\", \"done\": false}\n\n"
+            "Rules:\n"
+            "- reply: 1 sentence max; at most one question mark\n"
+            "- Do NOT use em dashes or en dashes; use plain punctuation\n"
+            "- Return ONLY valid JSON, no markdown fences, no extra text"
+        )
+
+        done_flag = False
+        reply = ""
+        try:
+            engine = get_engine(model_name=_TASK_GEN_MODEL, temperature=0.7)
+            response = invoke_engine(engine, prompt)
+            raw = (response.content if hasattr(response, 'content') else str(response)).strip()
+            if raw.startswith("```"):
+                raw = raw[raw.find("\n") + 1:] if "\n" in raw else raw.lstrip("`")
+            raw = raw.rstrip("`").strip()
+            parsed = json.loads(raw)
+            reply = str(parsed.get('reply', '')).strip()
+            done_flag = bool(parsed.get('done', False))
+        except Exception as e:
+            app.logger.error(f"[task_followup/ai_open] error: {e}", exc_info=True)
+            done_flag = True
+
+        reply = reply.replace("—", ",").replace("–", ",")
+        reply = " ".join(reply.split())
+
+        history.append({"role": "Participant", "content": task_text})
+        if reply:
+            history.append({"role": "Interviewer", "content": reply})
+        if len(history) > _TASK_FOLLOWUP_HISTORY_MAX_MESSAGES:
+            del history[:-_TASK_FOLLOWUP_HISTORY_MAX_MESSAGES]
+
+        open_answer = " ".join(h['content'] for h in history if h['role'] == 'Participant')
+        return jsonify({'success': True, 'reply': reply, 'done': done_flag, 'open_answer': open_answer})
+
     is_ai_extras = phase == 'ai_extras'
     inventory_scope = "an AI-related task inventory" if is_ai_extras else "a task inventory"
     remaining_goal = (
@@ -2484,11 +2495,13 @@ def task_followup():
         else ""
     )
     case_c_instruction = (
-        "  Respond briefly to the answer, then ask a short, varied AI-scoped continuation question. "
+        "  Respond briefly to the answer, then ask a short, varied continuation question scoped to AI-related tasks. "
         "Examples: 'Anything else AI-related come to mind?', 'Any other AI-enabled work or AI oversight tasks?', "
-        "or 'Is there another AI-related task we have not covered?'. Do NOT reuse the same wording from the previous interviewer turn.\n"
+        "'Are there other ways AI shows up in your work?'. Do NOT reuse the same wording from the previous interviewer turn.\n"
         if is_ai_extras
-        else f"  Respond in 1 sentence that briefly reflects understanding, then ask this scoped question: {other_tasks_question}\n"
+        else "  Respond in 1 sentence that briefly reflects understanding, then ask a short, varied continuation question "
+        "scoped to their work tasks. Examples: 'What other tasks are part of your work?', 'What else takes up your time?', "
+        "'Are there other things you regularly work on?'. Do NOT reuse the same wording from the previous interviewer turn.\n"
     )
 
     history = _task_followup_history(session_token, phase)
@@ -2514,14 +2527,18 @@ def task_followup():
         f"Participant's latest message: \"{task_text}\"\n\n"
         "Decide which case applies:\n\n"
         "CASE A — participant is DONE adding tasks:\n"
-        "  Signals like 'no', 'that's it', 'nothing else', 'I think that's everything', 'nope', "
-        "'all good', 'nothing more', 'no more'.\n"
-        "  IMPORTANT: short affirmations like 'both', 'yes', 'yeah', 'correct' are DONE only when they "
-        "clearly answer a prior 'any other tasks?' prompt.\n"
-        "  If this is the AI-related task phase, briefly acknowledge that the AI task list is complete and "
-        "transition naturally to closing the interview.\n"
-        "  Respond warmly in 1 sentence. Vary the phrasing — do NOT use 'Perfect' or 'Got it'. "
+        "  Only classify as DONE for explicit done signals: 'no', 'nope', 'that's it', "
+        "'nothing else', 'I think that's everything', 'all good', 'nothing more', 'no more', "
+        "'can't think of anything', or a short affirmation clearly answering a prior 'any other tasks?' question.\n"
+        "  CRITICAL: if the message describes actual work, tasks, or activities — even briefly — classify as CASE B, not CASE A.\n"
+        + (
+        "  Return JSON: {\"reply\": \"\", \"done\": true}\n\n"
+        if not is_ai_extras else
+        "  Respond warmly in 1 sentence. Do NOT reference any specific task or topic they mentioned. "
+        "  Keep it general — e.g. 'Really appreciate you sharing all of that.' "
+        "  Do NOT use 'Thanks so much', 'walking me through', or 'your day'. "
         "  Return JSON: {\"reply\": \"...\", \"done\": true}\n\n"
+        )
         f"CASE B — {new_task_scope}:\n"
         "  Ask exactly one follow-up question about that task.\n"
         "  The question must show understanding by anchoring to a concrete detail from their latest message.\n"
@@ -2684,141 +2701,6 @@ def submit_task_validation():
     return jsonify({'success': True, 'task_count': len(all_tasks)})
 
 
-@app.route('/api/debug-session', methods=['GET'])
-@login_required  # PROTECTED
-def debug_session():
-    """Development-only: return session internals"""
-    session_token = request.args.get('session_token')
-    if not session_token:
-        return jsonify({'success': False, 'error': 'session_token required'}), 400
-
-    wrapper = get_session_wrapper(session_token)
-    if not wrapper:
-        return jsonify({'success': False, 'error': 'Invalid or expired session', 'active_sessions_count': len(active_sessions)}), 400
-
-    session = wrapper.interview_session
-
-    last_msgs = []
-    for m in session.chat_history[-20:]:
-        last_msgs.append({
-            'id': getattr(m, 'id', None),
-            'role': getattr(m, 'role', None),
-            'content': getattr(m, 'content', None),
-            'timestamp': getattr(m, 'timestamp', None).isoformat() if getattr(m, 'timestamp', None) else None,
-        })
-
-    user_buffer = []
-    user = session.user
-    if hasattr(user, '_message_buffer'):
-        try:
-            lock = getattr(user, '_lock', None)
-            if lock:
-                lock.acquire()
-            user_buffer = list(getattr(user, '_message_buffer', []))
-        finally:
-            if lock:
-                lock.release()
-
-    return jsonify({
-        'success': True,
-        'session_id': session.session_id,
-        'session_active': session.session_in_progress,
-        'session_completed': session.session_completed,
-        'message_count': len(session.chat_history),
-        'chat_history': last_msgs,
-        'user_buffer': user_buffer,
-        'active_sessions_count': len(active_sessions)
-    })
-
-@app.route('/process_audio', methods=['POST'])
-@login_required  # PROTECTED
-def process_audio():
-    """Compatibility route for older speech_chat.html template"""
-    session_token = request.form.get('session_token')
-    audio_file = request.files.get('audio')
-
-    if not audio_file:
-        return jsonify({'success': False, 'error': 'No audio file provided'}), 400
-
-    user_id = get_current_user().id
-    
-    if not session_token:
-        interview_session, session_token = create_interview_session(user_id=user_id)
-    else:
-        interview_session = get_session(session_token)
-        if not interview_session:
-            interview_session, session_token = create_interview_session(user_id=user_id)
-
-    temp_audio_path = Path(f"temp_audio_{uuid.uuid4().hex}.wav")
-    audio_file.save(temp_audio_path)
-
-    try:
-        transcribed_text = transcribe_audio_to_text(temp_audio_path)
-        turn_id = uuid.uuid4().hex
-        api_received_at = datetime.now()
-        metadata = {
-            "turn_id": turn_id,
-            "api_received_at": api_received_at.isoformat(),
-            "transport": "voice",
-        }
-        _register_pending_turn(
-            session_token,
-            turn_id,
-            {
-                "api_received_at": api_received_at.isoformat(),
-                "user_message_length": len(str(transcribed_text or "")),
-                "transport": "voice",
-            },
-        )
-        wrapper = get_session_wrapper(session_token)
-        if wrapper and hasattr(wrapper, 'loop'):
-            wrapper.loop.call_soon_threadsafe(
-                wrapper.interview_session.user.add_user_message, 
-                transcribed_text,
-                metadata,
-            )
-        else:
-            interview_session.user.add_user_message(transcribed_text, metadata=metadata)
-
-        bot_reply = wait_for_agent_response(interview_session, timeout=15.0)
-        
-        last_messages_by_session[session_token] = {
-            'user_message': transcribed_text,
-            'bot_reply': bot_reply or ''
-        }
-
-        if bot_reply:
-            out_path = Path(f"temp_speech_{uuid.uuid4().hex}.mp3")
-            generate_speech_from_text(bot_reply, out_path)
-            audio_bytes = out_path.read_bytes()
-            out_path.unlink(missing_ok=True)
-            return Response(audio_bytes, mimetype='audio/mpeg')
-
-        return jsonify({
-            'success': True, 
-            'user_message': transcribed_text, 
-            'bot_reply': bot_reply
-        }), 200
-
-    finally:
-        if temp_audio_path.exists():
-            temp_audio_path.unlink()
-
-@app.route('/get_last_messages', methods=['GET'])
-@login_required  # PROTECTED
-def get_last_messages():
-    """Get last messages for session"""
-    session_token = request.args.get('session_token')
-    if not session_token:
-        return jsonify({'success': False, 'error': 'session_token required'}), 400
-
-    msgs = last_messages_by_session.get(session_token, {})
-    return jsonify({
-        'success': True,
-        'user_message': msgs.get('user_message', ''),
-        'bot_reply': msgs.get('bot_reply', '')
-    })
-
 # =============================================================================
 # HEALTH CHECK - NOT PROTECTED (for monitoring)
 # =============================================================================
@@ -2863,28 +2745,6 @@ def transcribe_audio_to_text(audio_path: Path) -> str:
         raise RuntimeError("STT engine is not initialized. Check speech_to_text setup.")
     return stt_engine.transcribe(str(audio_path))
 
-def wait_for_agent_response(session, timeout: float = 60.0, poll_interval: float = 0.5):
-    """Wait for the Interviewer/Agent to produce an output by peeking at the buffer
-    without consuming it, so the frontend polling still receives the message."""
-    elapsed = 0.0
-    import time as _time
-
-    while elapsed < timeout:
-        try:
-            lock = getattr(session.user, '_lock', None)
-            if lock:
-                with lock:
-                    msgs = list(getattr(session.user, '_message_buffer', []))
-            else:
-                msgs = list(getattr(session.user, '_message_buffer', []))
-            interviewer_msgs = [m for m in msgs if m.get('role') == 'Interviewer']
-            if interviewer_msgs:
-                return interviewer_msgs[-1].get('content')
-        except Exception:
-            pass
-        _time.sleep(poll_interval)
-        elapsed += poll_interval
-    return None
 
 # =============================================================================
 # SESSION CLEANUP
@@ -2900,7 +2760,6 @@ def cleanup_old_sessions():
         if age > SESSION_TIMEOUT_SECONDS:
             to_remove.append(token)
             session_audio_cache.pop(token, None)
-            last_messages_by_session.pop(token, None)
             task_followup_history_by_session.pop(token, None)
             pending_turns_by_session.pop(token, None)
             delivered_turn_messages_by_session.pop(token, None)

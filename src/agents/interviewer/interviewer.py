@@ -53,6 +53,7 @@ class Interviewer(BaseAgent, Participant):
         self._turn_to_respond = False
         self._message_sent_this_turn = False
         self._time_split_widget_shown = False
+        self._ai_question_asked = False
         self._response_lock = asyncio.Lock()
         self._turn_start: float | None = None
         self._last_sent_message_text: str = ""
@@ -254,14 +255,8 @@ class Interviewer(BaseAgent, Participant):
     def _default_completion_goodbye(self) -> str:
         """Deterministic close used when agenda is complete before an LLM turn."""
         if getattr(self.interview_session, "session_type", "intake") == "weekly":
-            return (
-                "Thanks for walking me through this week. "
-                "That gives me what I needed, so we’ll wrap here."
-            )
-        return (
-            "Thanks for walking through your role and workload. "
-            "That covers what I needed for this intake, so we’ll wrap here."
-        )
+            return "That’s everything I needed for this week — we’ll wrap here."
+        return "That’s everything I needed — we’ll wrap here."
 
     def _normalize_text(self, text: str) -> str:
         return re.sub(r"\s+", " ", str(text or "")).strip()
@@ -277,7 +272,20 @@ class Interviewer(BaseAgent, Participant):
             return True
         if ("besides" in t or "outside of" in t) and "anything" in t:
             return True
+        if "what other tasks" in t or ("what other" in t and "work" in t):
+            return True
         return False
+
+    def _extract_trailing_question(self, text: str) -> str:
+        """Extract the last question sentence from a message."""
+        t = self._normalize_text(text)
+        if "?" not in t:
+            return ""
+        parts = re.split(r'(?<=[.!?])\s+', t)
+        for part in reversed(parts):
+            if "?" in part:
+                return part.strip()
+        return ""
 
     def _is_repetition_signal(self, text: str) -> bool:
         t = self._normalize_text(text).lower()
@@ -605,6 +613,15 @@ class Interviewer(BaseAgent, Participant):
         for prev in recent_qs[-4:]:
             if self._question_overlap_score(q, prev) >= 0.85:
                 return True
+
+        # Catch verbatim or near-verbatim trailing questions even when the full
+        # message differs (e.g. different acknowledgment prefix, same closing question).
+        trailing = self._extract_trailing_question(q)
+        if trailing and len(trailing.split()) >= 4:
+            for prev in recent_qs[-6:]:
+                prev_trailing = self._extract_trailing_question(prev)
+                if prev_trailing and self._question_overlap_score(trailing, prev_trailing) >= 0.75:
+                    return True
 
         return False
 
@@ -1199,6 +1216,16 @@ class Interviewer(BaseAgent, Participant):
                 )
             )
 
+        # Mark that an AI adoption question has been sent so the widget fires
+        # after the user's answer (not alongside the question).
+        if (
+            bool(subtopic_id)
+            and not self._ai_question_asked
+            and not getattr(self.interview_session, "_ai_usage_widget_sent", False)
+            and self._is_ai_adoption_subtopic(subtopic_id)
+        ):
+            self._ai_question_asked = True
+
         should_show_time_split_widget = (
             bool(subtopic_id)
             and self._is_time_allocation_subtopic(subtopic_id)
@@ -1342,6 +1369,35 @@ class Interviewer(BaseAgent, Participant):
             return False
         return self._is_subtopic_currently_covered(sid)
 
+    def _is_task_inventory_complete(self) -> bool:
+        """Return True when all required subtopics of the Task Inventory topic are covered."""
+        agenda = self.interview_session.session_agenda
+        if not agenda or not agenda.interview_topic_manager:
+            return False
+        for topic in agenda.interview_topic_manager:
+            topic_desc = str(getattr(topic, "description", "")).lower()
+            if "task inventory" not in topic_desc:
+                continue
+            return all(st.is_covered for st in topic.required_subtopics.values())
+        return False
+
+    def _is_ai_adoption_subtopic(self, subtopic_id: str) -> bool:
+        """Return True when subtopic_id belongs to an AI-related topic."""
+        sid = str(subtopic_id or "").strip()
+        if not sid:
+            return False
+        agenda = self.interview_session.session_agenda
+        if not agenda or not agenda.interview_topic_manager:
+            return False
+        for topic in agenda.interview_topic_manager:
+            topic_desc = str(getattr(topic, "description", "")).lower()
+            if "ai" not in topic_desc and "artificial intelligence" not in topic_desc:
+                continue
+            for st in topic.required_subtopics.values():
+                if str(st.subtopic_id) == sid:
+                    return True
+        return False
+
     def _is_time_allocation_subtopic(self, subtopic_id: str) -> bool:
         agenda = self.interview_session.session_agenda
         if not agenda or not agenda.interview_topic_manager:
@@ -1429,6 +1485,37 @@ class Interviewer(BaseAgent, Participant):
             )
             self.add_event(sender=message.role, tag="message",
                            content=message.content)
+
+            # Show the AI task widget as soon as Task Inventory is complete,
+            # before the LLM runs, so it fires immediately after the user's "no"
+            # to the breadth probe rather than after an LLM goodbye message.
+            if (
+                not getattr(self.interview_session, "_ai_task_widget_sent", False)
+                and not getattr(self.interview_session, "_session_ending", False)
+                and self._is_task_inventory_complete()
+            ):
+                SessionLogger.log_to_file(
+                    "execution_log",
+                    "[GUARD] Task inventory complete — triggering AI task widget."
+                )
+                asyncio.create_task(
+                    self._refresh_portrait_before_widget(
+                        widget_context="ai_task",
+                        max_scribe_wait_s=10.0,
+                    )
+                )
+                self.interview_session.trigger_ai_task_widget()
+                self._turn_to_respond = False
+                return
+
+            # Show the AI usage widget after the user answers the first AI question.
+            if (
+                self._ai_question_asked
+                and not getattr(self.interview_session, "_ai_usage_widget_sent", False)
+            ):
+                self._ai_question_asked = False
+                self.interview_session.trigger_ai_usage_widget()
+
         # Opening turn of a fresh session with no prior summary: let LLM generate first question
         is_weekly = getattr(self.interview_session, "session_type", "intake") == "weekly"
 
@@ -1610,6 +1697,30 @@ class Interviewer(BaseAgent, Participant):
                 f" speculative_discarded={_speculative_discarded}"
             )
 
+        # After scribe has processed, check whether task inventory just became
+        # complete — cancel the speculative response and show the AI task widget.
+        if (
+            message is not None
+            and not getattr(self.interview_session, "_session_ending", False)
+            and not getattr(self.interview_session, "_ai_task_widget_sent", False)
+            and self._is_task_inventory_complete()
+        ):
+            if speculative_task is not None and not speculative_task.done():
+                speculative_task.cancel()
+            speculative_task = None
+            SessionLogger.log_to_file(
+                "execution_log",
+                "[GUARD] Task inventory complete after scribe — triggering AI task widget."
+            )
+            asyncio.create_task(
+                self._refresh_portrait_before_widget(
+                    widget_context="ai_task",
+                    max_scribe_wait_s=10.0,
+                )
+            )
+            self.interview_session.trigger_ai_task_widget()
+            self._turn_to_respond = False
+
         # Deterministic stop: if all configured topics are already covered after
         # scribe processing, do not let the LLM improvise another follow-up.
         if (
@@ -1629,10 +1740,14 @@ class Interviewer(BaseAgent, Participant):
                 self.interview_session.add_message_to_chat_history(
                     role="Interviewer",
                     content=(
-                        "Based on what you've told me, here are some tasks I think you're actually doing right now — "
-                        "not things you might do down the road, or that are just typical for your role in general. "
-                        "Do these sound right?"
+                        "Based on what you've told me, here are some tasks I think you might be doing right now — not things you might do down the road, or that are just typical for your role in general. Do these sound right?"
                     ),
+                )
+                asyncio.create_task(
+                    self._refresh_portrait_before_widget(
+                        widget_context="task_validation",
+                        max_scribe_wait_s=10.0,
+                    )
                 )
                 self.interview_session.trigger_task_validation_widget()
             else:
@@ -1662,6 +1777,36 @@ class Interviewer(BaseAgent, Participant):
             else:
                 prompt = self._get_prompt()
                 response = await self.call_engine_async(prompt)
+
+            # Re-check after awaiting the LLM: the scribe may have finished
+            # committing coverage while the LLM was running.  If all topics are
+            # now done, discard the LLM response and go straight to the widget.
+            if (
+                message is not None
+                and not getattr(self.interview_session, "_session_ending", False)
+                and self._no_active_topics_remaining()
+                and not getattr(self.interview_session, "_task_validation_widget_sent", False)
+            ):
+                SessionLogger.log_to_file(
+                    "execution_log",
+                    "[GUARD] Topics completed during LLM wait — discarding response, triggering task widget."
+                )
+                self.interview_session.add_message_to_chat_history(
+                    role="Interviewer",
+                    content=(
+                        "Okay, here's what I've got so far. Take a look and let me know if anything's off."
+                    ),
+                )
+                asyncio.create_task(
+                    self._refresh_portrait_before_widget(
+                        widget_context="task_validation",
+                        max_scribe_wait_s=10.0,
+                    )
+                )
+                self.interview_session.trigger_task_validation_widget()
+                self._turn_to_respond = False
+                break
+
             self.add_event(sender=self.name, tag="llm_prompt", content=prompt)
             print(f"{GREEN}Interviewer:\n{response}{RESET}")
             try:

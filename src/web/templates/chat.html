@@ -289,6 +289,23 @@
         font-size: 13px;
         margin-top: 4px;
       }
+      .session-end-banner .prolific-complete-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-top: 14px;
+        padding: 10px 16px;
+        border-radius: 8px;
+        background: #111827;
+        color: #fff;
+        font-size: 13px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: background 0.15s;
+      }
+      .session-end-banner .prolific-complete-btn:hover {
+        background: #374151;
+      }
 
       /* ---- Hint ---- */
       .hint-text {
@@ -2764,8 +2781,13 @@
         transition: background 0.15s;
         margin-left: auto;
       }
-      .tvw-continue-btn:hover {
+      .tvw-continue-btn:hover:not(:disabled) {
         background: #374151;
+      }
+      .tvw-continue-btn:disabled {
+        background: #d1d5db;
+        color: #9ca3af;
+        cursor: not-allowed;
       }
       .tvw-skip-btn {
         background: transparent;
@@ -3908,6 +3930,7 @@
         <div
           class="session-timer-wrap"
           title="Estimated time remaining based on your chosen interview length"
+          style="display: none"
         >
           <span class="session-timer" id="session-timer"></span>
           <div
@@ -4108,6 +4131,8 @@
       let currentAudio = null;
       let ttsEnabled = false;
       let isSessionCompleted = false;
+      let sessionEndReason = "completed";
+      let _feedbackWidgetPending = false;
       let pollingInterval = null;
       let endSessionButtonTimer = null;
       let isInitializing = false;
@@ -4123,6 +4148,7 @@
       let profilePanelRevealInFlight = false;
       let profileConfirmSnapshot = null;
       let sendInFlight = false;
+      let _tvwBatch0Promise = null; // prefetch fired as soon as occupation is captured (job_description_ready)
 
       const chatInput = document.getElementById("chat-input");
       chatInput.addEventListener("input", function () {
@@ -4150,7 +4176,7 @@
       function regularTaskTarget(pageSize) {
         const minutes = availableMinutesFromUrl();
         const raw = Math.round(minutes * 0.75);
-        return roundUpToPageSize(Math.min(36, Math.max(6, raw)), pageSize);
+        return roundUpToPageSize(Math.min(36, Math.max(15, raw)), pageSize);
       }
 
       function aiTaskTarget(pageSize) {
@@ -4343,9 +4369,7 @@
                         <span class="tsp-loader-dots" aria-hidden="true"><span></span><span></span><span></span></span>
                         <span class="tsp-loader-messages">
                             <span>Reading through your tasks…</span>
-                            <span>Finding themes and connections…</span>
-                            <span>Grouping related work together…</span>
-                            <span>Building your task tree…</span>
+                            <span>Preparing your task list…</span>
                         </span>
                     </div>
                     <div class="tsp-loader-hint">This usually takes under a minute.</div>
@@ -4392,21 +4416,7 @@
           return;
         }
 
-        let tree = Array.isArray(readyPayload.tree) ? readyPayload.tree : [];
-        if (!tree.length)
-          tree = seedTasks.map((name) => ({ name, children: [] }));
-
-        // Lock the profile panel to the same tree the widget resolved so both
-        // always show the same groupings while the widget is active.
-        if (tree.length) {
-          const sig = taskInventorySignature(
-            seedTasks,
-            portraitGroupingFeedback(lastPortrait),
-          );
-          taskTreeCache = { signature: sig, tree };
-          activeWidgetTree = { sig, tree };
-          renderProfile(lastPortrait);
-        }
+        const tree = seedTasks.map((name) => ({ name, children: [] }));
 
         // Flatten tree into a node map
         const nodes = {}; // id -> { id, name, originalName, isGroup, mergedFrom, val, parentId, childIds }
@@ -4552,11 +4562,6 @@
         let phase = "refine"; // 'refine' | 'allocate' | 'explain'
         let otherExplanation = "";
         let addSubForId = null;
-        let groupingFeedback = portraitGroupingFeedback(lastPortrait);
-        let regroupBusy = false;
-        let regroupStatus = "";
-        let regroupStatusError = false;
-        let regroupRequestNonce = 0;
 
         function findOther() {
           return nodes[otherId];
@@ -4663,107 +4668,6 @@
           });
         }
 
-        function collectRegroupTasks() {
-          return dedupTasks(
-            Object.values(nodes)
-              .filter((n) => n.id !== otherId && !n.isGroup)
-              .map((n) => String(n.name || "").trim())
-              .filter(Boolean),
-          );
-        }
-
-        async function regroupTasksFromFeedback() {
-          if (phase !== "refine" || regroupBusy) return;
-          const feedback = groupingFeedback.trim();
-          if (!feedback) return;
-
-          addSubForId = null;
-          commitTaskEdits();
-          const regroupTasks = collectRegroupTasks();
-          if (regroupTasks.length < 2) {
-            regroupStatus = "Add at least two tasks before regrouping.";
-            regroupStatusError = true;
-            render();
-            return;
-          }
-
-          regroupBusy = true;
-          regroupStatus = "Regrouping subtasks...";
-          regroupStatusError = false;
-          const reqId = ++regroupRequestNonce;
-          render();
-
-          let regrouped = false;
-          try {
-            const res = await fetch("/api/organize-tasks", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                session_token: sessionToken,
-                tasks: regroupTasks,
-                grouping_feedback: feedback,
-              }),
-            });
-            if (!res.ok) throw new Error("regroup request failed");
-            const data = await res.json();
-            if (
-              reqId !== regroupRequestNonce ||
-              !data ||
-              !data.success ||
-              !Array.isArray(data.tree) ||
-              data.tree.length === 0
-            ) {
-              throw new Error("invalid regroup payload");
-            }
-            tree = data.tree;
-            resetNodesFromTree(tree);
-            const sig = taskInventorySignature(regroupTasks, feedback);
-            activeWidgetTree = { sig, tree };
-            regroupStatus =
-              String(data.acknowledgement || "").trim() ||
-              "Applied feedback and regrouped subtasks.";
-            regroupStatusError = false;
-            regrouped = true;
-          } catch (_) {
-            if (reqId !== regroupRequestNonce) return;
-            regroupStatus =
-              "Couldn’t regroup right now. Try different feedback.";
-            regroupStatusError = true;
-          } finally {
-            if (reqId !== regroupRequestNonce) return;
-            regroupBusy = false;
-            render();
-            if (regrouped) renderProfile(lastPortrait);
-            scrollToBottom();
-          }
-        }
-
-        function groupingFeedbackMarkup() {
-          if (phase !== "refine") return "";
-          const canRegroup = groupingFeedback.trim().length > 0 && !regroupBusy;
-          const showStatus = !regroupBusy && regroupStatus.trim().length > 0;
-          const statusClass = regroupStatusError
-            ? "tsp-regroup-status error"
-            : "tsp-regroup-status success";
-          const btnClass = `tsp-regroup-btn${regroupBusy ? " is-busy" : ""}`;
-          const btnContent = regroupBusy
-            ? `<span class="tsp-regroup-spinner" aria-hidden="true"></span>Regrouping…`
-            : "Regroup subtasks";
-          return `
-                    <div class="tsp-group-feedback">
-                        <div class="tsp-group-feedback-header">
-                            <span class="tsp-group-feedback-label">Refine subtask grouping</span>
-                            <span class="tsp-group-feedback-optional">optional</span>
-                        </div>
-                        <div class="tsp-group-feedback-hint">Tell me how you'd like subtasks re-grouped — by project, theme, or anything else.</div>
-                        <textarea class="tsp-group-feedback-input" id="tsp-group-feedback-input" placeholder="e.g., group all meetings together and separate writing from analysis" maxlength="400">${escapeHtml(groupingFeedback)}</textarea>
-                        <div class="tsp-group-feedback-actions">
-                            <button class="${btnClass}" id="tsp-regroup-btn" ${canRegroup ? "" : "disabled"}>${btnContent}</button>
-                            ${showStatus ? `<span class="${statusClass}" id="tsp-regroup-status">${escapeHtml(regroupStatus)}</span>` : `<span class="tsp-regroup-status" id="tsp-regroup-status" aria-hidden="true"></span>`}
-                        </div>
-                    </div>`;
-        }
-
         function indentHtml(depth) {
           return Array.from(
             { length: depth },
@@ -4864,7 +4768,6 @@
             for (const cid of n.childIds) walk(cid, path);
           }
           for (const id of rootIds) walk(id, "");
-          activeWidgetTree = null;
           widget.remove();
           chatInput.value = parts.join(", ");
           document
@@ -4904,7 +4807,6 @@
                     ${phase === "allocate" ? stackedBarMarkup() : ""}
                     <div id="tsp-rows">${buildRows()}</div>
                     ${addRow}
-                    ${groupingFeedbackMarkup()}
                     ${footer}`;
           widget.querySelectorAll(".tsp-task-edit").forEach((el) => {
             el.style.height = "auto";
@@ -5059,12 +4961,6 @@
             otherExplanation = e.target.value;
             const btn = document.getElementById("tsp-explain-submit");
             if (btn) btn.disabled = otherExplanation.trim().length === 0;
-          } else if (e.target.id === "tsp-group-feedback-input") {
-            groupingFeedback = e.target.value;
-            const btn = document.getElementById("tsp-regroup-btn");
-            if (btn)
-              btn.disabled =
-                regroupBusy || groupingFeedback.trim().length === 0;
           }
         });
 
@@ -5123,78 +5019,21 @@
             addTopLevel();
             return;
           }
-          if (e.target.id === "tsp-regroup-btn") {
-            regroupTasksFromFeedback();
-            return;
-          }
           if (e.target.id === "tsp-refine-next") {
             addSubForId = null;
             commitTaskEdits();
-            // Save the task list back to the portrait.
-            // Rules:
-            //   - Skip Other and invented group labels (isGroup=true) — they are display containers, not tasks.
-            //   - For un-edited nodes that absorbed tasks via dedup (mergedFrom), expand back to the
-            //     original granular tasks so the portrait retains full detail.
-            //   - For user-edited nodes, save the edited name as-is.
+            // Save edited task names back to the portrait.
             const editedTasks = [];
             Object.values(nodes).forEach((n) => {
-              if (n.id === otherId || n.isGroup) return;
-              const userEdited = n.name.trim() !== n.originalName.trim();
-              if (userEdited) {
-                if (n.name.trim()) editedTasks.push(n.name.trim());
-              } else if (n.mergedFrom && n.mergedFrom.length > 0) {
-                n.mergedFrom.forEach((t) => {
-                  if (t.trim()) editedTasks.push(t.trim());
-                });
-              } else {
-                if (n.name.trim()) editedTasks.push(n.name.trim());
-              }
+              if (n.id === otherId) return;
+              if (n.name.trim()) editedTasks.push(n.name.trim());
             });
-            // Serialize current widget hierarchy so drag-and-drop regroups persist.
-            // Excludes the Other bucket (display-only).
-            function serializeNode(id) {
-              const n = nodes[id];
-              if (!n) return null;
-              const out = {
-                name: String(n.name || "").trim(),
-                children: (n.childIds || []).map(serializeNode).filter(Boolean),
-              };
-              if (n.isGroup) out.is_group = true;
-              if (Array.isArray(n.mergedFrom) && n.mergedFrom.length > 0) {
-                out.merged_from = n.mergedFrom.slice();
-              }
-              return out;
-            }
-            const groupingTree = rootIds
-              .filter((id) => id !== otherId)
-              .map(serializeNode)
-              .filter(Boolean);
             if (editedTasks.length > 0 && lastPortrait) {
-              const normalizedGroupingFeedback =
-                normalizeGroupingFeedback(groupingFeedback);
               const updatedPortrait = {
                 ...lastPortrait,
                 "Task Inventory": editedTasks,
               };
-              if (normalizedGroupingFeedback) {
-                updatedPortrait[TASK_GROUPING_FEEDBACK_KEY] =
-                  normalizedGroupingFeedback;
-              } else {
-                delete updatedPortrait[TASK_GROUPING_FEEDBACK_KEY];
-              }
-              if (groupingTree.length > 0) {
-                updatedPortrait["Task Grouping Tree"] = groupingTree;
-              } else {
-                delete updatedPortrait["Task Grouping Tree"];
-              }
               lastPortrait = updatedPortrait;
-              // Prime the cache with the tree the user just submitted so the
-              // profile panel doesn't re-fetch an out-of-date LLM grouping.
-              const newSig = taskInventorySignature(
-                editedTasks,
-                normalizedGroupingFeedback,
-              );
-              taskTreeCache = { signature: newSig, tree: groupingTree };
               fetch("/api/update-portrait", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -5274,8 +5113,13 @@
         scrollToBottom();
 
         const _PAGE_SIZE = 3; // tasks shown per page — must match _TASK_BATCH_SIZE on server
-        const _ATTN_INTERVAL = 8; // inject one attention check per N real tasks
+        const _MIN_DONE_SHOWN_TASKS = 9;
+        const _ATTN_INTERVAL = 5; // inject one attention check per N real tasks
         const _TARGET_REAL_TASKS = regularTaskTarget(_PAGE_SIZE);
+        const _TARGET_DISPLAYED_TASKS = roundUpToPageSize(
+          _TARGET_REAL_TASKS + Math.floor(_TARGET_REAL_TASKS / _ATTN_INTERVAL),
+          _PAGE_SIZE,
+        );
         const _TARGET_AI_TASKS = aiTaskTarget(_PAGE_SIZE);
 
         // State: flat list of all tasks across all batches
@@ -5283,9 +5127,10 @@
         let batchesLoaded = 0;
         let viewStart = 0; // first index of the currently visible page
         let done = false;
-        let prefetchPromise = null;
-        let prefetchedBatch = null;
+        let prefetchPromise = null; // promise that eagerly loads + adds the next batch to allTasks
         let pendingAttentionChecks = [];
+        let _attnChecksFetching = null; // promise tracking fetchAttentionChecks
+        let _conversationTaskTexts = []; // tasks mentioned in interview — used as prior_tasks but not displayed
 
         function esc(s) {
           return String(s || "")
@@ -5296,48 +5141,93 @@
         }
 
         async function fetchBatch(idx) {
-          const prior = allTasks
-            .filter((t) => !t.isAttentionCheck)
-            .map((t) => t.text);
-          const res = await fetch("/api/generate-tasks", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              session_token: sessionToken,
-              batch_index: idx,
-              prior_tasks: prior,
-            }),
-          });
-          const data = await res.json();
+          const prior = [
+            ..._conversationTaskTexts,
+            ...allTasks.filter((t) => !t.isAttentionCheck).map((t) => t.text),
+          ];
+
+          let data;
+          if (idx === 0 && _tvwBatch0Promise) {
+            // Use the early-fetched result that was kicked off when the widget message arrived
+            const earlyData = await _tvwBatch0Promise;
+            _tvwBatch0Promise = null;
+            if (earlyData && earlyData.success) {
+              data = earlyData;
+            }
+          }
+          if (!data) {
+            const res = await fetch("/api/generate-tasks", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                session_token: sessionToken,
+                batch_index: idx,
+                prior_tasks: prior,
+              }),
+            });
+            data = await res.json();
+          }
           if (!data.success) throw new Error(data.error || "fetch failed");
-          return {
-            tasks: (data.tasks || []).map((t) => ({
-              text: typeof t === "string" ? t : t.name || "",
-              description: typeof t === "string" ? "" : t.description || "",
-              status: "unreviewed",
-              isAttentionCheck: false,
-            })),
-            hasMore: !!data.has_more,
-          };
+          const tasks = (data.tasks || []).map((t) => ({
+            text: typeof t === "string" ? t : t.name || "",
+            description: typeof t === "string" ? "" : t.description || "",
+            status: "unreviewed",
+            isAttentionCheck: false,
+          }));
+
+          // Fill any missing descriptions before returning so cards render complete
+          const missingNames = tasks
+            .filter((t) => !t.description)
+            .map((t) => t.text);
+          if (missingNames.length) {
+            try {
+              const dr = await fetch("/api/regenerate-task-description", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  session_token: sessionToken,
+                  task_names: missingNames,
+                }),
+              });
+              const dd = await dr.json();
+              if (dd.success && dd.descriptions) {
+                tasks.forEach((t) => {
+                  if (!t.description)
+                    t.description = dd.descriptions[t.text] || "";
+                });
+              }
+            } catch (_) {}
+          }
+
+          return { tasks, hasMore: !!data.has_more };
         }
 
         async function fetchAttentionChecks() {
-          try {
-            const res = await fetch("/api/attention-check-tasks", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ session_token: sessionToken }),
-            });
-            const data = await res.json();
-            if (data.success) {
-              pendingAttentionChecks = (data.tasks || []).map((t) => ({
-                text: t.name || "",
-                description: t.description || "",
-                status: "unreviewed",
-                isAttentionCheck: true,
-              }));
+          const p = (async () => {
+            for (let attempt = 0; attempt < 3; attempt++) {
+              try {
+                const res = await fetch("/api/attention-check-tasks", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ session_token: sessionToken }),
+                });
+                const data = await res.json();
+                if (data.success && data.tasks?.length) {
+                  pendingAttentionChecks = (data.tasks || []).map((t) => ({
+                    text: t.name || "",
+                    description: t.description || "",
+                    status: "unreviewed",
+                    isAttentionCheck: true,
+                  }));
+                  return;
+                }
+              } catch (_) {}
+              if (attempt < 2) await new Promise((r) => setTimeout(r, 1500));
             }
-          } catch (_) {}
+          })();
+          _attnChecksFetching = p;
+          await p;
+          _attnChecksFetching = null;
         }
 
         // AI task widget state — managed inside renderAiTaskWidget, kept here for scope
@@ -5346,34 +5236,33 @@
         let _aiWidgetBatchIdx = 0;
         let _aiWidgetFetching = null; // Promise of in-flight fetch
         let _aiPendingDistractors = []; // attention-check items for AI widget
+        let _aiDistractorsFetching = null; // promise tracking distractor fetch
 
         async function _fetchAiDistractors() {
-          try {
-            const res = await fetch("/api/ai-attention-check-tasks", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ session_token: sessionToken }),
-            });
-            const data = await res.json();
-            if (data.success) {
-              _aiPendingDistractors = (data.tasks || []).map((t) => ({
-                text: t.name || "",
-                description: t.description || "",
-                isAttentionCheck: true,
-              }));
-            }
-          } catch (_) {}
+          const p = (async () => {
+            try {
+              const res = await fetch("/api/ai-attention-check-tasks", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ session_token: sessionToken }),
+              });
+              const data = await res.json();
+              if (data.success) {
+                _aiPendingDistractors = (data.tasks || []).map((t) => ({
+                  text: t.name || "",
+                  description: t.description || "",
+                  isAttentionCheck: true,
+                }));
+              }
+            } catch (_) {}
+            _aiDistractorsFetching = null;
+          })();
+          _aiDistractorsFetching = p;
+          return p;
         }
 
         async function _fetchAiTaskBatch() {
           if (!_aiWidgetHasMore) return;
-          const currentReal = _aiWidgetTasks.filter(
-            (t) => !t.isAttentionCheck,
-          ).length;
-          if (currentReal >= _TARGET_AI_TASKS) {
-            _aiWidgetHasMore = false;
-            return;
-          }
           const prior = _aiWidgetTasks
             .filter((t) => !t.isAttentionCheck)
             .map((t) => t.text);
@@ -5388,14 +5277,17 @@
           });
           const data = await res.json();
           if (data.success) {
+            // Wait for distractors to arrive before injecting
+            if (_aiDistractorsFetching) await _aiDistractorsFetching;
+            const seenAiTexts = new Set(
+              _aiWidgetTasks
+                .filter((x) => !x.isAttentionCheck)
+                .map((x) => x.text.trim().toLowerCase()),
+            );
             for (const t of data.tasks || []) {
-              const currentReal = _aiWidgetTasks.filter(
-                (x) => !x.isAttentionCheck,
-              ).length;
-              if (currentReal >= _TARGET_AI_TASKS) {
-                _aiWidgetHasMore = false;
-                break;
-              }
+              const key = (t.name || "").trim().toLowerCase();
+              if (!key || seenAiTexts.has(key)) continue;
+              seenAiTexts.add(key);
               _aiWidgetTasks.push({
                 text: t.name || "",
                 description: t.description || "",
@@ -5411,13 +5303,18 @@
                 realCount > 0 &&
                 realCount % _ATTN_INTERVAL === 0
               ) {
-                _aiWidgetTasks.push(_aiPendingDistractors.shift());
+                const attn = _aiPendingDistractors.shift();
+                const pgStart =
+                  Math.floor(_aiWidgetTasks.length / _PAGE_SIZE) * _PAGE_SIZE;
+                const insertAt =
+                  pgStart +
+                  Math.floor(
+                    Math.random() * (_aiWidgetTasks.length - pgStart + 1),
+                  );
+                _aiWidgetTasks.splice(insertAt, 0, attn);
               }
             }
-            _aiWidgetHasMore =
-              !!data.has_more &&
-              _aiWidgetTasks.filter((t) => !t.isAttentionCheck).length <
-                _TARGET_AI_TASKS;
+            _aiWidgetHasMore = !!data.has_more;
             _aiWidgetBatchIdx++;
           }
           _aiWidgetFetching = null;
@@ -5464,7 +5361,6 @@
               <div class="tvw-card-title-row">
                 <span class="tvw-card-title">${esc(t.text)}</span>${badge}
               </div>
-              ${t.description ? `<div class="tvw-card-desc">${esc(t.description)}</div>` : ""}
               ${actions}
             </div>
           </div>`;
@@ -5494,9 +5390,13 @@
           const footer = document.getElementById("tvw-widget-footer");
           if (!footer) return;
           const hasNext = !done || viewStart + _PAGE_SIZE < allTasks.length;
+          const canShowDone = viewStart >= 3 * _PAGE_SIZE;
+          const allReviewed = allTasks
+            .slice(viewStart, viewStart + _PAGE_SIZE)
+            .every((t) => t.status !== "unreviewed");
           footer.innerHTML = `
-            <button class="tvw-skip-btn" id="tvw-skip">Done</button>
-            <button class="tvw-continue-btn" id="tvw-continue">Continue →</button>`;
+            ${canShowDone ? `<button class="tvw-skip-btn" id="tvw-skip">Done</button>` : ""}
+            <button class="tvw-continue-btn" id="tvw-continue" ${allReviewed ? "" : "disabled"}>${hasNext ? "Continue →" : "Finish →"}</button>`;
           footer
             .querySelector("#tvw-skip")
             ?.addEventListener("click", renderMissing);
@@ -5516,40 +5416,6 @@
             div.innerHTML = taskCardHTML(t, globalIdx);
             list.appendChild(div.firstElementChild);
             attachCardListeners(globalIdx);
-            // Auto-fetch description if missing
-            if (!t.description) {
-              const card = document.getElementById(`tvw-card-${globalIdx}`);
-              if (card) {
-                const body = card.querySelector(".tvw-card-body");
-                const actions = card.querySelector(".tvw-card-actions");
-                const descEl = document.createElement("div");
-                descEl.className = "tvw-card-desc";
-                descEl.style.color = "#d1d5db";
-                descEl.textContent = "Loading…";
-                if (actions) body.insertBefore(descEl, actions);
-                fetch("/api/regenerate-task-description", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    session_token: sessionToken,
-                    task_name: t.text,
-                  }),
-                })
-                  .then((r) => r.json())
-                  .then((d) => {
-                    if (d.success && d.description) {
-                      allTasks[globalIdx].description = d.description;
-                      descEl.style.color = "";
-                      descEl.textContent = d.description;
-                    } else {
-                      descEl.remove();
-                    }
-                  })
-                  .catch(() => {
-                    descEl.remove();
-                  });
-              }
-            }
           });
           updateFooter();
           updateProgress();
@@ -5560,23 +5426,18 @@
         async function fetchUntilFull(needUpTo) {
           while (allTasks.length < needUpTo) {
             if (!done) {
-              let batch;
-              if (prefetchedBatch) {
-                batch = prefetchedBatch;
-                prefetchedBatch = null;
-                prefetchPromise = null;
+              if (prefetchPromise) {
+                // A background prefetch is already in flight — wait for it to add
+                // its batch to allTasks rather than firing a second duplicate request.
+                await prefetchPromise;
               } else {
                 try {
-                  batch = await (prefetchPromise || fetchBatch(batchesLoaded));
-                  prefetchPromise = null;
+                  const batch = await fetchBatch(batchesLoaded);
+                  await receiveBatch(batch);
                 } catch (_) {
                   done = true;
                 }
               }
-              if (batch) {
-                receiveBatch(batch); // receiveBatch sets done if !hasMore
-              }
-              // If batch is undefined (catch above set done=true), loop will exit
             } else {
               break;
             }
@@ -5603,14 +5464,19 @@
             return;
           }
           showBatch(nextStart);
+          // Start loading the batch after the one now visible
+          prefetchAhead(batchesLoaded);
         }
 
         function prefetchAhead(idx) {
-          if (done || prefetchPromise || prefetchedBatch) return;
+          if (done || prefetchPromise) return;
+          // Stay at most 1 page ahead of the current view — don't fetch everything eagerly
+          if (allTasks.length >= viewStart + _PAGE_SIZE * 2) return;
           prefetchPromise = fetchBatch(idx)
-            .then((batch) => {
+            .then(async (batch) => {
               prefetchPromise = null;
-              prefetchedBatch = batch;
+              // Eagerly add to allTasks so handleNext finds them ready
+              await receiveBatch(batch);
             })
             .catch(() => {
               prefetchPromise = null;
@@ -5651,6 +5517,7 @@
           );
           if (activeBtn) activeBtn.classList.add("tvw-btn-active");
           updateProgress();
+          updateFooter();
         }
 
         function startEdit(idx) {
@@ -5762,32 +5629,36 @@
           });
         }
 
-        function receiveBatch(batch) {
+        async function receiveBatch(batch) {
+          const seenTexts = new Set(
+            allTasks
+              .filter((t) => !t.isAttentionCheck)
+              .map((t) => t.text.trim().toLowerCase()),
+          );
           for (const task of batch.tasks) {
-            const currentReal = allTasks.filter(
-              (t) => !t.isAttentionCheck && !t.isAiTask,
-            ).length;
-            if (currentReal >= _TARGET_REAL_TASKS) {
-              done = true;
-              break;
-            }
+            const key = task.text.trim().toLowerCase();
+            if (seenTexts.has(key)) continue;
+            seenTexts.add(key);
             allTasks.push(task);
             const realCount = allTasks.filter(
               (t) => !t.isAttentionCheck && !t.isAiTask,
             ).length;
-            // Inject attention check every _ATTN_INTERVAL real tasks
-            if (
-              pendingAttentionChecks.length &&
-              realCount > 0 &&
-              realCount % _ATTN_INTERVAL === 0
-            ) {
-              allTasks.push(pendingAttentionChecks.shift());
+            // Inject attention check every _ATTN_INTERVAL real tasks —
+            // wait for distractors only at the moment of injection, not upfront
+            if (realCount > 0 && realCount % _ATTN_INTERVAL === 0) {
+              if (_attnChecksFetching) await _attnChecksFetching;
+              if (pendingAttentionChecks.length) {
+                const attn = pendingAttentionChecks.shift();
+                const pgStart =
+                  Math.floor(allTasks.length / _PAGE_SIZE) * _PAGE_SIZE;
+                const insertAt =
+                  pgStart +
+                  Math.floor(Math.random() * (allTasks.length - pgStart + 1));
+                allTasks.splice(insertAt, 0, attn);
+              }
             }
           }
-          const realCount = allTasks.filter(
-            (t) => !t.isAttentionCheck && !t.isAiTask,
-          ).length;
-          if (!batch.hasMore || realCount >= _TARGET_REAL_TASKS) done = true;
+          if (!batch.hasMore) done = true;
           batchesLoaded++;
           prefetchAhead(batchesLoaded);
         }
@@ -5799,6 +5670,8 @@
           const probingTaskNames = []; // formatted "Action + Object + Objective" names
           const probingDialogue = []; // rolling interviewer/participant turns
           const _origSubmit = chatForm.onsubmit;
+          let probingInFlight = false;
+          let probingDone = false;
 
           chatForm.onsubmit = async function (e) {
             e.preventDefault();
@@ -5806,8 +5679,10 @@
               chatForm.onsubmit = _origSubmit;
               return;
             }
+            if (probingInFlight || probingDone) return;
             const text = chatInput.value.trim();
             if (!text) return;
+            probingInFlight = true;
             chatInput.value = "";
             chatInput.style.height = "auto";
             probingTasks.push(text);
@@ -5839,11 +5714,14 @@
               }
               scrollToBottom();
               if (d.done) {
+                probingDone = true;
                 chatForm.onsubmit = _origSubmit;
                 if (onDone) onDone();
               }
             } catch (_) {
               removeTyping();
+            } finally {
+              probingInFlight = false;
             }
           };
         }
@@ -5872,6 +5750,7 @@
           }
 
           const AITW_PAGE = 3;
+          const AITW_MIN_DONE = 9;
           let pageStart = 0;
           let selectedIndices = new Set();
 
@@ -5880,6 +5759,7 @@
             const pageTasks = tasks.slice(pageStart, pageStart + AITW_PAGE);
             const isLast =
               !_aiWidgetHasMore && pageStart + AITW_PAGE >= tasks.length;
+            const canShowDone = isLast || pageStart + AITW_PAGE >= 9;
 
             aiWidget.innerHTML = `
               <div class="aitw-header">
@@ -5896,7 +5776,6 @@
                     <div class="aitw-card-num">${i + 1}</div>
                     <div class="aitw-card-body">
                       <div class="aitw-card-title" contenteditable="true" data-idx="${i}" spellcheck="false">${esc(t.text)}</div>
-                      ${t.description ? `<div class="aitw-card-desc">${esc(t.description)}</div>` : ""}
                     </div>
                     <div class="aitw-checkbox"></div>
                   </div>`;
@@ -5904,7 +5783,7 @@
                   .join("")}
               </div>
               <div class="aitw-footer">
-                <button class="aitw-skip-btn">Done</button>
+                ${canShowDone ? `<button class="aitw-skip-btn">Done</button>` : ""}
                 <button class="aitw-submit-btn">${isLast ? "Continue →" : "Next →"}</button>
               </div>`;
 
@@ -5947,8 +5826,11 @@
                   finishWidget();
                 } else {
                   pageStart += AITW_PAGE;
-                  // If we've reached the edge of loaded tasks, fetch next batch
-                  if (pageStart >= _aiWidgetTasks.length) {
+                  // Fetch next batch if the current page won't be full
+                  if (
+                    _aiWidgetHasMore &&
+                    pageStart + AITW_PAGE > _aiWidgetTasks.length
+                  ) {
                     this.disabled = true;
                     this.textContent = "Loading…";
                     try {
@@ -5965,7 +5847,7 @@
 
             aiWidget
               .querySelector(".aitw-skip-btn")
-              .addEventListener("click", finishWidget);
+              ?.addEventListener("click", finishWidget);
 
             // Prefetch next batch in background while user reviews current page
             _ensureAiTaskBatch();
@@ -6055,92 +5937,172 @@
 
           // 2. Probing loop — when done, move to AI tasks section
           startProbingLoop(function () {
-            // 3. Transition message
+            // 3. Transition message + open AI question
             appendMessage(
               "bot",
-              "With AI becoming part of so many workflows, I want to ask about how it may have changed your role — both in terms of new things you're now able to do, and any new responsibilities around reviewing or overseeing AI outputs.",
+              "With AI becoming part of so many workflows, I want to ask about how it may have changed your role. What are new things AI has enabled you to do, or new responsibilities you've taken on because of AI?",
               "ai-transition-" + Date.now(),
             );
             scrollToBottom();
 
-            // 4. AI task widget
+            // Conversational loop for the AI open question (1-2 clarifying turns max)
+            const chatForm = document.getElementById("chat-form");
+            const _origSubmit = chatForm.onsubmit;
+            let _aiOpenInFlight = false;
+            const _aiOpenDialogue = [];
+
+            chatForm.onsubmit = async function (e) {
+              e.preventDefault();
+              if (_aiOpenInFlight) return;
+              const text = chatInput.value.trim();
+              if (!text) return;
+              _aiOpenInFlight = true;
+              chatInput.value = "";
+              chatInput.style.height = "auto";
+              appendMessage("user", text, "ai-open-u-" + Date.now());
+              showTyping();
+              scrollToBottom();
+              try {
+                const r = await fetch("/api/task-followup", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    session_token: sessionToken,
+                    task_text: text,
+                    phase: "ai_open",
+                    recent_dialogue: _aiOpenDialogue.slice(-6),
+                  }),
+                });
+                const d = await r.json();
+                removeTyping();
+                _aiOpenDialogue.push({ role: "Participant", content: text });
+                if (d.reply) {
+                  appendMessage("bot", d.reply, "ai-open-b-" + Date.now());
+                  _aiOpenDialogue.push({ role: "Interviewer", content: d.reply });
+                }
+                scrollToBottom();
+                if (d.done) {
+                  chatForm.onsubmit = _origSubmit;
+                  showAiWidgetAfterOpenQuestion(d.open_answer || text);
+                }
+              } catch (_) {
+                removeTyping();
+                chatForm.onsubmit = _origSubmit;
+                showAiWidgetAfterOpenQuestion(text);
+              } finally {
+                _aiOpenInFlight = false;
+              }
+            };
+
+            // 4. AI task widget (called after user answers)
             const _confirmedNames = confirmed.map((t) => t.text);
-            renderAiTaskWidget(_confirmedNames, function (selectedAiTasks) {
-              // 5. Show selected AI tasks summary (if any), then ask about others
-              if (selectedAiTasks.length) {
-                const summaryItems = selectedAiTasks
-                  .map(
-                    (t, i) =>
-                      `<div class="tvw-summary-item">
+            async function showAiWidgetAfterOpenQuestion(openAnswer) {
+              let introMsg = "Here are some AI-related tasks that may fit your work. Do any of these apply?";
+              try {
+                const r = await fetch("/api/ai-widget-intro", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ session_token: sessionToken, open_answer: openAnswer || "" }),
+                });
+                const d = await r.json();
+                if (d.success && d.message) introMsg = d.message;
+              } catch (_) {}
+              appendMessage(
+                "bot",
+                introMsg,
+                "aitw-intro-" + Date.now(),
+              );
+              scrollToBottom();
+              renderAiTaskWidget(_confirmedNames, function (selectedAiTasks) {
+                // 5. Show selected AI tasks summary (if any), then ask about others
+                if (selectedAiTasks.length) {
+                  const summaryItems = selectedAiTasks
+                    .map(
+                      (t, i) =>
+                        `<div class="tvw-summary-item">
                     <span class="tvw-summary-num">${i + 1}</span>
                     <span class="tvw-summary-text">${esc(t.text)}</span>
                   </div>`,
-                  )
-                  .join("");
-                const summaryEl = document.createElement("div");
-                summaryEl.className = "task-validation-widget";
-                summaryEl.innerHTML =
-                  `<div class="tvw-section-label">AI-related tasks (${selectedAiTasks.length})</div>` +
-                  `<div class="tvw-summary-list">${summaryItems}</div>`;
-                document.getElementById("chat-box").appendChild(summaryEl);
-                scrollToBottom();
-              }
-              appendMessage(
-                "bot",
-                "Are there any other AI-related tasks — either new things AI has enabled you to do, or new responsibilities you've taken on because of AI — that weren't on that list?",
-                "ai-followup-" + Date.now(),
-              );
-              scrollToBottom();
-
-              const chatForm = document.getElementById("chat-form");
-              const _origSubmit = chatForm.onsubmit;
-              const aiExtraTasks = selectedAiTasks
-                .map((t) => String(t.text || "").trim())
-                .filter(Boolean);
-
-              chatForm.onsubmit = async function (e) {
-                e.preventDefault();
-                if (isSessionCompleted) {
-                  chatForm.onsubmit = _origSubmit;
-                  return;
+                    )
+                    .join("");
+                  const summaryEl = document.createElement("div");
+                  summaryEl.className = "task-validation-widget";
+                  summaryEl.innerHTML =
+                    `<div class="tvw-section-label">AI-related tasks (${selectedAiTasks.length})</div>` +
+                    `<div class="tvw-summary-list">${summaryItems}</div>`;
+                  document.getElementById("chat-box").appendChild(summaryEl);
+                  scrollToBottom();
                 }
-                const text = chatInput.value.trim();
-                if (!text) return;
-                chatInput.value = "";
-                chatInput.style.height = "auto";
-                appendMessage("user", text, "ai-extra-u-" + Date.now());
-                showTyping();
+                appendMessage(
+                  "bot",
+                  "Are there any other AI-related tasks that weren't on that list?",
+                  "ai-followup-" + Date.now(),
+                );
                 scrollToBottom();
-                try {
-                  const r = await fetch("/api/task-followup", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      session_token: sessionToken,
-                      task_text: text,
-                      prior_tasks: aiExtraTasks,
-                      phase: "ai_extras",
-                    }),
-                  });
-                  const d = await r.json();
-                  removeTyping();
-                  if (d.task_name) aiExtraTasks.push(d.task_name);
-                  if (d.done) {
-                    if (d.reply)
-                      appendMessage("bot", d.reply, "ai-extra-b-" + Date.now());
-                    scrollToBottom();
-                    chatForm.onsubmit = _origSubmit;
-                  } else {
-                    if (d.reply)
-                      appendMessage("bot", d.reply, "ai-extra-b-" + Date.now());
-                    scrollToBottom();
+
+                const aiChatForm = document.getElementById("chat-form");
+                const _origSubmit = aiChatForm.onsubmit;
+                const aiExtraTasks = selectedAiTasks
+                  .map((t) => String(t.text || "").trim())
+                  .filter(Boolean);
+                let aiExtrasInFlight = false;
+
+                aiChatForm.onsubmit = async function (e) {
+                  e.preventDefault();
+                  if (isSessionCompleted) {
+                    aiChatForm.onsubmit = _origSubmit;
+                    return;
                   }
-                } catch (_) {
-                  removeTyping();
-                  chatForm.onsubmit = _origSubmit;
-                }
-              };
-            });
+                  if (aiExtrasInFlight) return;
+                  const text = chatInput.value.trim();
+                  if (!text) return;
+                  aiExtrasInFlight = true;
+                  chatInput.value = "";
+                  chatInput.style.height = "auto";
+                  appendMessage("user", text, "ai-extra-u-" + Date.now());
+                  showTyping();
+                  scrollToBottom();
+                  try {
+                    const r = await fetch("/api/task-followup", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        session_token: sessionToken,
+                        task_text: text,
+                        prior_tasks: aiExtraTasks,
+                        phase: "ai_extras",
+                      }),
+                    });
+                    const d = await r.json();
+                    removeTyping();
+                    if (d.task_name) aiExtraTasks.push(d.task_name);
+                    if (d.done) {
+                      if (d.reply)
+                        appendMessage(
+                          "bot",
+                          d.reply,
+                          "ai-extra-b-" + Date.now(),
+                        );
+                      scrollToBottom();
+                      aiChatForm.onsubmit = _origSubmit;
+                    } else {
+                      if (d.reply)
+                        appendMessage(
+                          "bot",
+                          d.reply,
+                          "ai-extra-b-" + Date.now(),
+                        );
+                      scrollToBottom();
+                    }
+                  } catch (_) {
+                    removeTyping();
+                    aiChatForm.onsubmit = _origSubmit;
+                  } finally {
+                    aiExtrasInFlight = false;
+                  }
+                };
+              });
+            } // end showAiWidgetAfterOpenQuestion
           });
         }
 
@@ -6151,8 +6113,8 @@
             <span class="tvw-progress-text" id="tvw-progress-text">0 reviewed</span>
           </div>
           <ul class="tvw-subtitle">
-            <li><strong>Accurate</strong> — this is something you're doing right now (even if the description is not 100% accurate)</li>
-            <li><strong>Edit</strong> — the task name is wrong or only partially right (description will update automatically)</li>
+            <li><strong>Accurate</strong> — this is something you're doing right now</li>
+            <li><strong>Edit</strong> — the task name is wrong or only partially right</li>
             <li><strong>Remove</strong> — you don't do this task</li>
           </ul>
           <div class="tvw-progress-track"><div class="tvw-progress-fill" id="tvw-progress-fill" style="width:0%"></div></div>
@@ -6163,29 +6125,35 @@
         scrollToBottom();
 
         try {
-          // Prepend tasks explicitly mentioned in the conversation (from Session Scribe portrait)
-          const conversationTasks = (
+          // Refresh portrait so Task Inventory reflects the completed session before pre-loading.
+          try {
+            const _sr = await fetch(
+              `/api/session-state?session_token=${sessionToken}`,
+            );
+            const _sd = await _sr.json();
+            if (_sd.user_portrait) lastPortrait = _sd.user_portrait;
+          } catch (_) {}
+
+          // Pass conversation-mentioned tasks as prior context so the LLM avoids regenerating them,
+          // but don't display them directly — they're raw interview extracts, not formatted tasks.
+          _conversationTaskTexts = (
             (lastPortrait && lastPortrait["Task Inventory"]) ||
             []
           )
             .map((t) => String(t).trim())
             .filter(Boolean);
-          for (const text of conversationTasks) {
-            allTasks.push({
-              text,
-              description: "",
-              status: "unreviewed",
-              isAttentionCheck: false,
-              isConversation: true,
-            });
-          }
 
-          // Fetch LLM-generated batches — attention checks and AI tasks load in background
-          fetchAttentionChecks();
-          // Prefetch first two AI task batches and distractors while user reviews main task list
+          // Prefetch AI task batches and distractors while user reviews main task list
           _fetchAiDistractors();
           _ensureAiTaskBatch().then(() => _ensureAiTaskBatch());
-          await fetchUntilFull(_PAGE_SIZE);
+          // Fetch first task batch and attention checks in parallel.
+          // Attention checks get up to 8s (with retries); task batch runs concurrently so the widget
+          // doesn't block longer than whichever takes more time.
+          const attnTimeout = new Promise((r) => setTimeout(r, 8000));
+          await Promise.all([
+            Promise.race([fetchAttentionChecks(), attnTimeout]),
+            fetchUntilFull(_PAGE_SIZE),
+          ]);
           if (!allTasks.length) {
             widget.innerHTML = `<div style="padding:16px;color:#6b7280;font-size:13px;">Could not generate tasks. Please continue in chat.</div>`;
             return;
@@ -6194,6 +6162,117 @@
         } catch (e) {
           widget.innerHTML = `<div style="padding:16px;color:#6b7280;font-size:13px;">Failed to load tasks. Please continue in chat.</div>`;
         }
+      }
+
+      async function showAiTaskWidget() {
+        if (document.querySelector(".aitw-widget")) return;
+
+        try {
+          const res = await fetch(
+            `/api/session-state?session_token=${sessionToken}`,
+          );
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success && data.user_portrait) {
+              lastPortrait = data.user_portrait;
+              renderProfile(lastPortrait);
+            }
+          }
+        } catch (_) {}
+
+        const confirmedNames = dedupTasks(
+          (lastPortrait["Task Inventory"] || [])
+            .map((t) => String(t).trim())
+            .filter(Boolean),
+        );
+
+        _fetchAiDistractors();
+        _ensureAiTaskBatch().then(() => _ensureAiTaskBatch());
+
+        function esc(s) {
+          return String(s || "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+        }
+
+        renderAiTaskWidget(confirmedNames, function (selectedAiTasks) {
+          if (selectedAiTasks.length) {
+            const summaryItems = selectedAiTasks
+              .map(
+                (t, i) =>
+                  `<div class="tvw-summary-item"><span class="tvw-summary-num">${i + 1}</span><span class="tvw-summary-text">${esc(t.text)}</span></div>`,
+              )
+              .join("");
+            const summaryEl = document.createElement("div");
+            summaryEl.className = "task-validation-widget";
+            summaryEl.innerHTML =
+              `<div class="tvw-section-label">AI-related tasks (${selectedAiTasks.length})</div>` +
+              `<div class="tvw-summary-list">${summaryItems}</div>`;
+            document.getElementById("chat-box").appendChild(summaryEl);
+            scrollToBottom();
+          }
+          appendMessage(
+            "bot",
+            "Are there any other AI-related tasks — either new things AI has enabled you to do, or new responsibilities you've taken on because of AI — that weren't on that list?",
+            "ai-followup-" + Date.now(),
+          );
+          scrollToBottom();
+
+          const aiChatForm = document.getElementById("chat-form");
+          const _origSubmit = aiChatForm.onsubmit;
+          const aiExtraTasks = selectedAiTasks
+            .map((t) => String(t.text || "").trim())
+            .filter(Boolean);
+          let aiExtrasInFlight = false;
+
+          aiChatForm.onsubmit = async function (e) {
+            e.preventDefault();
+            if (isSessionCompleted) {
+              aiChatForm.onsubmit = _origSubmit;
+              return;
+            }
+            if (aiExtrasInFlight) return;
+            const text = chatInput.value.trim();
+            if (!text) return;
+            aiExtrasInFlight = true;
+            chatInput.value = "";
+            chatInput.style.height = "auto";
+            appendMessage("user", text, "ai-extra-u-" + Date.now());
+            showTyping();
+            scrollToBottom();
+            try {
+              const r = await fetch("/api/task-followup", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  session_token: sessionToken,
+                  task_text: text,
+                  prior_tasks: aiExtraTasks,
+                  phase: "ai_extras",
+                }),
+              });
+              const d = await r.json();
+              removeTyping();
+              if (d.task_name) aiExtraTasks.push(d.task_name);
+              if (d.done) {
+                if (d.reply)
+                  appendMessage("bot", d.reply, "ai-extra-b-" + Date.now());
+                scrollToBottom();
+                aiChatForm.onsubmit = _origSubmit;
+              } else {
+                if (d.reply)
+                  appendMessage("bot", d.reply, "ai-extra-b-" + Date.now());
+                scrollToBottom();
+              }
+            } catch (_) {
+              removeTyping();
+              aiChatForm.onsubmit = _origSubmit;
+            } finally {
+              aiExtrasInFlight = false;
+            }
+          };
+        });
       }
 
       async function showAiUsageWidget() {
@@ -6230,22 +6309,7 @@
         const taskInventory = dedupTasks(
           (lastPortrait["Task Inventory"] || []).filter(Boolean),
         );
-        let bucketNames = [];
-        try {
-          if (taskInventory.length >= 2) {
-            const result = await getOrFetchTaskTree(
-              taskInventory,
-              portraitGroupingFeedback(lastPortrait),
-            );
-            const tree =
-              result && Array.isArray(result.tree) ? result.tree : [];
-            bucketNames = tree
-              .map((n) => String((n && n.name) || "").trim())
-              .filter(Boolean);
-          }
-        } catch (_) {}
-
-        if (!bucketNames.length) bucketNames = taskInventory.slice();
+        let bucketNames = taskInventory.slice();
         bucketNames = dedupTasks(
           bucketNames.map((n) => capitalizeFieldValue(n)),
         ).slice(0, 4);
@@ -6382,7 +6446,12 @@
       }
 
       async function showFeedbackWidget() {
-        if (document.getElementById("feedback-widget")) return;
+        if (
+          _feedbackWidgetPending ||
+          document.getElementById("feedback-widget")
+        )
+          return;
+        _feedbackWidgetPending = true;
 
         // Refresh portrait so the task list reflects the most recent state
         try {
@@ -6401,8 +6470,7 @@
         const rawTasks = lastPortrait["Task Inventory"] || [];
         const tasks = dedupTasks(rawTasks);
 
-        // Show the widget immediately; fetch the task tree in the background.
-        let taskTree = tasks.map((name) => ({ name, children: [] }));
+        const taskTree = tasks.map((name) => ({ name, children: [] }));
 
         const widget = document.createElement("div");
         widget.id = "feedback-widget";
@@ -6551,7 +6619,6 @@
                 feedback: {
                   rating: rating,
                   tasks_shown: tasks,
-                  task_tree: taskTree,
                   tasks_performed: Array.from(checkedTasks),
                   tasks_not_performed: allTaskNames(taskTree).filter(
                     (n) => !checkedTasks.has(n),
@@ -6598,23 +6665,6 @@
 
         render();
         scrollToBottom();
-
-        // Fetch organized tree in background and re-render task list once ready.
-        // Shared with the time-split widget and profile panel via getOrFetchTaskTree.
-        if (tasks.length > 0) {
-          (async () => {
-            try {
-              const result = await getOrFetchTaskTree(
-                tasks,
-                portraitGroupingFeedback(lastPortrait),
-              );
-              if (result && Array.isArray(result.tree) && result.tree.length) {
-                taskTree = result.tree;
-                render();
-              }
-            } catch (e) {}
-          })();
-        }
       }
 
       let currentAudioEl = null;
@@ -6851,7 +6901,30 @@
                 if (!seenMessageIds.has(msg.id)) {
                   seenMessageIds.add(msg.id);
                   removeTyping();
+                  // Kick off batch 0 immediately so the LLM call is in-flight while
+                  // the widget renders and the session-state refresh completes.
+                  if (!_tvwBatch0Promise) {
+                    _tvwBatch0Promise = fetch("/api/generate-tasks", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        session_token: sessionToken,
+                        batch_index: 0,
+                        prior_tasks: [],
+                      }),
+                    })
+                      .then((r) => r.json())
+                      .catch(() => null);
+                  }
                   setTimeout(() => showTaskValidationWidget(), 50);
+                }
+                return;
+              }
+              if (msg.type === "ai_task_widget") {
+                if (!seenMessageIds.has(msg.id)) {
+                  seenMessageIds.add(msg.id);
+                  removeTyping();
+                  setTimeout(() => showAiTaskWidget(), 50);
                 }
                 return;
               }
@@ -6865,6 +6938,7 @@
               if (msg.type === "ai_usage_widget") {
                 if (!seenMessageIds.has(msg.id) && msg.id) {
                   seenMessageIds.add(msg.id);
+                  setTimeout(() => showAiUsageWidget(), 50);
                 }
                 return;
               }
@@ -6924,11 +6998,31 @@
           if (!fullHistory) {
             maybeShowProfileBuildingIndicatorBeforeConfirm();
           }
+          // As soon as the occupation is captured, prefetch batch 0 in the background
+          // so the LLM call is complete (or nearly done) by the time the TVW widget appears.
+          if (
+            data.job_description_ready &&
+            !_tvwBatch0Promise &&
+            !document.getElementById("task-validation-widget")
+          ) {
+            _tvwBatch0Promise = fetch("/api/generate-tasks", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                session_token: sessionToken,
+                batch_index: 0,
+                prior_tasks: [],
+              }),
+            })
+              .then((r) => r.json())
+              .catch(() => null);
+          }
           if (data.session_completed && !isSessionCompleted) {
             // If feedback widget or AI task widget is currently shown, don't end yet —
             // wait for the user to finish before finalizing.
             if (document.getElementById("feedback-widget")) return;
             if (document.querySelector(".aitw-widget")) return;
+            if (data.end_reason) sessionEndReason = data.end_reason;
             updateStatus("");
             isSessionCompleted = true;
             stopTimer();
@@ -7194,17 +7288,25 @@
         banner.className = "session-end-banner";
 
         const passed = attnFailed <= ATTN_CHECK_MAX_FAILS;
-        if (PROLIFIC_COMPLETION_CODE && passed) {
+        const timedOut = sessionEndReason === "timeout";
+
+        if (timedOut) {
           banner.innerHTML =
-            '<div class="end-text">Session ended</div>' +
-            '<div class="end-subtext">Thank you! Redirecting you back to Prolific…</div>';
+            '<div class="end-text">Session timed out</div>' +
+            '<div class="end-subtext">Your session ended due to inactivity. Your responses up to this point have been saved.</div>';
           document.querySelector(".chat-inner").appendChild(banner);
           scrollToBottom();
-          setTimeout(function () {
-            window.location.href =
-              "https://app.prolific.com/submissions/complete?cc=" +
-              PROLIFIC_COMPLETION_CODE;
-          }, 3000);
+        } else if (PROLIFIC_COMPLETION_CODE && passed) {
+          const prolificCompletionUrl =
+            "https://app.prolific.com/submissions/complete?cc=" +
+            encodeURIComponent(PROLIFIC_COMPLETION_CODE);
+          banner.innerHTML =
+            '<div class="end-text">Session ended</div>' +
+            '<div class="end-subtext">You\'re all set — your responses have been saved. Redirecting to Prolific…</div>' +
+            `<a class="prolific-complete-btn" href="${prolificCompletionUrl}">Return to Prolific</a>`;
+          document.querySelector(".chat-inner").appendChild(banner);
+          scrollToBottom();
+          setTimeout(() => { window.location.href = prolificCompletionUrl; }, 3000);
         } else if (!passed) {
           banner.innerHTML =
             '<div class="end-text">Session ended</div>' +
@@ -7214,7 +7316,7 @@
         } else {
           banner.innerHTML =
             '<div class="end-text">Session ended</div>' +
-            '<div class="end-subtext">Thank you for your participation!</div>';
+            '<div class="end-subtext">You\'re all set — your responses have been saved.</div>';
           document.querySelector(".chat-inner").appendChild(banner);
           scrollToBottom();
         }
@@ -7249,14 +7351,31 @@
               type: "CONVERSATION",
             }),
           });
+          if (!r.ok) {
+            removeTyping();
+            updateStatus(
+              r.status === 401
+                ? "Your session needs to be refreshed. Please reload the page."
+                : "Message failed to send. You can try again.",
+            );
+            return;
+          }
           const result = await r.json();
-          if (!result.success && result.session_completed)
-            updateStatus("Session has ended");
+          if (!result.success) {
+            removeTyping();
+            updateStatus(
+              result.session_completed
+                ? "Session has ended"
+                : result.error || "Message failed to send. You can try again.",
+            );
+          }
         } catch (e) {
           if (e && e.name === "AbortError") {
             updateStatus("Request timed out. You can press Enter again.");
-            removeTyping();
+          } else {
+            updateStatus("Message failed to send. You can try again.");
           }
+          removeTyping();
         } finally {
           clearTimeout(timeoutId);
           sendInFlight = false;
@@ -7350,8 +7469,7 @@
       let lastPortrait = {};
       let lastSessionTopics = [];
       let profileShown = false;
-      const TASK_GROUPING_FEEDBACK_KEY = "Task Grouping Feedback";
-      let taskTreeCache = { signature: null, tree: null };
+
       let profileLoadSignalDepth = 0;
       let profileLoadBadgeSnapshot = null;
       let profileLoadSignalStartedAt = 0;
@@ -7361,12 +7479,6 @@
       let profileAutosizeRefreshTimer = null;
       let profileBuildingIndicatorShownAt = 0;
       const PROFILE_BUILDING_INDICATOR_MIN_VISIBLE_MS = 320;
-      // When a time-split widget is open, this holds the tree it resolved so the
-      // profile panel shows the exact same groupings. Cleared when the widget submits.
-      let activeWidgetTree = null;
-      // Track in-flight requests by signature so concurrent callers share one fetch.
-      const taskTreeInflight = new Map();
-
       function refreshProfileInputHeights() {
         const body = document.getElementById("profile-body");
         if (!body) return;
@@ -7463,177 +7575,11 @@
         };
       }
 
-      function normalizeGroupingFeedback(text) {
-        return String(text || "")
-          .trim()
-          .replace(/\s+/g, " ")
-          .slice(0, 400);
-      }
-
-      function portraitGroupingFeedback(portrait) {
-        return normalizeGroupingFeedback(
-          portrait && portrait[TASK_GROUPING_FEEDBACK_KEY],
-        );
-      }
-
-      // Canonical key for the task set used by the organize-tasks cache.
-      // Runs the same dedup / normalization the widgets use so that any
-      // caller (profile panel, time-split widget, feedback widget) hashing
-      // the same underlying inventory gets the same key.
-      function taskInventorySignature(items, groupingFeedback = "") {
-        const deduped = dedupTasks(items || []);
-        const taskSig = deduped
-          .map((s) => normalizeTaskName(s))
-          .filter(Boolean)
-          .sort()
-          .join("||");
-        const feedbackSig = normalizeGroupingFeedback(groupingFeedback)
-          .toLowerCase()
-          .trim();
-        return `${feedbackSig}##${taskSig}`;
-      }
-
-      // Single source of truth for the organized task tree.
-      // All callers (profile panel, time-split widget, feedback widget) go
-      // through this so they always render the same hierarchy for the same
-      // task set. The backend additionally caches results per-signature.
-      function getOrFetchTaskTree(items, groupingFeedback = "") {
-        // Always send the deduped list so the backend cache key matches
-        // regardless of which caller (profile / widget) initiated the fetch.
-        const payload = dedupTasks(items || []);
-        const feedback = normalizeGroupingFeedback(groupingFeedback);
-        const sig = taskInventorySignature(payload, feedback);
-        if (!sig || payload.length < 2) {
-          return Promise.resolve({ sig, tree: [] });
-        }
-        if (
-          taskTreeCache.signature === sig &&
-          Array.isArray(taskTreeCache.tree)
-        ) {
-          return Promise.resolve({ sig, tree: taskTreeCache.tree });
-        }
-        // If the portrait already carries a user-authored grouping whose leaves
-        // match the current task set, honor it verbatim — don't re-shuffle via LLM.
-        const savedTree =
-          lastPortrait && Array.isArray(lastPortrait["Task Grouping Tree"])
-            ? lastPortrait["Task Grouping Tree"]
-            : null;
-        if (savedTree && savedTree.length > 0) {
-          const leafNames = flattenTreeNodes(savedTree)
-            .map((n) => normalizeTaskName(n.name || ""))
-            .filter(Boolean)
-            .sort();
-          const wantNames = payload
-            .map((t) => normalizeTaskName(t))
-            .filter(Boolean)
-            .sort();
-          if (
-            leafNames.length === wantNames.length &&
-            leafNames.every((v, i) => v === wantNames[i])
-          ) {
-            taskTreeCache = { signature: sig, tree: savedTree };
-            return Promise.resolve({ sig, tree: savedTree });
-          }
-        }
-        if (taskTreeInflight.has(sig)) {
-          return taskTreeInflight.get(sig);
-        }
-        const p = (async () => {
-          try {
-            const res = await fetch("/api/organize-tasks", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                session_token: sessionToken,
-                tasks: payload,
-                grouping_feedback: feedback,
-              }),
-            });
-            if (!res.ok) return { sig, tree: [] };
-            const data = await res.json();
-            if (!data || !data.success || !Array.isArray(data.tree))
-              return { sig, tree: [] };
-            taskTreeCache = { signature: sig, tree: data.tree };
-            return { sig, tree: data.tree };
-          } catch (_) {
-            return { sig, tree: [] };
-          } finally {
-            taskTreeInflight.delete(sig);
-          }
-        })();
-        taskTreeInflight.set(sig, p);
-        return p;
-      }
-
-      async function fetchTaskTree(items) {
-        const portraitForRender =
-          profileConfirmPending && profileConfirmSnapshot
-            ? profileConfirmSnapshot
-            : lastPortrait;
-        const feedback = portraitGroupingFeedback(portraitForRender);
-        const result = await getOrFetchTaskTree(items, feedback);
-        if (!result || !Array.isArray(result.tree) || result.tree.length === 0)
-          return;
-        const currentFeedback = portraitGroupingFeedback(portraitForRender);
-        const currentSig = taskInventorySignature(
-          portraitForRender["Task Inventory"] || [],
-          currentFeedback,
-        );
-        if (currentSig !== result.sig) {
-          // Portrait changed while we were fetching — re-run with current tasks.
-          const currentItems = portraitForRender["Task Inventory"] || [];
-          if (currentItems.length >= 2) fetchTaskTree(currentItems);
-          return;
-        }
-        renderProfile(portraitForRender);
-      }
-
-      function annotateTree(nodes, prioritySet) {
-        for (const n of nodes || []) {
-          const childHasPriority = annotateTree(n.children || [], prioritySet);
-          const selfPriority =
-            !n.is_group &&
-            prioritySet.has(
-              String(n.name || "")
-                .trim()
-                .toLowerCase(),
-            );
-          n._isPriority = selfPriority;
-          n._hasPriority = selfPriority || childHasPriority;
-        }
-        (nodes || []).sort((a, b) => {
-          if ((b._hasPriority ? 1 : 0) !== (a._hasPriority ? 1 : 0)) {
-            return (b._hasPriority ? 1 : 0) - (a._hasPriority ? 1 : 0);
-          }
-          if ((a.is_group ? 1 : 0) !== (b.is_group ? 1 : 0)) {
-            return (a.is_group ? 1 : 0) - (b.is_group ? 1 : 0);
-          }
-          return 0;
-        });
-        return (nodes || []).some((n) => n._hasPriority);
-      }
-
-      function flattenTreeNodes(nodes) {
-        const leaves = [];
-        for (const n of nodes || []) {
-          if (n.is_group) {
-            leaves.push(...flattenTreeNodes(n.children || []));
-          } else {
-            leaves.push(n);
-          }
-        }
-        return leaves;
-      }
-
-      function renderTaskTreeNodes(nodes, depth, key, prioritySet) {
-        if (!Array.isArray(nodes) || nodes.length === 0) return "";
-        const leaves =
-          depth === 0
-            ? flattenTreeNodes(nodes)
-            : nodes.filter((n) => !n.is_group);
-        const html = leaves
-          .map((n) => {
-            const name = String(n.name || "").trim();
+      function renderTaskListItems(items, key, prioritySet) {
+        if (!Array.isArray(items) || items.length === 0) return "";
+        const html = items
+          .map((name) => {
+            name = String(name || "").trim();
             if (!name) return "";
             const isPriority = prioritySet.has(name.toLowerCase());
             const liClass = ["profile-task-item", isPriority ? "priority" : ""]
@@ -7707,10 +7653,7 @@
                     profileConfirmSnapshot = JSON.parse(
                       JSON.stringify(lastPortrait || {}),
                     );
-                    renderProfile(profileConfirmSnapshot);
-                    await ensureProfileBuildingIndicatorLeadIn();
-                    if (!profileConfirmPending) return;
-                    showProfilePanel();
+                    resolveProfileConfirmGate();
                     break;
                   }
                 }
@@ -8052,8 +7995,7 @@
           (f) =>
             f.key !== "Priority Tasks" &&
             f.key !== "Time Allocation" &&
-            f.key !== "Task Grouping Tree" &&
-            f.key !== TASK_GROUPING_FEEDBACK_KEY,
+            f.key !== "Task Grouping Tree",
         );
         const filledCount = visibleFields.filter((f) => f.filled).length;
         setBadge(
@@ -8074,8 +8016,7 @@
           if (
             key === "Priority Tasks" ||
             key === "Time Allocation" ||
-            key === "Task Grouping Tree" ||
-            key === TASK_GROUPING_FEEDBACK_KEY
+            key === "Task Grouping Tree"
           )
             continue;
           const tagId = key.replace(/ /g, "-");
@@ -8128,54 +8069,12 @@
 
             let listHtml = "";
             if (isTaskField) {
-              const sig = taskInventorySignature(
-                items,
-                portraitGroupingFeedback(displayPortrait),
-              );
-              // Prefer the active widget's tree so the profile always shows the
-              // same groupings as the open time-split widget.
-              const resolvedTree =
-                activeWidgetTree &&
-                activeWidgetTree.sig === sig &&
-                Array.isArray(activeWidgetTree.tree)
-                  ? activeWidgetTree.tree
-                  : taskTreeCache.signature === sig &&
-                      Array.isArray(taskTreeCache.tree)
-                    ? taskTreeCache.tree
-                    : null;
-              const haveTree = !!resolvedTree;
-              if (haveTree) {
-                const treeCopy = JSON.parse(JSON.stringify(resolvedTree));
-                annotateTree(treeCopy, prioritySet);
-                listHtml = renderTaskTreeNodes(treeCopy, 0, key, prioritySet);
-              } else {
-                const indexed = items.map((item, i) => ({
-                  item,
-                  origIdx: i,
-                  isPriority: prioritySet.has(
-                    String(item).trim().toLowerCase(),
-                  ),
-                }));
-                indexed.sort((a, b) => {
-                  if (a.isPriority !== b.isPriority)
-                    return a.isPriority ? -1 : 1;
-                  return a.origIdx - b.origIdx;
-                });
-                listHtml = `<ul class="profile-task-list" id="tags-${tagId}">
-                                ${indexed
-                                  .map(({ item, isPriority }) => {
-                                    return `<li class="profile-task-item${isPriority ? " priority" : ""}">
-                                        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;width:100%;">
-                                            <span class="profile-task-text"><span>${escapeHtml(capitalizeFieldValue(item))}</span></span>
-                                            <button class="profile-tag-remove" data-key="${escapeAttr(key)}" data-task-name="${escapeAttr(item)}" title="Remove">×</button>
-                                        </div>
-                                    </li>`;
-                                  })
-                                  .join("")}
-                            </ul>`;
-                // Kick off the organize-tasks fetch in the background; on success we re-render with the tree.
-                fetchTaskTree(items);
-              }
+              const sorted = items.slice().sort((a, b) => {
+                const aPri = prioritySet.has(String(a).trim().toLowerCase());
+                const bPri = prioritySet.has(String(b).trim().toLowerCase());
+                return aPri === bPri ? 0 : aPri ? -1 : 1;
+              });
+              listHtml = renderTaskListItems(sorted, key, prioritySet);
             } else {
               const indexed = items.map((item, i) => ({ item, origIdx: i }));
               listHtml = `<ul class="profile-task-list" id="tags-${tagId}">
@@ -8279,8 +8178,6 @@
                       delete lastPortrait["Time Allocation"][k];
                   }
                 }
-                // Invalidate the cached tree so the next render refetches the grouped layout.
-                taskTreeCache = { signature: null, tree: null };
               }
               renderProfile(lastPortrait);
             });
@@ -8316,9 +8213,6 @@
         if (!val) return;
         if (!lastPortrait[key]) lastPortrait[key] = [];
         lastPortrait[key].push(capitalizeFieldValue(val));
-        if (key === "Task Inventory") {
-          taskTreeCache = { signature: null, tree: null };
-        }
         renderProfile(lastPortrait);
       }
 
@@ -8420,48 +8314,12 @@
         return 0;
       }
 
-      // Get deliverables for the progress panel:
-      // 1. portrait["Deliverables"] flat list → each is a card, tasks come from Task Grouping Tree children
-      // 2. Fallback: Task Grouping Tree top-level nodes
       function _getPortraitDeliverables(portrait) {
-        // Build a name→tasks lookup from the task grouping tree
-        const savedTree = portrait && portrait["Task Grouping Tree"];
-        const treeSource =
-          Array.isArray(savedTree) && savedTree.length > 0
-            ? savedTree
-            : taskTreeCache &&
-                Array.isArray(taskTreeCache.tree) &&
-                taskTreeCache.tree.length > 0
-              ? taskTreeCache.tree
-              : [];
-        const treeMap = {};
-        for (const node of treeSource) {
-          const name = (node.name || "").trim().toLowerCase();
-          if (name)
-            treeMap[name] = Array.isArray(node.children)
-              ? node.children
-                  .map((c) => (typeof c === "string" ? c : c.name || ""))
-                  .filter(Boolean)
-              : [];
-        }
-
-        // Prefer the explicit Deliverables list
         const delivList = portrait && portrait["Deliverables"];
-        if (Array.isArray(delivList) && delivList.length > 0) {
-          return delivList.filter(Boolean).map((name) => ({
-            name: String(name),
-            tasks: treeMap[String(name).trim().toLowerCase()] || [],
-          }));
-        }
-
-        // Fallback: use Task Grouping Tree nodes directly
-        return treeSource.map((node) => ({
-          name: node.name || "",
-          tasks: Array.isArray(node.children)
-            ? node.children
-                .map((c) => (typeof c === "string" ? c : c.name || ""))
-                .filter(Boolean)
-            : [],
+        if (!Array.isArray(delivList) || delivList.length === 0) return [];
+        return delivList.filter(Boolean).map((name) => ({
+          name: String(name),
+          tasks: [],
         }));
       }
 

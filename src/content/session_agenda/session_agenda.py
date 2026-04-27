@@ -49,6 +49,9 @@ class SessionAgenda:
         # Participant's available time for this session (set at session start)
         self.available_time_minutes: Optional[int] = data.get("available_time_minutes")
 
+        # How the session ended: "completed", "timeout", "user_ended"
+        self.end_reason: str = data.get("end_reason", "completed")
+
     @classmethod
     def load_from_file(cls, file_path):
         """Loads a SessionAgenda from a JSON file."""
@@ -325,6 +328,7 @@ class SessionAgenda:
             "last_week_snapshot": self.last_week_snapshot,
             "strategic_priorities": self.strategic_priorities,
             "emergent_insights": self.emergent_insights,
+            "end_reason": self.end_reason,
         }
         
         with open(file_path, 'w', encoding='utf-8') as f:

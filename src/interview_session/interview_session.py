@@ -248,6 +248,12 @@ class InterviewSession:
         # Task validation widget (shown after job-description answer in intake)
         self._task_validation_widget_sent = False
 
+        # AI usage widget (shown after the first AI-adoption open question is answered)
+        self._ai_usage_widget_sent = False
+
+        # AI task widget (shown immediately after task inventory is complete)
+        self._ai_task_widget_sent = False
+
         # Report auto-update states
         self.auto_report_update_in_progress = False
         self.memory_threshold = int(
@@ -275,8 +281,6 @@ class InterviewSession:
         # memory count prevents re-running when no new memories were added.
         self._portrait_update_lock = asyncio.Lock()
         self._portrait_update_memory_count = 0
-        # Optional callback injected by the web app to prewarm task-tree cache.
-        self._task_tree_prewarm_callback: Optional[Callable[[List[str], str], bool]] = None
 
         # User in the interview session
         if interaction_mode == 'agent':
@@ -588,6 +592,7 @@ class InterviewSession:
             MessageType.CONVERSATION,
             MessageType.TIME_SPLIT_WIDGET,
             MessageType.AI_USAGE_WIDGET,
+            MessageType.AI_TASK_WIDGET,
             MessageType.FEEDBACK_WIDGET,
             MessageType.PROFILE_CONFIRM_WIDGET,
             MessageType.TASK_VALIDATION_WIDGET,
@@ -601,6 +606,7 @@ class InterviewSession:
             MessageType.CONVERSATION,
             MessageType.TIME_SPLIT_WIDGET,
             MessageType.AI_USAGE_WIDGET,
+            MessageType.AI_TASK_WIDGET,
             MessageType.FEEDBACK_WIDGET,
             MessageType.PROFILE_CONFIRM_WIDGET,
             MessageType.TASK_VALIDATION_WIDGET,
@@ -611,6 +617,7 @@ class InterviewSession:
             if message_type not in (
                 MessageType.TIME_SPLIT_WIDGET,
                 MessageType.AI_USAGE_WIDGET,
+                MessageType.AI_TASK_WIDGET,
                 MessageType.FEEDBACK_WIDGET,
                 MessageType.PROFILE_CONFIRM_WIDGET,
                 MessageType.TASK_VALIDATION_WIDGET,
@@ -666,6 +673,7 @@ class InterviewSession:
                     )
                     self.session_in_progress = False
                     self._session_timeout = True
+                    self.session_agenda.end_reason = "timeout"
                     break
 
         except Exception as e:
@@ -960,8 +968,6 @@ class InterviewSession:
                 "Task Inventory",
                 "Priority Tasks",
                 "Time Allocation",
-                "Task Grouping Tree",
-                "Task Grouping Feedback",
             )
             for field in task_fields:
                 if isinstance(current_portrait, dict) and field in current_portrait:
@@ -1012,38 +1018,6 @@ class InterviewSession:
 
                 portrait_data["Task Inventory"] = merge_tasks_by_action_object(canonical)
 
-        # Carry forward the user-authored task hierarchy (drag-and-drop regroupings
-        # saved via the time-split widget) if its leaves still match the new
-        # inventory. When the inventory shifts, drop it so the LLM organizer can
-        # rebuild a tree that reflects the new tasks.
-        if isinstance(portrait_data, dict) and isinstance(current_portrait, dict):
-            saved_tree = current_portrait.get("Task Grouping Tree")
-            if isinstance(saved_tree, list) and saved_tree:
-                def _collect_leaves(nodes):
-                    out: List[str] = []
-                    for n in nodes or []:
-                        if not isinstance(n, dict):
-                            continue
-                        children = n.get("children") or []
-                        if isinstance(children, list) and children:
-                            out.extend(_collect_leaves(children))
-                        else:
-                            name = str(n.get("name") or "").strip()
-                            if name:
-                                out.append(name)
-                    return out
-
-                def _norm(s: str) -> str:
-                    return " ".join(str(s or "").strip().lower().split())
-
-                leaf_keys = {_norm(t) for t in _collect_leaves(saved_tree) if _norm(t)}
-                inv = portrait_data.get("Task Inventory") or []
-                want_keys = {_norm(t) for t in inv if _norm(t)}
-                if leaf_keys and leaf_keys == want_keys:
-                    portrait_data["Task Grouping Tree"] = saved_tree
-                else:
-                    portrait_data.pop("Task Grouping Tree", None)
-
         # Update the in-memory portrait
         self.session_agenda.user_portrait = portrait_data
 
@@ -1059,31 +1033,6 @@ class InterviewSession:
         SessionLogger.log_to_file(
             "execution_log", f"[PORTRAIT] User portrait updated ({len(memories)} memories)"
         )
-        asyncio.create_task(self._prewarm_task_tree_cache_from_portrait())
-
-    async def _prewarm_task_tree_cache_from_portrait(self) -> None:
-        """Seed organize-tasks cache after portrait updates."""
-        callback = getattr(self, "_task_tree_prewarm_callback", None)
-        if not callable(callback):
-            return
-        portrait = getattr(self.session_agenda, "user_portrait", {})
-        if not isinstance(portrait, dict):
-            return
-        tasks = [str(t).strip() for t in (portrait.get("Task Inventory") or []) if str(t).strip()]
-        if len(tasks) < 2:
-            return
-        grouping_feedback = str(portrait.get("Task Grouping Feedback", "") or "")
-        try:
-            cached = await asyncio.to_thread(callback, tasks, grouping_feedback)
-            SessionLogger.log_to_file(
-                "execution_log",
-                f"[TASK_TREE] Prewarm complete tasks={len(tasks)} cached={bool(cached)}",
-            )
-        except Exception as e:
-            SessionLogger.log_to_file(
-                "execution_log",
-                f"[TASK_TREE] Prewarm failed: {e}",
-            )
 
     async def get_session_memories(self, include_processed=True) -> List[Memory]:
         """Get memories added during this session
@@ -1395,6 +1344,44 @@ class InterviewSession:
         SessionLogger.log_to_file(
             "execution_log",
             "[SESSION] Session ended with thank-you message (no feedback widget)."
+        )
+
+    def trigger_ai_usage_widget(self):
+        """Emit the AI usage widget after the AI open question has been answered.
+
+        Safe to call multiple times — only the first call emits the widget.
+        """
+        if self._ai_usage_widget_sent:
+            return
+        self._ai_usage_widget_sent = True
+        self._last_message_time = datetime.now()
+        self.add_message_to_chat_history(
+            role="Interviewer",
+            content="",
+            message_type=MessageType.AI_USAGE_WIDGET,
+        )
+        SessionLogger.log_to_file(
+            "execution_log",
+            "[AI_USAGE] AI usage widget emitted."
+        )
+
+    def trigger_ai_task_widget(self):
+        """Emit the AI task selection widget after task inventory is complete.
+
+        Safe to call multiple times — only the first call emits the widget.
+        """
+        if self._ai_task_widget_sent:
+            return
+        self._ai_task_widget_sent = True
+        self._last_message_time = datetime.now()
+        self.add_message_to_chat_history(
+            role="Interviewer",
+            content="",
+            message_type=MessageType.AI_TASK_WIDGET,
+        )
+        SessionLogger.log_to_file(
+            "execution_log",
+            "[AI_TASK] AI task widget emitted."
         )
 
     def trigger_profile_confirm_widget(self):

@@ -245,6 +245,12 @@
           input.value = nextId;
           if (valueEl) valueEl.textContent = nextId;
         }
+        // Auto-submit immediately if a Prolific PID was injected server-side
+        const prolificInput = document.querySelector('input[name="prolific_pid"]');
+        if (prolificInput && prolificInput.value.trim()) {
+          if (form) form.submit();
+          return;
+        }
         if (input && !input.value.trim()) syncId(randomNumericId());
         if (btn && input) {
           btn.addEventListener("click", function () {
