@@ -2539,7 +2539,7 @@ def task_followup():
         "  Do NOT use 'Thanks so much', 'walking me through', or 'your day'. "
         "  Return JSON: {\"reply\": \"...\", \"done\": true}\n\n"
         )
-        f"CASE B — {new_task_scope}:\n"
+        + f"CASE B — {new_task_scope}:\n"
         "  Ask exactly one follow-up question about that task.\n"
         "  The question must show understanding by anchoring to a concrete detail from their latest message.\n"
         "  Do NOT use generic filler phrases like 'Got it', 'Good one', 'Thanks for sharing', or 'Noted'.\n"
