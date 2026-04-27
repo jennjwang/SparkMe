@@ -6037,6 +6037,7 @@
               renderAiTaskWidget(_confirmedNames, function (selectedAiTasks, aiAttnFailed) {
                 // End session immediately if AI attention check was failed
                 if (aiAttnFailed > 0) {
+                  attnFailed += aiAttnFailed;
                   fetch("/api/submit-task-validation", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -6251,6 +6252,7 @@
 
         renderAiTaskWidget(confirmedNames, function (selectedAiTasks, aiAttnFailed) {
           if (aiAttnFailed > 0) {
+            attnFailed += aiAttnFailed;
             fetch("/api/submit-task-validation", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
