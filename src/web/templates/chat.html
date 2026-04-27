@@ -2506,6 +2506,7 @@
         color: #111827;
       }
       .tvw-progress-text {
+        display: none;
         font-size: 12px;
         color: #6b7280;
         font-weight: 500;
@@ -2524,6 +2525,7 @@
         list-style: disc;
       }
       .tvw-progress-track {
+        display: none;
         height: 4px;
         background: #f3f4f6;
         border-radius: 99px;
@@ -5978,7 +5980,10 @@
                 _aiOpenDialogue.push({ role: "Participant", content: text });
                 if (d.reply) {
                   appendMessage("bot", d.reply, "ai-open-b-" + Date.now());
-                  _aiOpenDialogue.push({ role: "Interviewer", content: d.reply });
+                  _aiOpenDialogue.push({
+                    role: "Interviewer",
+                    content: d.reply,
+                  });
                 }
                 scrollToBottom();
                 if (d.done) {
@@ -5997,21 +6002,21 @@
             // 4. AI task widget (called after user answers)
             const _confirmedNames = confirmed.map((t) => t.text);
             async function showAiWidgetAfterOpenQuestion(openAnswer) {
-              let introMsg = "Here are some AI-related tasks that may fit your work. Do any of these apply?";
+              let introMsg =
+                "Here are some AI-related tasks that may fit your work. Do any of these apply?";
               try {
                 const r = await fetch("/api/ai-widget-intro", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ session_token: sessionToken, open_answer: openAnswer || "" }),
+                  body: JSON.stringify({
+                    session_token: sessionToken,
+                    open_answer: openAnswer || "",
+                  }),
                 });
                 const d = await r.json();
                 if (d.success && d.message) introMsg = d.message;
               } catch (_) {}
-              appendMessage(
-                "bot",
-                introMsg,
-                "aitw-intro-" + Date.now(),
-              );
+              appendMessage("bot", introMsg, "aitw-intro-" + Date.now());
               scrollToBottom();
               renderAiTaskWidget(_confirmedNames, function (selectedAiTasks) {
                 // 5. Show selected AI tasks summary (if any), then ask about others
@@ -7302,15 +7307,17 @@
             encodeURIComponent(PROLIFIC_COMPLETION_CODE);
           banner.innerHTML =
             '<div class="end-text">Session ended</div>' +
-            '<div class="end-subtext">You\'re all set — your responses have been saved. Redirecting to Prolific…</div>' +
+            '<div class="end-subtext">You\'re all set — your responses have been saved.</div>' +
             `<a class="prolific-complete-btn" href="${prolificCompletionUrl}">Return to Prolific</a>`;
           document.querySelector(".chat-inner").appendChild(banner);
           scrollToBottom();
-          setTimeout(() => { window.location.href = prolificCompletionUrl; }, 3000);
+          setTimeout(() => {
+            window.location.href = prolificCompletionUrl;
+          }, 3000);
         } else if (!passed) {
           banner.innerHTML =
             '<div class="end-text">Session ended</div>' +
-            "<div class=\"end-subtext\">Unfortunately, we weren't able to include your responses in this study. You don't need to do anything else.</div>";
+            '<div class="end-subtext">Unfortunately, we weren\'t able to include your responses in this study.</div>';
           document.querySelector(".chat-inner").appendChild(banner);
           scrollToBottom();
         } else {

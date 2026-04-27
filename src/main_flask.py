@@ -232,6 +232,8 @@ active_sessions: Dict[str, SessionWrapper] = {}
 session_audio_cache: Dict[str, Dict[str, object]] = {}
 # Rolling dialogue state for /api/task-followup, keyed by session + phase.
 task_followup_history_by_session: Dict[str, Dict[str, list[Dict[str, str]]]] = {}
+# Tracks follow-up turn count since last task extraction, per session per phase
+task_followup_turns_by_session: Dict[str, Dict[str, int]] = {}
 # Tracks how many chat_history entries have been delivered for agent-mode sessions
 chat_history_offsets: Dict[str, int] = {}
 # Pending turn metadata keyed by session token -> turn id.
@@ -2514,6 +2516,15 @@ def task_followup():
 
     history_block = _format_task_followup_history(history)
 
+    # Track follow-up turns per task so we can cap at 2
+    followup_turns_bucket = task_followup_turns_by_session.setdefault(session_token, {})
+    followup_turns = followup_turns_bucket.get(phase, 0)
+    followup_limit_note = (
+        f"IMPORTANT: This is follow-up turn {followup_turns + 1} for the current task. "
+        f"You may ask at most 2 follow-up turns per task. "
+        f"{'You have reached the limit — classify as CASE C and immediately redirect to asking what else they do.' if followup_turns >= 2 else 'After 2 follow-up turns, redirect to asking what else.'}\n\n"
+    )
+
     prior_block = ""
     if prior_tasks:
         prior_block = f"{collected_label}:\n" + "\n".join(f"- {t}" for t in prior_tasks) + "\n\n"
@@ -2525,6 +2536,7 @@ def task_followup():
         f"{prior_block}"
         f"Recent task-followup conversation (oldest to newest):\n{history_block}\n\n"
         f"Participant's latest message: \"{task_text}\"\n\n"
+        f"{followup_limit_note}"
         "Decide which case applies:\n\n"
         "CASE A — participant is DONE adding tasks:\n"
         "  Only classify as DONE for explicit done signals: 'no', 'nope', 'that's it', "
@@ -2596,6 +2608,12 @@ def task_followup():
     if not done and "?" not in reply:
         reply = f"{reply.rstrip('. ')}. {other_tasks_question}"
 
+    # Update follow-up turn counter: reset on new task, increment on follow-up
+    if task_name:
+        followup_turns_bucket[phase] = 0
+    elif not done:
+        followup_turns_bucket[phase] = followup_turns + 1
+
     history.append({"role": "Participant", "content": task_text})
     if reply:
         history.append({"role": "Interviewer", "content": reply})
@@ -2611,6 +2629,7 @@ def task_followup():
             _end()
         # End of post-task flow; clear rolling state.
         task_followup_history_by_session.pop(session_token, None)
+        task_followup_turns_by_session.pop(session_token, None)
 
     return jsonify({'success': True, 'reply': reply, 'task_name': task_name, 'done': done})
 
@@ -2637,6 +2656,7 @@ def submit_task_validation():
     iv = wrapper.interview_session
     # Reset post-validation probing dialogue state for this session.
     task_followup_history_by_session.pop(session_token, None)
+    task_followup_turns_by_session.pop(session_token, None)
     all_tasks = [str(t).strip() for t in validated_tasks + extra_tasks if str(t).strip()]
     wishlist = [str(t).strip() for t in wishlist_tasks if str(t).strip()]
 
@@ -2761,6 +2781,7 @@ def cleanup_old_sessions():
             to_remove.append(token)
             session_audio_cache.pop(token, None)
             task_followup_history_by_session.pop(token, None)
+            task_followup_turns_by_session.pop(token, None)
             pending_turns_by_session.pop(token, None)
             delivered_turn_messages_by_session.pop(token, None)
 

@@ -356,7 +356,7 @@ Each question must addresses at least one sub-topic and should primarily serve O
 
 1. **Fill Coverage Gaps**
    - Target a specific subtopic that is not yet fully covered.
-   - Use questions that elicit concrete examples or detailed explanations.
+   - Use broad, open-ended questions that let the participant respond at their own level of detail — do NOT prompt for examples, procedures, or step-by-step explanations.
 
 2. **Explore Emergent Insights**
    - Follow up on counter-intuitive, uncommon, or surprising ideas already mentioned by the user.
@@ -367,7 +367,8 @@ Each question must addresses at least one sub-topic and should primarily serve O
 For EACH question:
 
 - The question must be open-ended and conversational.
-- Prefer questions that elicit specific, concrete answers aligned with the subtopic's `coverage_criteria`.
+- Prefer questions that satisfy the subtopic's `coverage_criteria` in a single broad turn — avoid questions that require multiple follow-ups to reach the criterion.
+- Do NOT ask for specific examples, detailed procedures, frequencies, or step-by-step explanations unless the coverage_criteria explicitly require a number or frequency.
 - Avoid yes/no questions.
 - Avoid introducing assumptions or facts not stated by the user.
 - **Non-leading**: Do NOT presuppose an answer, imply a preferred response, or embed assumptions (e.g., do NOT ask "Was that difficult?" — ask "How did that go?").
