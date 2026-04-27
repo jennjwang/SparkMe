@@ -9,7 +9,7 @@
         "coverage_criteria": [
           "The participant has named their job title or role (e.g. 'nurse', 'software engineer', 'PhD student'). Any brief mention is sufficient — do not probe for more detail.",
           "The participant has indicated approximately how long they have been in this profession or field — a rough range is sufficient (e.g. 'a few years', '10 years', 'just started'). Any single duration answer (even a short tenure like '1 year') satisfies this criterion. Do NOT ask a follow-up zooming out to broader experience in the same field.",
-          "The participant has named at least one type of work they regularly do (a brief high-level mention is sufficient — do not probe for additional tasks here)."
+          "The participant has named a task they regularly do (a brief high-level mention is sufficient — do not probe for additional tasks here)."
         ]
       }
     ]

@@ -1740,7 +1740,7 @@ class Interviewer(BaseAgent, Participant):
                 self.interview_session.add_message_to_chat_history(
                     role="Interviewer",
                     content=(
-                        "Based on what you've told me, here are some tasks I think you might be doing right now (Note: these are not tasks you might do down the road, or that are just typical for your role in general). Do these sound right?"
+                        "Based on what you've told me, here are some tasks I think you might be doing right now. Do these sound right?\n\n<span style='font-size:0.82em;opacity:0.55;font-style:italic;'>Note: these are existing tasks, NOT tasks you might do in the future, or tasks that are just typical for your role in general.</span>"
                     ),
                 )
                 asyncio.create_task(

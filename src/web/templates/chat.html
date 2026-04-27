@@ -5751,6 +5751,19 @@
             return;
           }
 
+          // Guarantee at least one attention check regardless of task count
+          if (
+            !_aiWidgetTasks.some((t) => t.isAttentionCheck) &&
+            _aiPendingDistractors.length
+          ) {
+            if (_aiDistractorsFetching) await _aiDistractorsFetching;
+            if (_aiPendingDistractors.length) {
+              const attn = _aiPendingDistractors.shift();
+              const insertAt = Math.floor(Math.random() * (_aiWidgetTasks.length + 1));
+              _aiWidgetTasks.splice(insertAt, 0, attn);
+            }
+          }
+
           const AITW_PAGE = 3;
           const AITW_MIN_DONE = 9;
           let pageStart = 0;
@@ -5817,8 +5830,11 @@
                   text: _aiWidgetTasks[i].text,
                   description: _aiWidgetTasks[i].description,
                 }));
+              const aiAttnFailed = [...selectedIndices].filter(
+                (i) => _aiWidgetTasks[i].isAttentionCheck,
+              ).length;
               aiWidget.remove();
-              onDone(selected);
+              onDone(selected, aiAttnFailed);
             }
 
             aiWidget
@@ -6018,7 +6034,39 @@
               } catch (_) {}
               appendMessage("bot", introMsg, "aitw-intro-" + Date.now());
               scrollToBottom();
-              renderAiTaskWidget(_confirmedNames, function (selectedAiTasks) {
+              renderAiTaskWidget(_confirmedNames, function (selectedAiTasks, aiAttnFailed) {
+                // End session immediately if AI attention check was failed
+                if (aiAttnFailed > 0) {
+                  fetch("/api/submit-task-validation", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      session_token: sessionToken,
+                      tasks: [],
+                      extra_tasks: [],
+                      wishlist_tasks: [],
+                      attn_failed: aiAttnFailed,
+                      attn_total: aiAttnFailed,
+                    }),
+                  })
+                    .then((r) => r.json())
+                    .then((result) => {
+                      if (result.attn_disqualified) {
+                        isSessionCompleted = true;
+                        stopTimer();
+                        updateEndSessionButton();
+                        disableChatInputs();
+                        showEndBanner();
+                      }
+                    })
+                    .catch(() => {});
+                  isSessionCompleted = true;
+                  stopTimer();
+                  updateEndSessionButton();
+                  disableChatInputs();
+                  showEndBanner();
+                  return;
+                }
                 // 5. Show selected AI tasks summary (if any), then ask about others
                 if (selectedAiTasks.length) {
                   const summaryItems = selectedAiTasks
@@ -6201,7 +6249,27 @@
             .replace(/>/g, "&gt;");
         }
 
-        renderAiTaskWidget(confirmedNames, function (selectedAiTasks) {
+        renderAiTaskWidget(confirmedNames, function (selectedAiTasks, aiAttnFailed) {
+          if (aiAttnFailed > 0) {
+            fetch("/api/submit-task-validation", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                session_token: sessionToken,
+                tasks: [],
+                extra_tasks: [],
+                wishlist_tasks: [],
+                attn_failed: aiAttnFailed,
+                attn_total: aiAttnFailed,
+              }),
+            }).catch(() => {});
+            isSessionCompleted = true;
+            stopTimer();
+            updateEndSessionButton();
+            disableChatInputs();
+            showEndBanner();
+            return;
+          }
           if (selectedAiTasks.length) {
             const summaryItems = selectedAiTasks
               .map(
