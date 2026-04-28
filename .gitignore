@@ -215,5 +215,6 @@ data/
 user_study/
 results/
 pilot/
+prolific/
 
 *.DS_Store
