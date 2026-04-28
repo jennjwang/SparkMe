@@ -1797,6 +1797,9 @@ def _parse_tasks_json(raw: str) -> dict:
     # Strip markdown fences
     raw = _re.sub(r"^```[a-z]*\n?", "", raw.strip())
     raw = _re.sub(r"\n?```$", "", raw).strip()
+    # Normalize curly/smart quotes to straight ASCII quotes
+    raw = raw.replace('“', '"').replace('”', '"')
+    raw = raw.replace('‘', "'").replace('’', "'")
     # Try each { position from right to left using raw_decode
     for m in reversed(list(_re.finditer(r'\{', raw))):
         try:
@@ -1805,7 +1808,23 @@ def _parse_tasks_json(raw: str) -> dict:
                 return obj
         except Exception:
             continue
-    # Last resort: plain json.loads on the full string
+    # Try to extract just the outermost {...} block that contains "tasks"
+    m = _re.search(r'\{[^{}]*"tasks"\s*:', raw)
+    if m:
+        # Walk forward to find the matching closing brace
+        start = m.start()
+        depth = 0
+        for i, ch in enumerate(raw[start:], start):
+            if ch == '{':
+                depth += 1
+            elif ch == '}':
+                depth -= 1
+                if depth == 0:
+                    try:
+                        return _json.loads(raw[start:i + 1])
+                    except Exception:
+                        break
+    app.logger.error(f"[_parse_tasks_json] could not extract JSON; raw[:200]={raw[:200]!r}")
     return _json.loads(raw)
 
 
@@ -2514,6 +2533,41 @@ def task_followup():
             del history[:-_TASK_FOLLOWUP_HISTORY_MAX_MESSAGES]
 
         open_answer = " ".join(h['content'] for h in history if h['role'] == 'Participant')
+
+        from src.interview_session.session_models import Message, MessageType
+        _now = datetime.now()
+        # On the first ai_open turn, also log the question the frontend showed.
+        if turn_count == 0:
+            iv.chat_history.append(Message(
+                id=uuid.uuid4().hex,
+                type=MessageType.CONVERSATION,
+                role="Interviewer",
+                content=(
+                    "With AI becoming part of so many workflows, I want to ask about "
+                    "how it may have changed your role. What are new things AI has "
+                    "enabled you to do, or new responsibilities you've taken on because of AI?"
+                ),
+                timestamp=_now,
+                metadata={"source": "task_followup", "phase": "ai_open"},
+            ))
+        iv.chat_history.append(Message(
+            id=uuid.uuid4().hex,
+            type=MessageType.CONVERSATION,
+            role="User",
+            content=task_text,
+            timestamp=_now,
+            metadata={"source": "task_followup", "phase": "ai_open"},
+        ))
+        if reply:
+            iv.chat_history.append(Message(
+                id=uuid.uuid4().hex,
+                type=MessageType.CONVERSATION,
+                role="Interviewer",
+                content=reply,
+                timestamp=_now,
+                metadata={"source": "task_followup", "phase": "ai_open"},
+            ))
+
         return jsonify({'success': True, 'reply': reply, 'done': done_flag, 'open_answer': open_answer})
 
     is_ai_extras = phase == 'ai_extras'
@@ -2592,7 +2646,7 @@ def task_followup():
         "  Return JSON: {\"reply\": \"\", \"done\": true}\n\n"
         if not is_ai_extras else
         "  Respond warmly in 1 sentence. Do NOT reference any specific task or topic they mentioned. "
-        "  Keep it general — e.g. 'Thank you for giving me an in-depth look at your work' "
+        "  Keep it general — e.g. 'Thank you, that's everything I wanted to cover.' "
         "  Return JSON: {\"reply\": \"...\", \"done\": true}\n\n"
         )
         + f"CASE B — {new_task_scope}:\n"
@@ -2664,6 +2718,42 @@ def task_followup():
     if len(history) > _TASK_FOLLOWUP_HISTORY_MAX_MESSAGES:
         del history[:-_TASK_FOLLOWUP_HISTORY_MAX_MESSAGES]
 
+    # Append probing turns directly to chat_history (no participant notification —
+    # these are already delivered to the client via the JSON response).
+    from src.interview_session.session_models import Message, MessageType
+    _now = datetime.now()
+    # On the first ai_extras turn, also log the question the frontend showed.
+    if is_ai_extras and followup_turns == 0 and not prior_tasks:
+        iv.chat_history.append(Message(
+            id=uuid.uuid4().hex,
+            type=MessageType.CONVERSATION,
+            role="Interviewer",
+            content=(
+                "Are there any other AI-related tasks — either new things AI has "
+                "enabled you to do, or new responsibilities you've taken on because "
+                "of AI — that weren't on that list?"
+            ),
+            timestamp=_now,
+            metadata={"source": "task_followup", "phase": phase},
+        ))
+    iv.chat_history.append(Message(
+        id=uuid.uuid4().hex,
+        type=MessageType.CONVERSATION,
+        role="User",
+        content=task_text,
+        timestamp=_now,
+        metadata={"source": "task_followup", "phase": phase},
+    ))
+    if reply:
+        iv.chat_history.append(Message(
+            id=uuid.uuid4().hex,
+            type=MessageType.CONVERSATION,
+            role="Interviewer",
+            content=reply,
+            timestamp=_now,
+            metadata={"source": "task_followup", "phase": phase},
+        ))
+
     if done and phase == 'ai_extras':
         def _end():
             iv.end_with_thankyou(send_message=True)
@@ -2686,7 +2776,6 @@ def submit_task_validation():
     session_token = data.get('session_token')
     validated_tasks = data.get('tasks') or []
     extra_tasks = data.get('extra_tasks') or []
-    wishlist_tasks = data.get('wishlist_tasks') or []
     attn_failed = int(data.get('attn_failed', 0))
     attn_total = int(data.get('attn_total', 0))
 
@@ -2702,15 +2791,12 @@ def submit_task_validation():
     task_followup_history_by_session.pop(session_token, None)
     task_followup_turns_by_session.pop(session_token, None)
     all_tasks = [str(t).strip() for t in validated_tasks + extra_tasks if str(t).strip()]
-    wishlist = [str(t).strip() for t in wishlist_tasks if str(t).strip()]
 
     # Persist tasks into the user portrait
     agenda = getattr(iv, 'session_agenda', None)
     if agenda is not None:
         portrait = dict(agenda.user_portrait or {})
         portrait['Task Inventory'] = all_tasks
-        if wishlist:
-            portrait['Task Wishlist'] = wishlist
         portrait = normalize_user_portrait(portrait)
         agenda.user_portrait = portrait
         portrait_path = os.path.join(
@@ -2722,6 +2808,39 @@ def submit_task_validation():
         app.logger.info(
             f"[submit_task_validation] Saved {len(all_tasks)} tasks for user {iv.user_id}"
         )
+
+    # Save task widget data snapshot as JSON (don't overwrite a prior submission that had tasks)
+    listed_tasks = data.get('listed_tasks') or []
+    eval_dir = Path(os.getenv('LOGS_DIR', 'logs')) / iv.user_id / 'evaluations'
+    eval_dir.mkdir(parents=True, exist_ok=True)
+    task_snapshot_path = eval_dir / 'task_widget_data.json'
+    prior_has_tasks = False
+    if task_snapshot_path.exists():
+        try:
+            prior = json.loads(task_snapshot_path.read_text())
+            prior_has_tasks = bool(prior.get('selected') or prior.get('listed'))
+        except Exception:
+            pass
+    if not prior_has_tasks:
+        task_snapshot = {
+            'timestamp': datetime.now().isoformat(),
+            'session_id': str(getattr(iv, 'session_id', '')),
+            'attn_failed': attn_failed,
+            'attn_total': attn_total,
+            'listed': listed_tasks,
+            'selected': [str(t).strip() for t in validated_tasks if str(t).strip()],
+            'removed': [
+                t.get('text', '') for t in listed_tasks
+                if t.get('status') == 'removed'
+            ],
+            'edited': [
+                {'original': t.get('original_text', ''), 'edited': t.get('text', '')}
+                for t in listed_tasks
+                if t.get('status') == 'edited'
+            ],
+        }
+        with open(task_snapshot_path, 'w') as f:
+            json.dump(task_snapshot, f, indent=2)
 
     # Persist attention check result to user record
     attn_disqualified = False
@@ -2763,6 +2882,99 @@ def submit_task_validation():
         _inject_question()
 
     return jsonify({'success': True, 'task_count': len(all_tasks)})
+
+
+@app.route('/api/submit-ai-tasks', methods=['POST'])
+@agent_or_login_required
+def submit_ai_tasks():
+    """Store AI tasks selected/noted by the participant during the AI task widget."""
+    data = request.get_json(silent=True) or {}
+    session_token = data.get('session_token')
+    # selected_from_widget: [{text, description}] objects from the widget
+    # extra_tasks: strings added during the ai_extras probing chat
+    # listed_tasks: all tasks shown in the widget [{text, ai_type}]
+    selected_from_widget = data.get('selected_from_widget') or []
+    extra_tasks = data.get('extra_tasks') or []
+    listed_tasks = data.get('listed_tasks') or []
+    ai_attn_failed = int(data.get('attn_failed', 0))
+    ai_attn_total = int(data.get('attn_total', 0))
+
+    wrapper = get_session_wrapper(session_token)
+    if not wrapper:
+        return jsonify({'success': False, 'error': 'Invalid or expired session'}), 400
+
+    iv = wrapper.interview_session
+
+    selected_texts = [str(t.get('text', t) if isinstance(t, dict) else t).strip()
+                      for t in selected_from_widget if t]
+    extra_texts = [str(t).strip() for t in extra_tasks if str(t).strip()]
+    all_ai_tasks = [t for t in selected_texts + extra_texts if t]
+
+    # Persist to user portrait
+    agenda = getattr(iv, 'session_agenda', None)
+    if agenda is not None:
+        portrait = dict(agenda.user_portrait or {})
+        portrait['AI Task Inventory'] = all_ai_tasks
+        agenda.user_portrait = portrait
+        portrait_path = os.path.join(
+            os.getenv('LOGS_DIR', 'logs'), iv.user_id, 'user_portrait.json'
+        )
+        os.makedirs(os.path.dirname(portrait_path), exist_ok=True)
+        with open(portrait_path, 'w') as f:
+            json.dump(portrait, f, indent=2)
+
+    # Save AI task widget data snapshot as JSON (don't overwrite a prior submission that had tasks)
+    eval_dir = Path(os.getenv('LOGS_DIR', 'logs')) / iv.user_id / 'evaluations'
+    eval_dir.mkdir(parents=True, exist_ok=True)
+    ai_snapshot_path = eval_dir / 'ai_task_widget_data.json'
+    ai_prior_has_tasks = False
+    if ai_snapshot_path.exists():
+        try:
+            ai_prior = json.loads(ai_snapshot_path.read_text())
+            ai_prior_has_tasks = bool(ai_prior.get('selected') or ai_prior.get('listed'))
+        except Exception:
+            pass
+    if not ai_prior_has_tasks:
+        ai_snapshot = {
+            'timestamp': datetime.now().isoformat(),
+            'session_id': str(getattr(iv, 'session_id', '')),
+            'attn_failed': ai_attn_failed,
+            'attn_total': ai_attn_total,
+            'listed': listed_tasks,
+            'selected': selected_texts,
+            'extras': extra_texts,
+        }
+        with open(ai_snapshot_path, 'w') as f:
+            json.dump(ai_snapshot, f, indent=2)
+
+    app.logger.info(f"[submit_ai_tasks] Saved {len(all_ai_tasks)} AI tasks for user {iv.user_id}")
+
+    # Persist AI attention check result and disqualify if needed
+    attn_max = int(os.getenv('ATTN_CHECK_MAX_FAILS', '1'))
+    ai_disqualified = False
+    if ai_attn_total > 0:
+        users = load_users()
+        if iv.user_id in users:
+            users[iv.user_id]['ai_attn_failed'] = ai_attn_failed
+            users[iv.user_id]['ai_attn_total'] = ai_attn_total
+            save_users(users)
+        app.logger.info(
+            f"[submit_ai_tasks] attn {ai_attn_failed}/{ai_attn_total} failed "
+            f"(max allowed: {attn_max}) for user {iv.user_id}"
+        )
+        if ai_attn_failed > attn_max:
+            ai_disqualified = True
+
+    if ai_disqualified:
+        def _end_early():
+            iv.end_with_thankyou(send_message=False)
+        if hasattr(wrapper, 'loop'):
+            wrapper.loop.call_soon_threadsafe(_end_early)
+        else:
+            _end_early()
+        return jsonify({'success': True, 'disqualified': True, 'task_count': len(all_ai_tasks)})
+
+    return jsonify({'success': True, 'task_count': len(all_ai_tasks)})
 
 
 # =============================================================================

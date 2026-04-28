@@ -5172,6 +5172,7 @@
           if (!data.success) throw new Error(data.error || "fetch failed");
           const tasks = (data.tasks || []).map((t) => ({
             text: typeof t === "string" ? t : t.name || "",
+            originalText: typeof t === "string" ? t : t.name || "",
             description: typeof t === "string" ? "" : t.description || "",
             status: "unreviewed",
             isAttentionCheck: false,
@@ -5768,7 +5769,7 @@
             }
           }
 
-          const AITW_PAGE = 3;
+          const AITW_PAGE = 4;
           const AITW_MIN_DONE = 9;
           let pageStart = 0;
           let selectedIndices = new Set();
@@ -5778,7 +5779,8 @@
             const pageTasks = tasks.slice(pageStart, pageStart + AITW_PAGE);
             const isLast =
               !_aiWidgetHasMore && pageStart + AITW_PAGE >= tasks.length;
-            const canShowDone = isLast || pageStart >= AITW_PAGE;
+            const canShowDone =
+              isLast || pageStart + AITW_PAGE >= AITW_MIN_DONE;
 
             aiWidget.innerHTML = `
               <div class="aitw-header">
@@ -5837,8 +5839,16 @@
               const aiAttnFailed = [...selectedIndices].filter(
                 (i) => _aiWidgetTasks[i].isAttentionCheck,
               ).length;
+              const shownTasks = _aiWidgetTasks.slice(0, pageStart + AITW_PAGE);
+              const aiAttnTotal = shownTasks.filter((t) => t.isAttentionCheck).length;
+              const listedTasks = shownTasks
+                .filter((t) => !t.isAttentionCheck)
+                .map((t) => ({
+                  text: t.text,
+                  ai_type: t.aiType || "capability",
+                }));
               aiWidget.remove();
-              onDone(selected, aiAttnFailed);
+              onDone(selected, aiAttnFailed, listedTasks, aiAttnTotal);
             }
 
             aiWidget
@@ -5903,10 +5913,6 @@
           const validatedTasks = confirmed
             .map((t) => t.text.trim())
             .filter(Boolean);
-          const wishlistTasks = allTasks
-            .filter((t) => !t.isAttentionCheck && t.wishlisted)
-            .map((t) => t.text.trim())
-            .filter(Boolean);
 
           // Count attention checks that were incorrectly accepted (should have been removed)
           const attnChecks = allTasks.filter((t) => t.isAttentionCheck);
@@ -5923,9 +5929,15 @@
               session_token: sessionToken,
               tasks: validatedTasks,
               extra_tasks: [],
-              wishlist_tasks: wishlistTasks,
               attn_failed: attnFailed,
               attn_total: attnChecks.length,
+              listed_tasks: allTasks
+                .filter((t) => !t.isAttentionCheck)
+                .map((t) => ({
+                  text: t.text,
+                  original_text: t.originalText || t.text,
+                  status: t.status,
+                })),
             }),
           })
             .then((r) => r.json())
@@ -6051,38 +6063,27 @@
               scrollToBottom();
               renderAiTaskWidget(
                 _confirmedNames,
-                function (selectedAiTasks, aiAttnFailed) {
+                function (selectedAiTasks, aiAttnFailed, listedAiTasks, aiAttnTotal) {
                   // End session immediately if AI attention check was failed
                   if (aiAttnFailed > 0) {
                     attnFailed += aiAttnFailed;
-                    fetch("/api/submit-task-validation", {
+                    fetch("/api/submit-ai-tasks", {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({
                         session_token: sessionToken,
-                        tasks: [],
+                        selected_from_widget: [],
                         extra_tasks: [],
-                        wishlist_tasks: [],
+                        listed_tasks: listedAiTasks || [],
                         attn_failed: aiAttnFailed,
-                        attn_total: aiAttnFailed,
+                        attn_total: aiAttnTotal,
                       }),
-                    })
-                      .then((r) => r.json())
-                      .then((result) => {
-                        if (result.attn_disqualified) {
-                          isSessionCompleted = true;
-                          stopTimer();
-                          updateEndSessionButton();
-                          disableChatInputs();
-                          showEndBanner();
-                        }
-                      })
-                      .catch(() => {});
+                    }).catch(() => {});
                     isSessionCompleted = true;
                     stopTimer();
                     updateEndSessionButton();
                     disableChatInputs();
-                    showEndBanner();
+                    showEndBanner(true);
                     return;
                   }
                   // 5. Show selected AI tasks summary (if any), then ask about others
@@ -6156,6 +6157,20 @@
                           );
                         scrollToBottom();
                         aiChatForm.onsubmit = _origSubmit;
+                        fetch("/api/submit-ai-tasks", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            session_token: sessionToken,
+                            selected_from_widget: selectedAiTasks,
+                            extra_tasks: aiExtraTasks.slice(
+                              selectedAiTasks.length,
+                            ),
+                            listed_tasks: listedAiTasks || [],
+                            attn_failed: aiAttnFailed,
+                            attn_total: aiAttnTotal,
+                          }),
+                        }).catch(() => {});
                       } else {
                         if (d.reply)
                           appendMessage(
@@ -6270,26 +6285,26 @@
 
         renderAiTaskWidget(
           confirmedNames,
-          function (selectedAiTasks, aiAttnFailed) {
+          function (selectedAiTasks, aiAttnFailed, listedAiTasks, aiAttnTotal) {
             if (aiAttnFailed > 0) {
               attnFailed += aiAttnFailed;
-              fetch("/api/submit-task-validation", {
+              fetch("/api/submit-ai-tasks", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                   session_token: sessionToken,
-                  tasks: [],
+                  selected_from_widget: [],
                   extra_tasks: [],
-                  wishlist_tasks: [],
+                  listed_tasks: listedAiTasks || [],
                   attn_failed: aiAttnFailed,
-                  attn_total: aiAttnFailed,
+                  attn_total: aiAttnTotal,
                 }),
               }).catch(() => {});
               isSessionCompleted = true;
               stopTimer();
               updateEndSessionButton();
               disableChatInputs();
-              showEndBanner();
+              showEndBanner(true);
               return;
             }
             if (selectedAiTasks.length) {
@@ -6355,6 +6370,18 @@
                     appendMessage("bot", d.reply, "ai-extra-b-" + Date.now());
                   scrollToBottom();
                   aiChatForm.onsubmit = _origSubmit;
+                  fetch("/api/submit-ai-tasks", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      session_token: sessionToken,
+                      selected_from_widget: selectedAiTasks,
+                      extra_tasks: aiExtraTasks.slice(selectedAiTasks.length),
+                      listed_tasks: listedAiTasks || [],
+                      attn_failed: aiAttnFailed,
+                      attn_total: aiAttnTotal,
+                    }),
+                  }).catch(() => {});
                 } else {
                   if (d.reply)
                     appendMessage("bot", d.reply, "ai-extra-b-" + Date.now());
@@ -7377,13 +7404,13 @@
         }
       }
 
-      function showEndBanner() {
+      function showEndBanner(forceDisqualify = false) {
         if (document.querySelector(".session-end-banner")) return;
         removeTyping();
         const banner = document.createElement("div");
         banner.className = "session-end-banner";
 
-        const passed = attnFailed <= ATTN_CHECK_MAX_FAILS;
+        const passed = !forceDisqualify && attnFailed <= ATTN_CHECK_MAX_FAILS;
         const timedOut = sessionEndReason === "timeout";
 
         if (timedOut) {

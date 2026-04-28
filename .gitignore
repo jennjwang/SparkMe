@@ -218,3 +218,4 @@ pilot/
 
 *.DS_Store
 data/users.json
+prolific/

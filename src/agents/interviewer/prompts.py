@@ -361,6 +361,7 @@ Example snippets:
 * Read the subtopic's `coverage_criteria` — those are literally the definition of "done" for this subtopic. Score against them, nothing more.
 * **Do NOT drill into sub-steps, procedures, mental processes, or the "how" behind a named fact/skill/task**. Example: if the user names "reading comprehension" as a skill, that subtopic is covered — do NOT then ask how they do reading comprehension, what they notice, how they take notes, etc. The criterion was "identify a skill" and it was met.
 * **Do NOT probe for motivations, preferences, sub-specialties, or underlying reasons** unless the `coverage_criteria` explicitly ask for them.
+* **Do NOT ask about career history, prior roles, how someone got into their field, or whether their focus has changed over time** — none of these are in any coverage criterion. If the user mentions a duration (e.g. "5 years as a PhD student"), accept it and move on. Never follow up on duration.
 
 Coverage score:
   - 3 (High): Every `coverage_criteria` entry for the subtopic is satisfied.

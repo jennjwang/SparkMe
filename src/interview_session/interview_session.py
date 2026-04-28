@@ -747,6 +747,9 @@ class InterviewSession:
                             f"[PORTRAIT] Error generating user portrait: {portrait_err}"
                         )
 
+                # Save chat transcript
+                self._save_chat_transcript()
+
                 self.session_completed = True
                 SessionLogger.log_to_file(
                     "execution_log", f"[COMPLETED] Session completed")
@@ -1323,6 +1326,31 @@ class InterviewSession:
             "[TASK_VALIDATION] Task validation widget emitted."
         )
 
+    def _save_chat_transcript(self) -> None:
+        """Write chat_transcript.json for the current session. Safe to call multiple times."""
+        try:
+            logs_dir = os.getenv("LOGS_DIR", "logs")
+            session_log_dir = os.path.join(
+                logs_dir, self.user_id, "execution_logs", f"session_{self.session_id}"
+            )
+            os.makedirs(session_log_dir, exist_ok=True)
+            transcript = [
+                {
+                    "role": msg.role,
+                    "content": msg.content,
+                    "timestamp": msg.timestamp.isoformat(),
+                }
+                for msg in self.chat_history
+                if msg.type in ("conversation", "skip")
+            ]
+            transcript_path = os.path.join(session_log_dir, "chat_transcript.json")
+            with open(transcript_path, "w") as f:
+                json.dump(transcript, f, indent=2)
+            SessionLogger.log_to_file("execution_log", "[TRANSCRIPT] Chat transcript saved")
+        except Exception as e:
+            SessionLogger.log_to_file(
+                "execution_log", f"[TRANSCRIPT] Error saving chat transcript: {e}")
+
     def end_with_thankyou(self, send_message: bool = True):
         """Send a thank-you message and end the session without showing the feedback widget.
 
@@ -1341,6 +1369,7 @@ class InterviewSession:
                 ),
             )
         self.session_in_progress = False
+        self._save_chat_transcript()
         SessionLogger.log_to_file(
             "execution_log",
             "[SESSION] Session ended with thank-you message (no feedback widget)."

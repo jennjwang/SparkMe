@@ -1527,7 +1527,7 @@ class Interviewer(BaseAgent, Participant):
         if message is None and self._is_fresh_intake_session():
             opening_question = (
                 "Thanks for making time today. "
-                "Could you briefly describe your job, what you do at work, and how long you've been in this profession?"
+                "Could you briefly describe your job, what you do for work, and how long you've been in this profession?"
             )
             SessionLogger.log_to_file(
                 "execution_log",
