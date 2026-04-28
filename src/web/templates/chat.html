@@ -2558,7 +2558,7 @@
       .tvw-task-list {
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: 24px;
       }
       .tvw-task-card {
         display: flex;
@@ -3365,7 +3365,7 @@
       .aitw-task-list {
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: 16px;
       }
       .aitw-task-card {
         display: flex;
@@ -5239,6 +5239,7 @@
         let _aiWidgetFetching = null; // Promise of in-flight fetch
         let _aiPendingDistractors = []; // attention-check items for AI widget
         let _aiDistractorsFetching = null; // promise tracking distractor fetch
+        let _aiNonUser = false; // true when participant said they don't use AI
 
         async function _fetchAiDistractors() {
           const p = (async () => {
@@ -5275,6 +5276,7 @@
               session_token: sessionToken,
               batch_index: _aiWidgetBatchIdx,
               prior_tasks: prior,
+              non_ai_user: _aiNonUser,
             }),
           });
           const data = await res.json();
@@ -5738,7 +5740,7 @@
 
           // Wait for first batch if not already prefetched
           if (!_aiWidgetTasks.length) {
-            aiWidget.innerHTML = `<div style="padding:16px;color:#6b7280;font-size:13px;">Loading…</div>`;
+            aiWidget.innerHTML = `<div class="tvw-loading" style="padding:16px 16px 6px;"><div class="tvw-loading-spinner"></div>Loading tasks…</div>`;
             try {
               await _ensureAiTaskBatch();
               if (_aiWidgetFetching) await _aiWidgetFetching;
@@ -5759,7 +5761,9 @@
             if (_aiDistractorsFetching) await _aiDistractorsFetching;
             if (_aiPendingDistractors.length) {
               const attn = _aiPendingDistractors.shift();
-              const insertAt = Math.floor(Math.random() * (_aiWidgetTasks.length + 1));
+              const insertAt = Math.floor(
+                Math.random() * (_aiWidgetTasks.length + 1),
+              );
               _aiWidgetTasks.splice(insertAt, 0, attn);
             }
           }
@@ -5774,7 +5778,7 @@
             const pageTasks = tasks.slice(pageStart, pageStart + AITW_PAGE);
             const isLast =
               !_aiWidgetHasMore && pageStart + AITW_PAGE >= tasks.length;
-            const canShowDone = isLast || pageStart + AITW_PAGE >= 9;
+            const canShowDone = isLast || pageStart >= AITW_PAGE;
 
             aiWidget.innerHTML = `
               <div class="aitw-header">
@@ -6020,6 +6024,7 @@
             async function showAiWidgetAfterOpenQuestion(openAnswer) {
               let introMsg =
                 "Here are some AI-related tasks that may fit your work. Do any of these apply?";
+              showTyping();
               try {
                 const r = await fetch("/api/ai-widget-intro", {
                   method: "POST",
@@ -6031,131 +6036,144 @@
                 });
                 const d = await r.json();
                 if (d.success && d.message) introMsg = d.message;
+                if (d.is_ai_disclaimer) {
+                  _aiNonUser = true;
+                  // Discard pre-fetched capability tasks and re-fetch with non_ai_user flag
+                  _aiWidgetTasks = [];
+                  _aiWidgetBatchIdx = 0;
+                  _aiWidgetHasMore = true;
+                  _aiWidgetFetching = null;
+                  _ensureAiTaskBatch();
+                }
               } catch (_) {}
+              removeTyping();
               appendMessage("bot", introMsg, "aitw-intro-" + Date.now());
               scrollToBottom();
-              renderAiTaskWidget(_confirmedNames, function (selectedAiTasks, aiAttnFailed) {
-                // End session immediately if AI attention check was failed
-                if (aiAttnFailed > 0) {
-                  attnFailed += aiAttnFailed;
-                  fetch("/api/submit-task-validation", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      session_token: sessionToken,
-                      tasks: [],
-                      extra_tasks: [],
-                      wishlist_tasks: [],
-                      attn_failed: aiAttnFailed,
-                      attn_total: aiAttnFailed,
-                    }),
-                  })
-                    .then((r) => r.json())
-                    .then((result) => {
-                      if (result.attn_disqualified) {
-                        isSessionCompleted = true;
-                        stopTimer();
-                        updateEndSessionButton();
-                        disableChatInputs();
-                        showEndBanner();
-                      }
-                    })
-                    .catch(() => {});
-                  isSessionCompleted = true;
-                  stopTimer();
-                  updateEndSessionButton();
-                  disableChatInputs();
-                  showEndBanner();
-                  return;
-                }
-                // 5. Show selected AI tasks summary (if any), then ask about others
-                if (selectedAiTasks.length) {
-                  const summaryItems = selectedAiTasks
-                    .map(
-                      (t, i) =>
-                        `<div class="tvw-summary-item">
-                    <span class="tvw-summary-num">${i + 1}</span>
-                    <span class="tvw-summary-text">${esc(t.text)}</span>
-                  </div>`,
-                    )
-                    .join("");
-                  const summaryEl = document.createElement("div");
-                  summaryEl.className = "task-validation-widget";
-                  summaryEl.innerHTML =
-                    `<div class="tvw-section-label">AI-related tasks (${selectedAiTasks.length})</div>` +
-                    `<div class="tvw-summary-list">${summaryItems}</div>`;
-                  document.getElementById("chat-box").appendChild(summaryEl);
-                  scrollToBottom();
-                }
-                appendMessage(
-                  "bot",
-                  "Are there any other AI-related tasks that weren't on that list?",
-                  "ai-followup-" + Date.now(),
-                );
-                scrollToBottom();
-
-                const aiChatForm = document.getElementById("chat-form");
-                const _origSubmit = aiChatForm.onsubmit;
-                const aiExtraTasks = selectedAiTasks
-                  .map((t) => String(t.text || "").trim())
-                  .filter(Boolean);
-                let aiExtrasInFlight = false;
-
-                aiChatForm.onsubmit = async function (e) {
-                  e.preventDefault();
-                  if (isSessionCompleted) {
-                    aiChatForm.onsubmit = _origSubmit;
-                    return;
-                  }
-                  if (aiExtrasInFlight) return;
-                  const text = chatInput.value.trim();
-                  if (!text) return;
-                  aiExtrasInFlight = true;
-                  chatInput.value = "";
-                  chatInput.style.height = "auto";
-                  appendMessage("user", text, "ai-extra-u-" + Date.now());
-                  showTyping();
-                  scrollToBottom();
-                  try {
-                    const r = await fetch("/api/task-followup", {
+              renderAiTaskWidget(
+                _confirmedNames,
+                function (selectedAiTasks, aiAttnFailed) {
+                  // End session immediately if AI attention check was failed
+                  if (aiAttnFailed > 0) {
+                    attnFailed += aiAttnFailed;
+                    fetch("/api/submit-task-validation", {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({
                         session_token: sessionToken,
-                        task_text: text,
-                        prior_tasks: aiExtraTasks,
-                        phase: "ai_extras",
+                        tasks: [],
+                        extra_tasks: [],
+                        wishlist_tasks: [],
+                        attn_failed: aiAttnFailed,
+                        attn_total: aiAttnFailed,
                       }),
-                    });
-                    const d = await r.json();
-                    removeTyping();
-                    if (d.task_name) aiExtraTasks.push(d.task_name);
-                    if (d.done) {
-                      if (d.reply)
-                        appendMessage(
-                          "bot",
-                          d.reply,
-                          "ai-extra-b-" + Date.now(),
-                        );
-                      scrollToBottom();
-                      aiChatForm.onsubmit = _origSubmit;
-                    } else {
-                      if (d.reply)
-                        appendMessage(
-                          "bot",
-                          d.reply,
-                          "ai-extra-b-" + Date.now(),
-                        );
-                      scrollToBottom();
-                    }
-                  } catch (_) {
-                    removeTyping();
-                    aiChatForm.onsubmit = _origSubmit;
-                  } finally {
-                    aiExtrasInFlight = false;
+                    })
+                      .then((r) => r.json())
+                      .then((result) => {
+                        if (result.attn_disqualified) {
+                          isSessionCompleted = true;
+                          stopTimer();
+                          updateEndSessionButton();
+                          disableChatInputs();
+                          showEndBanner();
+                        }
+                      })
+                      .catch(() => {});
+                    isSessionCompleted = true;
+                    stopTimer();
+                    updateEndSessionButton();
+                    disableChatInputs();
+                    showEndBanner();
+                    return;
                   }
-                };
-              });
+                  // 5. Show selected AI tasks summary (if any), then ask about others
+                  if (selectedAiTasks.length) {
+                    const summaryItems = selectedAiTasks
+                      .map(
+                        (t, i) =>
+                          `<div class="tvw-summary-item">
+                    <span class="tvw-summary-num">${i + 1}</span>
+                    <span class="tvw-summary-text">${esc(t.text)}</span>
+                  </div>`,
+                      )
+                      .join("");
+                    const summaryEl = document.createElement("div");
+                    summaryEl.className = "task-validation-widget";
+                    summaryEl.innerHTML =
+                      `<div class="tvw-section-label">AI-related tasks (${selectedAiTasks.length})</div>` +
+                      `<div class="tvw-summary-list">${summaryItems}</div>`;
+                    document.getElementById("chat-box").appendChild(summaryEl);
+                    scrollToBottom();
+                  }
+                  appendMessage(
+                    "bot",
+                    "Are there any other AI-related tasks that weren't on that list?",
+                    "ai-followup-" + Date.now(),
+                  );
+                  scrollToBottom();
+
+                  const aiChatForm = document.getElementById("chat-form");
+                  const _origSubmit = aiChatForm.onsubmit;
+                  const aiExtraTasks = selectedAiTasks
+                    .map((t) => String(t.text || "").trim())
+                    .filter(Boolean);
+                  let aiExtrasInFlight = false;
+
+                  aiChatForm.onsubmit = async function (e) {
+                    e.preventDefault();
+                    if (isSessionCompleted) {
+                      aiChatForm.onsubmit = _origSubmit;
+                      return;
+                    }
+                    if (aiExtrasInFlight) return;
+                    const text = chatInput.value.trim();
+                    if (!text) return;
+                    aiExtrasInFlight = true;
+                    chatInput.value = "";
+                    chatInput.style.height = "auto";
+                    appendMessage("user", text, "ai-extra-u-" + Date.now());
+                    showTyping();
+                    scrollToBottom();
+                    try {
+                      const r = await fetch("/api/task-followup", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          session_token: sessionToken,
+                          task_text: text,
+                          prior_tasks: aiExtraTasks,
+                          phase: "ai_extras",
+                        }),
+                      });
+                      const d = await r.json();
+                      removeTyping();
+                      if (d.task_name) aiExtraTasks.push(d.task_name);
+                      if (d.done) {
+                        if (d.reply)
+                          appendMessage(
+                            "bot",
+                            d.reply,
+                            "ai-extra-b-" + Date.now(),
+                          );
+                        scrollToBottom();
+                        aiChatForm.onsubmit = _origSubmit;
+                      } else {
+                        if (d.reply)
+                          appendMessage(
+                            "bot",
+                            d.reply,
+                            "ai-extra-b-" + Date.now(),
+                          );
+                        scrollToBottom();
+                      }
+                    } catch (_) {
+                      removeTyping();
+                      aiChatForm.onsubmit = _origSubmit;
+                    } finally {
+                      aiExtrasInFlight = false;
+                    }
+                  };
+                },
+              );
             } // end showAiWidgetAfterOpenQuestion
           });
         }
@@ -6250,104 +6268,107 @@
             .replace(/>/g, "&gt;");
         }
 
-        renderAiTaskWidget(confirmedNames, function (selectedAiTasks, aiAttnFailed) {
-          if (aiAttnFailed > 0) {
-            attnFailed += aiAttnFailed;
-            fetch("/api/submit-task-validation", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                session_token: sessionToken,
-                tasks: [],
-                extra_tasks: [],
-                wishlist_tasks: [],
-                attn_failed: aiAttnFailed,
-                attn_total: aiAttnFailed,
-              }),
-            }).catch(() => {});
-            isSessionCompleted = true;
-            stopTimer();
-            updateEndSessionButton();
-            disableChatInputs();
-            showEndBanner();
-            return;
-          }
-          if (selectedAiTasks.length) {
-            const summaryItems = selectedAiTasks
-              .map(
-                (t, i) =>
-                  `<div class="tvw-summary-item"><span class="tvw-summary-num">${i + 1}</span><span class="tvw-summary-text">${esc(t.text)}</span></div>`,
-              )
-              .join("");
-            const summaryEl = document.createElement("div");
-            summaryEl.className = "task-validation-widget";
-            summaryEl.innerHTML =
-              `<div class="tvw-section-label">AI-related tasks (${selectedAiTasks.length})</div>` +
-              `<div class="tvw-summary-list">${summaryItems}</div>`;
-            document.getElementById("chat-box").appendChild(summaryEl);
-            scrollToBottom();
-          }
-          appendMessage(
-            "bot",
-            "Are there any other AI-related tasks — either new things AI has enabled you to do, or new responsibilities you've taken on because of AI — that weren't on that list?",
-            "ai-followup-" + Date.now(),
-          );
-          scrollToBottom();
-
-          const aiChatForm = document.getElementById("chat-form");
-          const _origSubmit = aiChatForm.onsubmit;
-          const aiExtraTasks = selectedAiTasks
-            .map((t) => String(t.text || "").trim())
-            .filter(Boolean);
-          let aiExtrasInFlight = false;
-
-          aiChatForm.onsubmit = async function (e) {
-            e.preventDefault();
-            if (isSessionCompleted) {
-              aiChatForm.onsubmit = _origSubmit;
-              return;
-            }
-            if (aiExtrasInFlight) return;
-            const text = chatInput.value.trim();
-            if (!text) return;
-            aiExtrasInFlight = true;
-            chatInput.value = "";
-            chatInput.style.height = "auto";
-            appendMessage("user", text, "ai-extra-u-" + Date.now());
-            showTyping();
-            scrollToBottom();
-            try {
-              const r = await fetch("/api/task-followup", {
+        renderAiTaskWidget(
+          confirmedNames,
+          function (selectedAiTasks, aiAttnFailed) {
+            if (aiAttnFailed > 0) {
+              attnFailed += aiAttnFailed;
+              fetch("/api/submit-task-validation", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                   session_token: sessionToken,
-                  task_text: text,
-                  prior_tasks: aiExtraTasks,
-                  phase: "ai_extras",
+                  tasks: [],
+                  extra_tasks: [],
+                  wishlist_tasks: [],
+                  attn_failed: aiAttnFailed,
+                  attn_total: aiAttnFailed,
                 }),
-              });
-              const d = await r.json();
-              removeTyping();
-              if (d.task_name) aiExtraTasks.push(d.task_name);
-              if (d.done) {
-                if (d.reply)
-                  appendMessage("bot", d.reply, "ai-extra-b-" + Date.now());
-                scrollToBottom();
-                aiChatForm.onsubmit = _origSubmit;
-              } else {
-                if (d.reply)
-                  appendMessage("bot", d.reply, "ai-extra-b-" + Date.now());
-                scrollToBottom();
-              }
-            } catch (_) {
-              removeTyping();
-              aiChatForm.onsubmit = _origSubmit;
-            } finally {
-              aiExtrasInFlight = false;
+              }).catch(() => {});
+              isSessionCompleted = true;
+              stopTimer();
+              updateEndSessionButton();
+              disableChatInputs();
+              showEndBanner();
+              return;
             }
-          };
-        });
+            if (selectedAiTasks.length) {
+              const summaryItems = selectedAiTasks
+                .map(
+                  (t, i) =>
+                    `<div class="tvw-summary-item"><span class="tvw-summary-num">${i + 1}</span><span class="tvw-summary-text">${esc(t.text)}</span></div>`,
+                )
+                .join("");
+              const summaryEl = document.createElement("div");
+              summaryEl.className = "task-validation-widget";
+              summaryEl.innerHTML =
+                `<div class="tvw-section-label">AI-related tasks (${selectedAiTasks.length})</div>` +
+                `<div class="tvw-summary-list">${summaryItems}</div>`;
+              document.getElementById("chat-box").appendChild(summaryEl);
+              scrollToBottom();
+            }
+            appendMessage(
+              "bot",
+              "Are there any other AI-related tasks — either new things AI has enabled you to do, or new responsibilities you've taken on because of AI — that weren't on that list?",
+              "ai-followup-" + Date.now(),
+            );
+            scrollToBottom();
+
+            const aiChatForm = document.getElementById("chat-form");
+            const _origSubmit = aiChatForm.onsubmit;
+            const aiExtraTasks = selectedAiTasks
+              .map((t) => String(t.text || "").trim())
+              .filter(Boolean);
+            let aiExtrasInFlight = false;
+
+            aiChatForm.onsubmit = async function (e) {
+              e.preventDefault();
+              if (isSessionCompleted) {
+                aiChatForm.onsubmit = _origSubmit;
+                return;
+              }
+              if (aiExtrasInFlight) return;
+              const text = chatInput.value.trim();
+              if (!text) return;
+              aiExtrasInFlight = true;
+              chatInput.value = "";
+              chatInput.style.height = "auto";
+              appendMessage("user", text, "ai-extra-u-" + Date.now());
+              showTyping();
+              scrollToBottom();
+              try {
+                const r = await fetch("/api/task-followup", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    session_token: sessionToken,
+                    task_text: text,
+                    prior_tasks: aiExtraTasks,
+                    phase: "ai_extras",
+                  }),
+                });
+                const d = await r.json();
+                removeTyping();
+                if (d.task_name) aiExtraTasks.push(d.task_name);
+                if (d.done) {
+                  if (d.reply)
+                    appendMessage("bot", d.reply, "ai-extra-b-" + Date.now());
+                  scrollToBottom();
+                  aiChatForm.onsubmit = _origSubmit;
+                } else {
+                  if (d.reply)
+                    appendMessage("bot", d.reply, "ai-extra-b-" + Date.now());
+                  scrollToBottom();
+                }
+              } catch (_) {
+                removeTyping();
+                aiChatForm.onsubmit = _origSubmit;
+              } finally {
+                aiExtrasInFlight = false;
+              }
+            };
+          },
+        );
       }
 
       async function showAiUsageWidget() {

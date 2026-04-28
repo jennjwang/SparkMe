@@ -2058,6 +2058,7 @@ def ai_era_tasks():
     session_token = data.get('session_token')
     batch_index = int(data.get('batch_index', 0))
     prior_tasks = data.get('prior_tasks') or []
+    non_ai_user = bool(data.get('non_ai_user', False))
 
     if batch_index >= _AI_MAX_BATCHES:
         return jsonify({'success': True, 'tasks': [], 'has_more': False})
@@ -2078,39 +2079,79 @@ def ai_era_tasks():
             f"\nTasks already shown (do NOT repeat or rephrase any of these):\n{prior_list}\n"
         )
 
-    if batch_index == 0:
-        focus = (
-            f"Generate the {_AI_BATCH_SIZE} most common new capabilities AI has given people in this role — "
-            "things they can now do that weren't possible or practical before."
-        )
-    elif batch_index == 1:
-        focus = (
-            f"Generate the {_AI_BATCH_SIZE} most common new oversight or quality-control responsibilities "
-            "this role now has because AI is in the workflow — reviewing, verifying, or taking ownership of AI outputs."
-        )
+    _BATCH_FOCUS = [
+        # 0: new capabilities
+        f"Generate the {_AI_BATCH_SIZE} most common new capabilities AI has given people in this role — "
+        "things they can now do that weren't possible or practical before.",
+        # 1: oversight / quality control
+        f"Generate the {_AI_BATCH_SIZE} most common new oversight or quality-control responsibilities "
+        "this role now has because AI is in the workflow — reviewing, verifying, or taking ownership of AI outputs.",
+        # 2: writing & communication
+        f"Generate {_AI_BATCH_SIZE} AI-related tasks specifically around writing, drafting, editing, or communicating — "
+        "not yet listed above. Focus on how AI changes how people in this role produce or polish text.",
+        # 3: analysis, research & decision support
+        f"Generate {_AI_BATCH_SIZE} AI-related tasks specifically around data analysis, research, summarization, or decision-making — "
+        "not yet listed above. Focus on how AI helps people in this role make sense of information.",
+        # 4: automation, coding & workflow
+        f"Generate {_AI_BATCH_SIZE} AI-related tasks specifically around automating repetitive work, writing code, or streamlining workflows — "
+        "not yet listed above. Focus on how AI saves time or handles mechanical parts of the job.",
+        # 5: learning, onboarding & skill-building
+        f"Generate {_AI_BATCH_SIZE} AI-related tasks specifically around learning new things, onboarding others, training, or building skills — "
+        "not yet listed above. Focus on how AI accelerates or supports knowledge transfer in this role.",
+    ]
+    if non_ai_user:
+        _NON_AI_BATCH_FOCUS = [
+            f"Generate the {_AI_BATCH_SIZE} most common oversight or quality-control responsibilities "
+            "this role has taken on because AI is now in the workflow — reviewing, verifying, correcting, or taking ownership of AI-generated outputs from colleagues or systems.",
+            f"Generate {_AI_BATCH_SIZE} responsibilities around adapting to AI-driven changes in this role — "
+            "workflow changes, new expectations, or new accountabilities that emerged because others in the field adopted AI.",
+            f"Generate {_AI_BATCH_SIZE} responsibilities around evaluating or gatekeeping AI outputs — "
+            "deciding what AI-produced content is acceptable, flagging errors, or maintaining standards in an AI-augmented environment.",
+            f"Generate {_AI_BATCH_SIZE} responsibilities around coordinating with or managing people who use AI — "
+            "setting expectations, reviewing their AI-assisted work, or ensuring quality when collaborators use AI tools.",
+            f"Generate {_AI_BATCH_SIZE} responsibilities around staying informed about AI's impact on this field — "
+            "understanding what AI tools are being adopted, how they affect the work, or keeping skills current relative to AI-driven changes.",
+        ]
+        focus = _NON_AI_BATCH_FOCUS[min(batch_index, len(_NON_AI_BATCH_FOCUS) - 1)]
     else:
-        focus = (
-            f"Generate {_AI_BATCH_SIZE} more AI-related tasks not yet listed — mix of capabilities and responsibilities. "
-            "Cover areas not yet represented: different types of work, tools, or contexts."
-        )
+        focus = _BATCH_FOCUS[min(batch_index, len(_BATCH_FOCUS) - 1)]
 
     stop_hint = (
+        "Set has_more to true unless you have genuinely exhausted every distinct AI-related oversight/governance area for this role."
+        if non_ai_user else
         "Set has_more to true unless you have genuinely exhausted every distinct AI-related task area for this role "
         "across capability, oversight, tool use, quality control, and workflow integration. "
         "Err strongly on the side of true — there are almost always more areas to cover."
     )
+
+    if non_ai_user:
+        framing_rules = (
+            "IMPORTANT: This participant said they do NOT personally use AI. "
+            "Generate ONLY oversight/governance responsibilities — things that happen TO them or AROUND them because AI is in the environment.\n"
+            "- Focus on: receiving AI-generated content from others, reviewing or approving AI outputs, "
+            "adapting workflows because colleagues use AI, responding to AI-driven changes in their field, "
+            "or managing deliverables that involve AI somewhere upstream.\n"
+            "- Do NOT generate capability tasks. Do NOT frame tasks as 'Use AI to...', 'Generate with AI', or 'Ask AI to...'.\n"
+            "- Good: 'Review AI-written drafts sent by collaborators', 'Adapt processes changed by team AI adoption'\n"
+            "- Bad: 'Use AI to draft reports', 'Generate summaries with AI'\n"
+            "- All tasks must have ai_type: 'governance'\n"
+        )
+    else:
+        framing_rules = (
+            "- The task NAME must make it explicit that AI is involved — include 'using AI', 'with AI', or a specific AI tool\n"
+        )
 
     prompt = (
         f"Occupation context: \"{job_description}\"\n"
         f"{prior_block}\n"
         f"{focus}\n\n"
         "Rules:\n"
+        f"{framing_rules}"
         "- Tasks should apply broadly to the occupational category, NOT be hyper-specific to this individual's niche\n"
         "  Good (researcher): 'Check AI-written summaries for errors before using them'\n"
         "  Too specific (researcher): 'Review AI outputs for bias in human-subjects consent forms'\n"
-        "  Good (manager): 'Use AI to draft updates for the team'\n"
-        "  Too specific (manager): 'Summarize Q3 sales pipeline reports using AI for the VP'\n"
-        "- The task NAME must make it explicit that AI is involved — include 'using AI', 'with AI', or a specific AI tool\n"
+        "- Vary granularity: include a mix of broad tasks and more specific tasks. "
+        "Do NOT make every task the same level of specificity.\n"
         "- Each task: 5–12 words, starts with an action verb, sentence case\n"
         "- Use plain, everyday language — no jargon or technical phrasing\n"
         "- Each needs a name and a one-sentence description (also plain language)\n"
@@ -2363,6 +2404,7 @@ If the participant is NOT disclaiming AI use (i.e., they gave a positive or neut
 
 Respond with ONLY the sentence (or the word DEFAULT). No quotes, no explanation."""
 
+    is_disclaimer = False
     try:
         engine = get_engine(model_name=_TASK_GEN_MODEL, temperature=0.7)
         response = invoke_engine(engine, prompt)
@@ -2371,11 +2413,13 @@ Respond with ONLY the sentence (or the word DEFAULT). No quotes, no explanation.
             msg = _DEFAULT
         else:
             msg = raw
+            is_disclaimer = True
     except Exception as e:
         app.logger.error(f"[ai_widget_intro] error: {e}", exc_info=True)
         msg = _DEFAULT
 
-    return jsonify({'success': True, 'message': msg})
+    print(f"[ai_widget_intro] is_ai_disclaimer={is_disclaimer}")
+    return jsonify({'success': True, 'message': msg, 'is_ai_disclaimer': is_disclaimer})
 
 
 @app.route('/api/task-followup', methods=['POST'])
@@ -2429,7 +2473,8 @@ def task_followup():
             "  - The participant named at least one specific AI-related activity (e.g. a tool, a use case, a task) AND this is turn 2 or later.\n"
             "  - This is turn 3 or later, regardless of answer quality.\n"
             "  - The participant said they don't use AI or AI hasn't changed their work.\n"
-            "  Give a brief, warm acknowledgment (1 sentence, no question).\n"
+            "  If the participant said they DON'T use AI or AI hasn't affected their work, return an EMPTY reply (reply: \"\") — a follow-up message will handle this case.\n"
+            "  Otherwise give a brief, warm acknowledgment (1 sentence, no question).\n"
             "  Return JSON: {\"reply\": \"...\", \"done\": true}\n\n"
             "CASE B — need one clarifying question:\n"
             "  Apply this only when: the answer is too vague to understand what AI role it plays "
@@ -2547,8 +2592,7 @@ def task_followup():
         "  Return JSON: {\"reply\": \"\", \"done\": true}\n\n"
         if not is_ai_extras else
         "  Respond warmly in 1 sentence. Do NOT reference any specific task or topic they mentioned. "
-        "  Keep it general — e.g. 'Really appreciate you sharing all of that.' "
-        "  Do NOT use 'Thanks so much', 'walking me through', or 'your day'. "
+        "  Keep it general — e.g. 'Thank you for giving me an in-depth look at your work' "
         "  Return JSON: {\"reply\": \"...\", \"done\": true}\n\n"
         )
         + f"CASE B — {new_task_scope}:\n"
