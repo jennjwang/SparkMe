@@ -292,11 +292,122 @@ def _format_task_followup_history(history: list[Dict[str, str]]) -> str:
 def _latest_interviewer_message_from_chat(iv) -> str:
     for msg in reversed(getattr(iv, "chat_history", []) or []):
         role = str(getattr(msg, "role", "")).strip().lower()
-        mtype = str(getattr(msg, "type", "")).strip().lower()
+        raw_type = getattr(msg, "type", "")
+        mtype = str(getattr(raw_type, "value", raw_type)).strip().lower()
         content = str(getattr(msg, "content", "")).strip()
         if role == "interviewer" and mtype == "conversation" and content:
             return content
     return ""
+
+
+def _is_final_task_completeness_probe(text: object) -> bool:
+    """Return True for the post-task-widget catch-all that should advance flow."""
+    t = " ".join(str(text or "").strip().lower().split())
+    if not t or "task" not in t:
+        return False
+    return "haven't covered" in t or "have not covered" in t
+
+
+def _classify_final_task_probe_response(
+    latest_interviewer: str,
+    participant_reply: str,
+    job_description: str = "",
+    recent_history: str = "",
+) -> dict:
+    """Classify final task-probe replies without probing beyond action/object clarity."""
+    from src.utils.llm.engines import get_engine, invoke_engine
+
+    prompt = (
+        "You are a task-completeness classifier for an interview system.\n"
+        "The system is resolving a final loop for missed work tasks. The interviewer either asked whether anything else was missed, "
+        "or asked one clarification about the concrete action/object for a newly mentioned task.\n\n"
+        f"Recent loop dialogue, oldest to newest:\n{recent_history or '(none)'}\n\n"
+        f"Latest interviewer question:\n{latest_interviewer}\n\n"
+        f"Participant reply:\n{participant_reply}\n\n"
+        f"Occupation context:\n{job_description or '(unknown)'}\n\n"
+        "Classify the participant reply as exactly one decision:\n"
+        "- closure: the participant is saying there are no additional tasks to add, even informally or indirectly.\n"
+        "- clear_task: the participant names/describes additional work with a concrete action and concrete object. "
+        "Examples of clear action+object: fixing bugs, answering client questions, guiding clients through software, coordinating team handoffs.\n"
+        "- needs_clarification: the participant seems to mention additional work, but the action or object is too vague to record as a concrete task.\n"
+        "- unclear_response: the reply is gibberish, accidental text, a typo/noise fragment, or otherwise does not answer whether there are more tasks.\n\n"
+        "Rules:\n"
+        "- Follow up for needs_clarification only to identify the missing concrete action/object.\n"
+        "- Follow up for unclear_response only to ask the participant to clarify whether they are adding another task or are done with the task list.\n"
+        "- Clarification questions must be open-ended and must NOT include examples, suggestions, or option lists.\n"
+        "- Do NOT ask about frequency, importance, purpose, workflow, examples, who collaborates, technical details, or how they do the task.\n"
+        "- If the reply names a clear task but lacks purpose, still use clear_task.\n"
+        "- If the reply both confirms coverage and names new work, use clear_task if action+object are clear.\n"
+        "- For clear_task, provide task_name as a concise verb phrase preserving the action and object. If multiple clear tasks are named, include them separated by semicolons.\n"
+        "- For needs_clarification, provide exactly one short question asking for the missing concrete action/object.\n"
+        "- For unclear_response, provide exactly one short question asking them to clarify whether they want to add another task or are finished with the task list.\n\n"
+        "Return ONLY valid JSON with this shape:\n"
+        '{"decision": "closure|clear_task|needs_clarification|unclear_response", "task_name": "", "clarification_question": "", "reason": "short reason"}'
+    )
+
+    try:
+        engine = get_engine(model_name=_TASK_GEN_MODEL, temperature=0.0)
+        response = invoke_engine(engine, prompt)
+        raw = (response.content if hasattr(response, 'content') else str(response)).strip()
+        if raw.startswith("```"):
+            lines = raw.splitlines()
+            if lines:
+                raw = "\n".join(lines[1:]).strip()
+            if raw.endswith("```"):
+                raw = raw[:-3].strip()
+        parsed = json.loads(raw)
+        if not isinstance(parsed, dict):
+            return {"decision": "unclear_response"}
+        decision = str(parsed.get("decision", "")).strip().lower()
+        if decision not in {"closure", "clear_task", "needs_clarification", "unclear_response"}:
+            decision = "unclear_response"
+        parsed["decision"] = decision
+        return parsed
+    except Exception as e:
+        app.logger.error(f"[task_followup] final probe classifier error: {e}", exc_info=True)
+        return {"decision": "unclear_response"}
+
+
+def _generate_final_task_probe_continue_question(
+    latest_interviewer: str,
+    job_description: str = "",
+    recent_history: str = "",
+) -> str:
+    """Generate varied wording for the missed-task loop continuation."""
+    from src.utils.llm.engines import get_engine, invoke_engine
+
+    prompt = (
+        "Write one short, natural interviewer question that asks whether there are more missed work tasks to add.\n\n"
+        f"Recent loop dialogue, oldest to newest:\n{recent_history or '(none)'}\n\n"
+        f"Previous interviewer question:\n{latest_interviewer or '(none)'}\n\n"
+        f"Occupation context:\n{job_description or '(unknown)'}\n\n"
+        "Rules:\n"
+        "- Ask only whether there are additional missed tasks or work activities.\n"
+        "- Do not ask for details about any task already mentioned.\n"
+        "- Do not ask about frequency, importance, purpose, workflow, examples, collaboration, or technical details.\n"
+        "- Do not repeat or closely paraphrase any recent interviewer question from the loop.\n"
+        "- Avoid generic repeated templates like 'Is there anything else you do at work that we have not covered yet?' when similar wording appears in the recent loop.\n"
+        "- One sentence, exactly one question mark.\n\n"
+        "Return ONLY valid JSON:\n"
+        '{"question": "..."}'
+    )
+
+    try:
+        engine = get_engine(model_name=_TASK_GEN_MODEL, temperature=0.7)
+        response = invoke_engine(engine, prompt)
+        raw = (response.content if hasattr(response, 'content') else str(response)).strip()
+        if raw.startswith("```"):
+            lines = raw.splitlines()
+            if lines:
+                raw = "\n".join(lines[1:]).strip()
+            if raw.endswith("```"):
+                raw = raw[:-3].strip()
+        parsed = json.loads(raw)
+        question = str(parsed.get("question", "")).strip() if isinstance(parsed, dict) else ""
+        return question if question.count("?") == 1 else ""
+    except Exception as e:
+        app.logger.error(f"[task_followup] continue-question generator error: {e}", exc_info=True)
+        return ""
 
 
 def _parse_iso_datetime(value: Optional[object]) -> Optional[datetime]:
@@ -1824,6 +1935,18 @@ def _parse_tasks_json(raw: str) -> dict:
                         return _json.loads(raw[start:i + 1])
                     except Exception:
                         break
+    # Recovery: JSON may be truncated — extract all individually-parseable task objects
+    recovered = []
+    for m2 in _re.finditer(r'\{', raw):
+        try:
+            obj2, _ = _json.JSONDecoder().raw_decode(raw, m2.start())
+            if isinstance(obj2, dict) and 'name' in obj2:
+                recovered.append(obj2)
+        except Exception:
+            continue
+    if recovered:
+        app.logger.warning(f"[_parse_tasks_json] truncated JSON; recovered {len(recovered)} task(s)")
+        return {'tasks': recovered, 'has_more': True}
     app.logger.error(f"[_parse_tasks_json] could not extract JSON; raw[:200]={raw[:200]!r}")
     return _json.loads(raw)
 
@@ -2469,6 +2592,149 @@ def task_followup():
     iv = wrapper.interview_session
     job_description = _extract_job_description(iv)
 
+    if phase == 'probing':
+        latest_interviewer = ""
+        for item in reversed(recent_dialogue):
+            if item.get("role") == "Interviewer":
+                latest_interviewer = item.get("content", "")
+                break
+        if not latest_interviewer:
+            latest_interviewer = _latest_interviewer_message_from_chat(iv)
+
+        final_probe_active = _is_final_task_completeness_probe(latest_interviewer)
+        loop_active = bool(
+            getattr(iv, "_final_task_probe_loop_active", False)
+        )
+        clarification_pending = bool(
+            getattr(iv, "_final_task_probe_clarification_pending", False)
+        )
+        if final_probe_active or loop_active or clarification_pending:
+            iv._completeness_probe_sent = False
+            iv._post_probe_followup_pending = False
+            iv._final_task_probe_clarification_pending = False
+            iv._final_task_probe_loop_active = True
+
+            history = _task_followup_history(session_token, phase)
+            if recent_dialogue:
+                history[:] = recent_dialogue[-_TASK_FOLLOWUP_HISTORY_MAX_MESSAGES:]
+            elif not history and latest_interviewer:
+                history.append({"role": "Interviewer", "content": latest_interviewer})
+            history_block_before_reply = _format_task_followup_history(history)
+
+            classification = _classify_final_task_probe_response(
+                latest_interviewer=latest_interviewer,
+                participant_reply=task_text,
+                job_description=job_description,
+                recent_history=history_block_before_reply,
+            )
+            decision = str(classification.get("decision", "")).strip().lower()
+            task_name = str(classification.get("task_name", "")).strip() or None
+            if decision == "clear_task" and not task_name:
+                task_name = task_text
+            clarification_question = str(
+                classification.get("clarification_question", "")
+            ).strip()
+
+            history.append({"role": "Participant", "content": task_text})
+            if len(history) > _TASK_FOLLOWUP_HISTORY_MAX_MESSAGES:
+                del history[:-_TASK_FOLLOWUP_HISTORY_MAX_MESSAGES]
+
+            from src.interview_session.session_models import Message, MessageType
+            _now = datetime.now()
+            iv.chat_history.append(Message(
+                id=uuid.uuid4().hex,
+                type=MessageType.CONVERSATION,
+                role="User",
+                content=task_text,
+                timestamp=_now,
+                metadata={"source": "task_followup", "phase": phase},
+            ))
+
+            if decision == "closure":
+                iv._final_task_probe_loop_active = False
+                return jsonify({
+                    'success': True,
+                    'reply': '',
+                    'task_name': None,
+                    'done': True,
+                })
+
+            if decision == "unclear_response":
+                if not clarification_question:
+                    clarification_question = "I didn't catch that. Are you adding another task, or are we done with the task list?"
+                history.append({"role": "Interviewer", "content": clarification_question})
+                if len(history) > _TASK_FOLLOWUP_HISTORY_MAX_MESSAGES:
+                    del history[:-_TASK_FOLLOWUP_HISTORY_MAX_MESSAGES]
+                iv.chat_history.append(Message(
+                    id=uuid.uuid4().hex,
+                    type=MessageType.CONVERSATION,
+                    role="Interviewer",
+                    content=clarification_question,
+                    timestamp=_now,
+                    metadata={"source": "task_followup", "phase": phase},
+                ))
+                if clarification_pending:
+                    iv._final_task_probe_clarification_pending = True
+                return jsonify({
+                    'success': True,
+                    'reply': clarification_question,
+                    'task_name': None,
+                    'done': False,
+                })
+
+            if decision == "needs_clarification" and not clarification_pending:
+                if not clarification_question:
+                    clarification_question = "What concrete action and object should I add for that task?"
+                history.append({"role": "Interviewer", "content": clarification_question})
+                if len(history) > _TASK_FOLLOWUP_HISTORY_MAX_MESSAGES:
+                    del history[:-_TASK_FOLLOWUP_HISTORY_MAX_MESSAGES]
+                iv.chat_history.append(Message(
+                    id=uuid.uuid4().hex,
+                    type=MessageType.CONVERSATION,
+                    role="Interviewer",
+                    content=clarification_question,
+                    timestamp=_now,
+                    metadata={"source": "task_followup", "phase": phase},
+                ))
+                iv._final_task_probe_clarification_pending = True
+                return jsonify({
+                    'success': True,
+                    'reply': clarification_question,
+                    'task_name': None,
+                    'done': False,
+                })
+
+            next_question = _generate_final_task_probe_continue_question(
+                latest_interviewer=latest_interviewer,
+                job_description=job_description,
+                recent_history=_format_task_followup_history(history),
+            )
+            if not next_question:
+                iv._final_task_probe_loop_active = False
+                return jsonify({
+                    'success': True,
+                    'reply': '',
+                    'task_name': task_name if decision == "clear_task" else None,
+                    'done': True,
+                })
+            history.append({"role": "Interviewer", "content": next_question})
+            if len(history) > _TASK_FOLLOWUP_HISTORY_MAX_MESSAGES:
+                del history[:-_TASK_FOLLOWUP_HISTORY_MAX_MESSAGES]
+            iv.chat_history.append(Message(
+                id=uuid.uuid4().hex,
+                type=MessageType.CONVERSATION,
+                role="Interviewer",
+                content=next_question,
+                timestamp=_now,
+                metadata={"source": "task_followup", "phase": phase},
+            ))
+            return jsonify({
+                'success': True,
+                'reply': next_question,
+                'task_name': task_name if decision == "clear_task" else None,
+                'done': False,
+            })
+
     # ── ai_open phase: brief clarifying conversation before the AI task widget ──
     if phase == 'ai_open':
         history = _task_followup_history(session_token, phase)
@@ -2809,19 +3075,6 @@ def submit_task_validation():
             f"[submit_task_validation] Saved {len(all_tasks)} tasks for user {iv.user_id}"
         )
 
-        # Mark Task Inventory collection subtopics as covered — the widget has
-        # already captured the task list. Leave the post-widget completeness
-        # subtopic uncovered so the LLM handles the follow-up sweep.
-        completeness_subtopic_id = None
-        tm = getattr(agenda, 'interview_topic_manager', None)
-        if tm is not None:
-            for topic in tm:
-                if 'task inventory' in str(getattr(topic, 'description', '')).lower():
-                    for subtopic in topic.required_subtopics.values():
-                        if 'post-widget' in str(getattr(subtopic, 'description', '')).lower():
-                            completeness_subtopic_id = str(subtopic.subtopic_id)
-                        else:
-                            subtopic.mark_covered()
 
     # Save task widget data snapshot as JSON (don't overwrite a prior submission that had tasks)
     listed_tasks = data.get('listed_tasks') or []
@@ -2882,13 +3135,16 @@ def submit_task_validation():
             _end_early()
         return jsonify({'success': True, 'task_count': len(all_tasks), 'attn_disqualified': True})
 
-    # Ask the participant if anything was missed before ending
+    # Ask the participant if anything was missed before ending.
+    # Set a flag so the interviewer's next on_message fires end_conversation
+    # deterministically, without an LLM turn.
     def _inject_question():
         iv.add_message_to_chat_history(
             role="Interviewer",
             content="Are there any tasks you can think of that we haven't covered?",
             message_type="conversation",
         )
+        iv._completeness_probe_sent = True
 
     if hasattr(wrapper, 'loop'):
         wrapper.loop.call_soon_threadsafe(_inject_question)

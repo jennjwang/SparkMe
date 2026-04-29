@@ -5177,34 +5177,9 @@
           const tasks = (data.tasks || []).map((t) => ({
             text: typeof t === "string" ? t : t.name || "",
             originalText: typeof t === "string" ? t : t.name || "",
-            description: typeof t === "string" ? "" : t.description || "",
             status: "unreviewed",
             isAttentionCheck: false,
           }));
-
-          // Fill any missing descriptions before returning so cards render complete
-          const missingNames = tasks
-            .filter((t) => !t.description)
-            .map((t) => t.text);
-          if (missingNames.length) {
-            try {
-              const dr = await fetch("/api/regenerate-task-description", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  session_token: sessionToken,
-                  task_names: missingNames,
-                }),
-              });
-              const dd = await dr.json();
-              if (dd.success && dd.descriptions) {
-                tasks.forEach((t) => {
-                  if (!t.description)
-                    t.description = dd.descriptions[t.text] || "";
-                });
-              }
-            } catch (_) {}
-          }
 
           return { tasks, hasMore: !!data.has_more };
         }
@@ -5358,11 +5333,9 @@
 
           const actions = `
             <div class="tvw-card-actions">
-              <button class="tvw-action-btn tvw-accurate-btn" data-idx="${idx}">Accurate</button>
+              <button class="tvw-action-btn tvw-accurate-btn" data-idx="${idx}">Applies to me</button>
               <button class="tvw-action-btn tvw-edit-btn"     data-idx="${idx}">Edit</button>
-              <button class="tvw-action-btn tvw-remove-btn"   data-idx="${idx}">Remove</button>
-              <!-- wish list button hidden -->
-              <!-- <button class="tvw-action-btn tvw-wish-btn"     data-idx="${idx}" title="Add to wishlist">♡ Wish list</button> -->
+              <button class="tvw-action-btn tvw-remove-btn"   data-idx="${idx}">Doesn't apply</button>
             </div>`;
           return `<div class="tvw-task-card${statusCls}" id="tvw-card-${idx}">
             <div class="tvw-card-num ${numClass(t.status)}">${idx + 1}</div>
@@ -5554,31 +5527,6 @@
             if (actions) actions.style.display = "";
             if (newText !== currentText) {
               setTaskStatus(idx, "edited");
-              // Update description async for edited task name
-              const descEl = card.querySelector(".tvw-card-desc");
-              if (descEl) {
-                descEl.textContent = "Updating…";
-                fetch("/api/regenerate-task-description", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    session_token: sessionToken,
-                    task_name: newText,
-                  }),
-                })
-                  .then((r) => r.json())
-                  .then((d) => {
-                    if (d.success && d.description) {
-                      allTasks[idx].description = d.description;
-                      descEl.textContent = d.description;
-                    } else {
-                      descEl.textContent = allTasks[idx].description || "";
-                    }
-                  })
-                  .catch(() => {
-                    descEl.textContent = allTasks[idx].description || "";
-                  });
-              }
             } else {
               // Restore active highlight for current status
               const status = allTasks[idx].status;
@@ -5780,22 +5728,31 @@
           function aiNumClass(idx) {
             const s = aiStatuses[idx];
             if (s === "accurate") return "tvw-num-confirmed";
+            if (s === "edited") return "tvw-num-edited";
             if (s === "removed") return "tvw-num-removed";
             return "";
           }
 
           function aiCardHTML(t, idx) {
             const s = aiStatuses[idx];
-            const statusCls = s === "accurate" ? " tvw-card-confirmed" : s === "removed" ? " tvw-card-removed" : "";
+            const statusCls =
+              s === "accurate"
+                ? " tvw-card-confirmed"
+                : s === "edited"
+                  ? " tvw-card-edited"
+                  : s === "removed"
+                    ? " tvw-card-removed"
+                    : "";
+            const badge = s === "edited" ? `<span class="tvw-badge tvw-badge-edited">edited</span>` : "";
             return `<div class="tvw-task-card${statusCls}" id="aitw-card-${idx}">
               <div class="tvw-card-num ${aiNumClass(idx)}">${idx + 1}</div>
               <div class="tvw-card-body">
                 <div class="tvw-card-title-row">
-                  <span class="tvw-card-title"${s === "removed" ? ' style="text-decoration:line-through;color:#9ca3af"' : ""}>${esc(t.text)}</span>
+                  <span class="tvw-card-title"${s === "removed" ? ' style="text-decoration:line-through;color:#9ca3af"' : ""}>${esc(t.text)}</span>${badge}
                 </div>
-                ${t.description ? `<div class="tvw-card-desc">${esc(t.description)}</div>` : ""}
                 <div class="tvw-card-actions">
                   <button class="tvw-action-btn tvw-accurate-btn${s === "accurate" ? " tvw-btn-active" : ""}" data-idx="${idx}">Applies to me</button>
+                  <button class="tvw-action-btn tvw-edit-btn${s === "edited" ? " tvw-btn-active" : ""}" data-idx="${idx}">Edit</button>
                   <button class="tvw-action-btn tvw-remove-btn${s === "removed" ? " tvw-btn-active" : ""}" data-idx="${idx}">Doesn't apply</button>
                 </div>
               </div>
@@ -5806,25 +5763,45 @@
             aiStatuses[idx] = status;
             const card = document.getElementById(`aitw-card-${idx}`);
             if (!card) return;
-            card.className = `tvw-task-card${status === "accurate" ? " tvw-card-confirmed" : " tvw-card-removed"}`;
+            card.className = `tvw-task-card${status === "accurate" ? " tvw-card-confirmed" : status === "edited" ? " tvw-card-edited" : " tvw-card-removed"}`;
             const num = card.querySelector(".tvw-card-num");
             if (num) num.className = `tvw-card-num ${aiNumClass(idx)}`;
+            const titleRow = card.querySelector(".tvw-card-title-row");
+            titleRow?.querySelector(".tvw-badge")?.remove();
+            if (status === "edited") {
+              const badge = document.createElement("span");
+              badge.className = "tvw-badge tvw-badge-edited";
+              badge.textContent = "edited";
+              titleRow?.appendChild(badge);
+            }
             const title = card.querySelector(".tvw-card-title");
             if (title) {
-              title.style.textDecoration = status === "removed" ? "line-through" : "";
+              title.style.textDecoration =
+                status === "removed" ? "line-through" : "";
               title.style.color = status === "removed" ? "#9ca3af" : "";
             }
-            card.querySelectorAll(".tvw-action-btn").forEach((b) => b.classList.remove("tvw-btn-active"));
-            card.querySelector(status === "accurate" ? ".tvw-accurate-btn" : ".tvw-remove-btn")
+            card
+              .querySelectorAll(".tvw-action-btn")
+              .forEach((b) => b.classList.remove("tvw-btn-active"));
+            card
+              .querySelector(
+                status === "accurate"
+                  ? ".tvw-accurate-btn"
+                  : status === "edited"
+                    ? ".tvw-edit-btn"
+                    : ".tvw-remove-btn",
+              )
               ?.classList.add("tvw-btn-active");
             updateAiFooter();
           }
 
           function allCurrentReviewed() {
-            return _aiWidgetTasks.slice(pageStart, pageStart + AITW_PAGE).every((_, pi) => {
-              const s = aiStatuses[pageStart + pi];
-              return s === "accurate" || s === "removed";
-            });
+            return _aiWidgetTasks
+              .slice(pageStart, pageStart + AITW_PAGE)
+              .every((_, pi) => {
+                const s = aiStatuses[pageStart + pi];
+                return s === "accurate" || s === "edited" || s === "removed";
+              });
           }
 
           function updateAiFooter() {
@@ -5832,30 +5809,83 @@
             if (btn) btn.disabled = !allCurrentReviewed();
           }
 
+          function startAiEdit(idx) {
+            const card = document.getElementById(`aitw-card-${idx}`);
+            if (!card || card.classList.contains("editing")) return;
+            card.classList.add("editing");
+            const titleEl = card.querySelector(".tvw-card-title");
+            const currentText = _aiWidgetTasks[idx].text;
+            const input = document.createElement("input");
+            input.className = "tvw-card-input";
+            input.value = currentText;
+            titleEl.replaceWith(input);
+            const actions = card.querySelector(".tvw-card-actions");
+            if (actions) actions.style.display = "none";
+            input.focus();
+            input.select();
+            function saveAiEdit() {
+              const newText = input.value.trim() || currentText;
+              _aiWidgetTasks[idx].text = newText;
+              const span = document.createElement("span");
+              span.className = "tvw-card-title";
+              span.textContent = newText;
+              input.replaceWith(span);
+              card.classList.remove("editing");
+              if (actions) actions.style.display = "";
+              if (newText !== currentText) {
+                setAiStatus(idx, "edited");
+              } else {
+                const s = aiStatuses[idx];
+                card.querySelectorAll(".tvw-action-btn").forEach((b) => b.classList.remove("tvw-btn-active"));
+                card.querySelector(s === "accurate" ? ".tvw-accurate-btn" : s === "edited" ? ".tvw-edit-btn" : s === "removed" ? ".tvw-remove-btn" : null)
+                  ?.classList.add("tvw-btn-active");
+              }
+            }
+            input.addEventListener("blur", saveAiEdit);
+            input.addEventListener("keydown", (ev) => {
+              if (ev.key === "Enter") { ev.preventDefault(); saveAiEdit(); }
+              if (ev.key === "Escape") { input.value = currentText; saveAiEdit(); }
+            });
+          }
+
           function attachAiCardListeners(idx) {
             const card = document.getElementById(`aitw-card-${idx}`);
             if (!card) return;
-            card.querySelector(".tvw-accurate-btn")
+            card
+              .querySelector(".tvw-accurate-btn")
               ?.addEventListener("click", () => setAiStatus(idx, "accurate"));
-            card.querySelector(".tvw-remove-btn")
+            card
+              .querySelector(".tvw-edit-btn")
+              ?.addEventListener("click", () => startAiEdit(idx));
+            card
+              .querySelector(".tvw-remove-btn")
               ?.addEventListener("click", () => setAiStatus(idx, "removed"));
           }
 
           function finishWidget() {
             const selected = Object.entries(aiStatuses)
-              .filter(([i, s]) => s === "accurate" && !_aiWidgetTasks[+i].isAttentionCheck)
+              .filter(
+                ([i, s]) =>
+                  (s === "accurate" || s === "edited") && !_aiWidgetTasks[+i].isAttentionCheck,
+              )
               .map(([i]) => ({
                 text: _aiWidgetTasks[+i].text,
                 description: _aiWidgetTasks[+i].description,
               }));
-            const aiAttnFailed = Object.entries(aiStatuses)
-              .filter(([i, s]) => s === "accurate" && _aiWidgetTasks[+i].isAttentionCheck)
-              .length;
+            const aiAttnFailed = Object.entries(aiStatuses).filter(
+              ([i, s]) =>
+                s === "accurate" && _aiWidgetTasks[+i].isAttentionCheck,
+            ).length;
             const shownTasks = _aiWidgetTasks.slice(0, pageStart + AITW_PAGE);
-            const aiAttnTotal = shownTasks.filter((t) => t.isAttentionCheck).length;
+            const aiAttnTotal = shownTasks.filter(
+              (t) => t.isAttentionCheck,
+            ).length;
             const listedTasks = shownTasks
               .filter((t) => !t.isAttentionCheck)
-              .map((t) => ({ text: t.text, ai_type: t.aiType || "capability" }));
+              .map((t) => ({
+                text: t.text,
+                ai_type: t.aiType || "capability",
+              }));
             aiWidget.remove();
             onDone(selected, aiAttnFailed, listedTasks, aiAttnTotal);
           }
@@ -5863,8 +5893,10 @@
           function renderPage() {
             const tasks = _aiWidgetTasks;
             const pageTasks = tasks.slice(pageStart, pageStart + AITW_PAGE);
-            const isLast = !_aiWidgetHasMore && pageStart + AITW_PAGE >= tasks.length;
+            const isLast =
+              !_aiWidgetHasMore && pageStart + AITW_PAGE >= tasks.length;
             const reviewed = allCurrentReviewed();
+            const canDone = pageStart >= 3 * AITW_PAGE;
 
             aiWidget.innerHTML = `
               <div class="aitw-header">
@@ -5875,6 +5907,7 @@
                 ${pageTasks.map((t, pi) => aiCardHTML(t, pageStart + pi)).join("")}
               </div>
               <div class="aitw-footer">
+                ${canDone ? `<button class="aitw-skip-btn" id="aitw-done">Done</button>` : ""}
                 <button class="aitw-submit-btn"${reviewed ? "" : " disabled"}>${isLast ? "Continue →" : "Next →"}</button>
               </div>`;
 
@@ -5903,6 +5936,10 @@
                   scrollToBottom();
                 }
               });
+
+            aiWidget
+              .querySelector("#aitw-done")
+              ?.addEventListener("click", () => finishWidget());
 
             // Prefetch next batch in background while user reviews current page
             _ensureAiTaskBatch();
@@ -6086,7 +6123,12 @@
               scrollToBottom();
               renderAiTaskWidget(
                 _confirmedNames,
-                function (selectedAiTasks, aiAttnFailed, listedAiTasks, aiAttnTotal) {
+                function (
+                  selectedAiTasks,
+                  aiAttnFailed,
+                  listedAiTasks,
+                  aiAttnTotal,
+                ) {
                   // End session immediately if AI attention check was failed
                   if (aiAttnFailed > 0) {
                     attnFailed += aiAttnFailed;
@@ -6223,9 +6265,9 @@
             <span class="tvw-progress-text" id="tvw-progress-text">0 reviewed</span>
           </div>
           <ul class="tvw-subtitle">
-            <li><strong>Accurate</strong> — this is something you're doing right now</li>
+            <li><strong>Applies to me</strong> — this is something you're doing right now</li>
             <li><strong>Edit</strong> — the task name is wrong or only partially right</li>
-            <li><strong>Remove</strong> — you don't do this task</li>
+            <li><strong>Doesn't apply</strong> — you don't do this task</li>
           </ul>
           <div class="tvw-progress-track"><div class="tvw-progress-fill" id="tvw-progress-fill" style="width:0%"></div></div>
           <div class="tvw-task-list" id="tvw-task-list">
@@ -6698,7 +6740,7 @@
 
 
                     <div class="fb-section">
-                        <div class="fb-section-label">Anything else you'd like to share? (optional)</div>
+                        <div class="fb-section-label">Anything else you'd like to share?</div>
                         <textarea class="fb-comment" id="fb-comment" placeholder="Any comments or suggestions..." maxlength="1000"></textarea>
                     </div>
 
@@ -7181,7 +7223,7 @@
                 clearInterval(pollingInterval);
                 pollingInterval = null;
               }
-              showEndBanner();
+              showFeedbackWidget();
             }, 1500);
           }
         } catch (e) {}
@@ -7449,12 +7491,10 @@
           banner.innerHTML =
             '<div class="end-text">Session ended</div>' +
             '<div class="end-subtext">You\'re all set — your responses have been saved.</div>' +
+            `<div class="end-subtext" style="margin-top:8px;font-size:0.9em;">Your completion code: <strong>${escapeHtml(PROLIFIC_COMPLETION_CODE)}</strong></div>` +
             `<a class="prolific-complete-btn" href="${prolificCompletionUrl}">Return to Prolific</a>`;
           document.querySelector(".chat-inner").appendChild(banner);
           scrollToBottom();
-          setTimeout(() => {
-            window.location.href = prolificCompletionUrl;
-          }, 3000);
         } else if (!passed) {
           banner.innerHTML =
             '<div class="end-text">Session ended</div>' +

@@ -9,23 +9,7 @@
         "coverage_criteria": [
           "The participant has named their job title or role (e.g. 'nurse', 'software engineer', 'PhD student'). Any brief mention is sufficient — do not probe for more detail.",
           "It is clear what field or industry the participant works in.",
-          "The participant has indicated approximately how long they have been in this specific role or job — a rough range is sufficient (e.g. 'a few years', '10 years', 'just started'). Any single duration answer satisfies this criterion. If asking, ask about THIS ROLE specifically (e.g. 'how long have you been in this role?') — do NOT ask about the broader field, discipline, or career category. Once answered, do NOT follow up on duration in any way: do NOT ask about career history, what they did before this role, whether their focus has changed, or anything about experience outside this role.",
-          "The participant has named at least one activity or task they do at work. Any mention of an activity counts — e.g. 'write code', 'attend meetings', 'manage projects', 'teach classes'. Do NOT ask for more specifics, more examples, or a deeper description of what the tasks involve."
-        ]
-      }
-    ]
-  },
-  {
-    "topic": "Task Inventory",
-    "allow_strategic_planner": false,
-    "allow_emergent": false,
-    "subtopics": [
-      {
-        "description": "Post-widget task completeness and clarification sweep. Two jobs: (1) check for missed tasks and (2) clarify any vague tasks already in the inventory. The full task list from the widget is visible in the user portrait — scan it before asking anything.\n\nJob 1 — missed tasks: the injected question 'Are there any tasks you can think of that we haven't covered?' handles this. If the user names a new task, probe once for action and object if either is vague, then move on.\n\nJob 2 — vague task clarification: scan the existing task inventory in the user portrait for entries that lack a clear action (what the person does) or a clear object (what they act on). Bare abstract nouns like 'support', 'analysis', 'management', 'work', 'meetings', 'projects' without a concrete qualifier are vague objects. Verbs like 'do', 'handle', 'work on', 'deal with' are vague actions. For each vague entry, ask one targeted question to pin down the missing piece (e.g. 'You mentioned support — what does that typically involve, concretely?'). One question per vague task, one per turn. Accept whatever the participant gives and move on — do not re-ask.\n\nOrder: address Job 1 first (the injected question is already in the conversation). Then work through any vague tasks from Job 2, one per turn. End as soon as the user closes Job 1 AND all vague tasks have been addressed (or attempted once).",
-        "coverage_criteria": [
-          "The user has responded to the completeness question. If they named a new task, it has been clarified to action+object level (one probe, then accept).",
-          "Every task in the user portrait task inventory has been checked for a clear action and object. Any task with a vague action or vague object has been probed once for clarification. Accept the participant's answer regardless of how specific it is — one attempt per task, then move on.",
-          "The user has signaled that the task list is complete, OR all vague tasks have been addressed and no new tasks were added. Detect any closure signal — whether negative ('no', 'nothing else') or affirmative ('that covers it', 'pretty much all we do', 'you have everything'). Do NOT pattern-match on specific words; infer the intent. One closure signal is final."
+          "The participant has indicated approximately how long they have been in this specific role or job — a rough range is sufficient (e.g. 'a few years', '10 years', 'just started'). Any single duration answer satisfies this criterion — even vague ones like 'almost 2 years' or 'a couple years'. If asking, ask about THIS ROLE specifically (e.g. 'how long have you been in this role?') — do NOT ask about the broader field, discipline, or career category. Once answered, do NOT follow up on duration in any way. ❌ Do NOT ask 'does that feel closer to X or Y?', 'is that on the shorter or longer end?', or any clarifying or reframing question about the duration. Accept the answer as-is and move on immediately."
         ]
       }
     ]

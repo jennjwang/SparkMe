@@ -252,6 +252,7 @@ class Interviewer(BaseAgent, Participant):
             and len(topic_manager.get_all_incomplete_core_topic()) == 0
         )
 
+
     def _default_completion_goodbye(self) -> str:
         """Deterministic close used when agenda is complete before an LLM turn."""
         if getattr(self.interview_session, "session_type", "intake") == "weekly":
@@ -1516,6 +1517,70 @@ class Interviewer(BaseAgent, Participant):
                 self._ai_question_asked = False
                 self.interview_session.trigger_ai_usage_widget()
 
+            # After the completeness probe, either end immediately (closure) or
+            # allow one LLM follow-up if the user mentioned a new task.
+            # Check flag first; fall back to chat-history inspection (avoids apostrophe issues).
+            _probe_active = getattr(self.interview_session, "_completeness_probe_sent", False)
+            if not _probe_active:
+                _chat = getattr(self.interview_session, 'chat_history', [])
+                _last_iv = next(
+                    (m.content for m in reversed(_chat)
+                     if getattr(m, 'role', '') == self.title),
+                    ""
+                )
+                # Match on unambiguous substrings that don't contain apostrophes.
+                _probe_active = (
+                    "any tasks" in str(_last_iv).lower()
+                    and "covered" in str(_last_iv).lower()
+                )
+
+            SessionLogger.log_to_file(
+                "execution_log",
+                f"[PROBE-GUARD] probe_active={_probe_active}"
+                f" post_pending={getattr(self.interview_session, '_post_probe_followup_pending', False)}"
+                f" msg={repr((message.content or '')[:80])}"
+            )
+
+            if (
+                not getattr(self.interview_session, "_session_ending", False)
+                and _probe_active
+                and not getattr(self.interview_session, "_post_probe_followup_pending", False)
+            ):
+                self.interview_session._completeness_probe_sent = False
+                _resp = (message.content or "").strip().lower()
+                _closure_signals = [
+                    "nothing", "no ", "nope", "not that", "that's all", "that's it",
+                    "pretty much", "all we do", "you have", "have all", "covered",
+                    "nothing else", "can't think", "don't think", "i think that",
+                    "that covers", "that's everything",
+                ]
+                _is_closure = any(sig in _resp for sig in _closure_signals) or len(_resp.split()) < 6
+                SessionLogger.log_to_file(
+                    "execution_log",
+                    f"[PROBE-GUARD] is_closure={_is_closure} resp={repr(_resp[:80])}"
+                )
+                if _is_closure:
+                    self._guarded_send_goodbye(self._default_completion_goodbye())
+                    if not getattr(self.interview_session, "_feedback_widget_sent", False):
+                        self.interview_session.trigger_feedback_widget()
+                    self._turn_to_respond = False
+                    return
+                else:
+                    # User mentioned a new task — allow one LLM turn; suppress the
+                    # coverage guard below so it doesn't cut in before the LLM runs.
+                    self.interview_session._post_probe_followup_pending = True
+
+            elif (
+                not getattr(self.interview_session, "_session_ending", False)
+                and getattr(self.interview_session, "_post_probe_followup_pending", False)
+            ):
+                self.interview_session._post_probe_followup_pending = False
+                self._guarded_send_goodbye(self._default_completion_goodbye())
+                if not getattr(self.interview_session, "_feedback_widget_sent", False):
+                    self.interview_session.trigger_feedback_widget()
+                self._turn_to_respond = False
+                return
+
         # Opening turn of a fresh session with no prior summary: let LLM generate first question
         is_weekly = getattr(self.interview_session, "session_type", "intake") == "weekly"
 
@@ -1723,9 +1788,11 @@ class Interviewer(BaseAgent, Participant):
 
         # Deterministic stop: if all configured topics are already covered after
         # scribe processing, do not let the LLM improvise another follow-up.
+        # Skip when _post_probe_followup_pending so the LLM can answer the new task.
         if (
             message is not None
             and not getattr(self.interview_session, "_session_ending", False)
+            and not getattr(self.interview_session, "_post_probe_followup_pending", False)
             and self._no_active_topics_remaining()
         ):
             if speculative_task is not None and not speculative_task.done():

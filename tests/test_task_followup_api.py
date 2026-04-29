@@ -18,11 +18,14 @@ def _msg(role: str, content: str, msg_type: str = "conversation"):
     )
 
 
-def _register_session(session_token: str):
+def _register_session(
+    session_token: str,
+    latest_interviewer: str = "What other tasks are part of your work?",
+):
     session = SimpleNamespace(
         chat_history=[
             _msg("User", "I am a PhD student who does AI research."),
-            _msg("Interviewer", "Are there any tasks you can think of that we haven't covered?"),
+            _msg("Interviewer", latest_interviewer),
         ],
         end_with_thankyou=MagicMock(),
         user_id="u-task-followup",
@@ -46,6 +49,7 @@ def client():
     main_flask.pending_turns_by_session.clear()
     main_flask.delivered_turn_messages_by_session.clear()
     main_flask.task_followup_history_by_session.clear()
+    main_flask.task_followup_turns_by_session.clear()
 
     main_flask.app.config["TESTING"] = True
     with main_flask.app.test_client() as test_client:
@@ -58,6 +62,293 @@ def client():
     main_flask.pending_turns_by_session.clear()
     main_flask.delivered_turn_messages_by_session.clear()
     main_flask.task_followup_history_by_session.clear()
+    main_flask.task_followup_turns_by_session.clear()
+
+
+def test_final_task_probe_advances_without_followup(client):
+    token = "tok-final-probe"
+    session, _ = _register_session(
+        token,
+        "Are there any tasks you can think of that we haven't covered?",
+    )
+
+    fake_response = SimpleNamespace(
+        content='{"decision":"closure","task_name":"","clarification_question":"","reason":"participant says the list is complete"}'
+    )
+
+    with patch("src.utils.llm.engines.get_engine", return_value=MagicMock()), patch(
+        "src.utils.llm.engines.invoke_engine",
+        return_value=fake_response,
+    ) as mock_invoke:
+        res = client.post(
+            "/api/task-followup",
+            json={
+                "session_token": token,
+                "task_text": "In those pretty much you have all we do",
+                "prior_tasks": [],
+                "phase": "probing",
+            },
+        )
+
+    body = res.get_json()
+    assert res.status_code == 200
+    assert body["success"] is True
+    assert body["done"] is True
+    assert body["reply"] == ""
+    assert body["task_name"] is None
+    mock_invoke.assert_called_once()
+    assert session.chat_history[-1].role == "User"
+    assert session.chat_history[-1].content == "In those pretty much you have all we do"
+    assert session._completeness_probe_sent is False
+    assert session._post_probe_followup_pending is False
+    assert session._final_task_probe_loop_active is False
+
+
+def test_final_task_probe_loops_when_new_task_is_clear(client):
+    token = "tok-final-probe-clear-task"
+    session, _ = _register_session(
+        token,
+        "Are there any tasks you can think of that we haven't covered?",
+    )
+    responses = [
+        SimpleNamespace(
+            content='{"decision":"clear_task","task_name":"Fix software bugs; answer client questions","clarification_question":"","reason":"participant named clear action-object tasks"}'
+        ),
+        SimpleNamespace(
+            content='{"question":"What other work should we add to the list?"}'
+        ),
+    ]
+
+    with patch("src.utils.llm.engines.get_engine", return_value=MagicMock()), patch(
+        "src.utils.llm.engines.invoke_engine",
+        side_effect=responses,
+    ) as mock_invoke:
+        res = client.post(
+            "/api/task-followup",
+            json={
+                "session_token": token,
+                "task_text": "Solving bugs and answering specific questions for the client",
+                "prior_tasks": [],
+                "phase": "probing",
+            },
+        )
+
+    body = res.get_json()
+    assert res.status_code == 200
+    assert body["success"] is True
+    assert body["done"] is False
+    assert body["reply"] == "What other work should we add to the list?"
+    assert body["task_name"] == "Fix software bugs; answer client questions"
+    assert mock_invoke.call_count == 2
+    assert session._completeness_probe_sent is False
+    assert session._post_probe_followup_pending is False
+    assert session._final_task_probe_loop_active is True
+    assert session.chat_history[-1].role == "Interviewer"
+    assert session.chat_history[-1].content == "What other work should we add to the list?"
+    classifier_prompt = mock_invoke.call_args_list[0].args[1]
+    assert "Recent loop dialogue" in classifier_prompt
+    assert "Are there any tasks you can think of that we haven't covered?" in classifier_prompt
+    generator_prompt = mock_invoke.call_args_list[1].args[1]
+    assert "Do not repeat or closely paraphrase any recent interviewer question from the loop" in generator_prompt
+
+
+def test_final_task_probe_generates_varied_loop_question_after_clear_task(client):
+    token = "tok-final-probe-generated-loop"
+    session, _ = _register_session(
+        token,
+        "Are there any tasks you can think of that we haven't covered?",
+    )
+    responses = [
+        SimpleNamespace(
+            content='{"decision":"clear_task","task_name":"Answer client questions","clarification_question":"","reason":"participant named a clear task"}'
+        ),
+        SimpleNamespace(
+            content='{"question":"Is there other work that belongs on the task list?"}'
+        ),
+    ]
+
+    with patch("src.utils.llm.engines.get_engine", return_value=MagicMock()), patch(
+        "src.utils.llm.engines.invoke_engine",
+        side_effect=responses,
+    ) as mock_invoke:
+        res = client.post(
+            "/api/task-followup",
+            json={
+                "session_token": token,
+                "task_text": "Answering client questions",
+                "prior_tasks": [],
+                "phase": "probing",
+            },
+        )
+
+    body = res.get_json()
+    assert res.status_code == 200
+    assert body["success"] is True
+    assert body["done"] is False
+    assert body["reply"] == "Is there other work that belongs on the task list?"
+    assert body["task_name"] == "Answer client questions"
+    assert mock_invoke.call_count == 2
+    assert session.chat_history[-1].content == "Is there other work that belongs on the task list?"
+    generator_prompt = mock_invoke.call_args_list[1].args[1]
+    assert "Recent loop dialogue" in generator_prompt
+    assert "Answering client questions" in generator_prompt
+    assert "Do not repeat or closely paraphrase any recent interviewer question from the loop" in generator_prompt
+    assert "Avoid generic repeated templates" in generator_prompt
+
+
+def test_final_task_probe_only_follows_up_for_action_object_clarification(client):
+    token = "tok-final-probe-clarify"
+    session, _ = _register_session(
+        token,
+        "Are there any tasks you can think of that we haven't covered?",
+    )
+    fake_response = SimpleNamespace(
+        content='{"decision":"needs_clarification","task_name":"","clarification_question":"What concrete work does that teamwork involve?","reason":"teamwork solution lacks action and object"}'
+    )
+
+    with patch("src.utils.llm.engines.get_engine", return_value=MagicMock()), patch(
+        "src.utils.llm.engines.invoke_engine",
+        return_value=fake_response,
+    ) as mock_invoke:
+        res = client.post(
+            "/api/task-followup",
+            json={
+                "session_token": token,
+                "task_text": "It's more a teamwork solution",
+                "prior_tasks": [],
+                "phase": "probing",
+            },
+        )
+
+    body = res.get_json()
+    assert res.status_code == 200
+    assert body["success"] is True
+    assert body["done"] is False
+    assert body["reply"] == "What concrete work does that teamwork involve?"
+    assert body["task_name"] is None
+    assert mock_invoke.call_count == 1
+    assert session._final_task_probe_clarification_pending is True
+    assert session.chat_history[-1].role == "Interviewer"
+    assert session.chat_history[-1].content == "What concrete work does that teamwork involve?"
+    prompt = mock_invoke.call_args.args[1]
+    assert "must NOT include examples, suggestions, or option lists" in prompt
+
+
+def test_final_task_probe_unclear_input_does_not_advance(client):
+    token = "tok-final-probe-unclear"
+    session, _ = _register_session(
+        token,
+        "Are there any tasks you can think of that we haven't covered?",
+    )
+    fake_response = SimpleNamespace(
+        content='{"decision":"unclear_response","task_name":"","clarification_question":"I did not catch that. Are you adding another task, or are you finished with the task list?","reason":"reply looks like accidental text"}'
+    )
+
+    with patch("src.utils.llm.engines.get_engine", return_value=MagicMock()), patch(
+        "src.utils.llm.engines.invoke_engine",
+        return_value=fake_response,
+    ) as mock_invoke:
+        res = client.post(
+            "/api/task-followup",
+            json={
+                "session_token": token,
+                "task_text": "efwwef",
+                "prior_tasks": [],
+                "phase": "probing",
+            },
+        )
+
+    body = res.get_json()
+    assert res.status_code == 200
+    assert body["success"] is True
+    assert body["done"] is False
+    assert body["reply"] == "I did not catch that. Are you adding another task, or are you finished with the task list?"
+    assert body["task_name"] is None
+    assert mock_invoke.call_count == 1
+    assert session._final_task_probe_loop_active is True
+    assert session._final_task_probe_clarification_pending is False
+    assert session.chat_history[-1].role == "Interviewer"
+    assert session.chat_history[-1].content == body["reply"]
+    prompt = mock_invoke.call_args.args[1]
+    assert "unclear_response" in prompt
+    assert "gibberish" in prompt
+    assert "does not answer whether there are more tasks" in prompt
+
+
+def test_final_task_probe_clarification_answer_returns_to_missed_task_loop(client):
+    token = "tok-final-probe-clarified"
+    session, _ = _register_session(
+        token,
+        "What concrete work does that teamwork involve?",
+    )
+    session._final_task_probe_clarification_pending = True
+    fake_response = SimpleNamespace(
+        content='{"decision":"clear_task","task_name":"Coordinate team responses to client questions","clarification_question":"","reason":"participant clarified action and object"}'
+    )
+    generated_response = SimpleNamespace(
+        content='{"question":"Any other tasks we should include?"}'
+    )
+
+    with patch("src.utils.llm.engines.get_engine", return_value=MagicMock()), patch(
+        "src.utils.llm.engines.invoke_engine",
+        side_effect=[fake_response, generated_response],
+    ) as mock_invoke:
+        res = client.post(
+            "/api/task-followup",
+            json={
+                "session_token": token,
+                "task_text": "We coordinate team responses to client questions",
+                "prior_tasks": [],
+                "phase": "probing",
+            },
+        )
+
+    body = res.get_json()
+    assert res.status_code == 200
+    assert body["success"] is True
+    assert body["done"] is False
+    assert body["reply"] == "Any other tasks we should include?"
+    assert body["task_name"] == "Coordinate team responses to client questions"
+    assert mock_invoke.call_count == 2
+    assert session._final_task_probe_clarification_pending is False
+    assert session._final_task_probe_loop_active is True
+    assert session.chat_history[-1].role == "Interviewer"
+    assert session.chat_history[-1].content == "Any other tasks we should include?"
+
+
+def test_final_task_probe_loop_ends_when_user_says_nothing_more(client):
+    token = "tok-final-probe-loop-close"
+    session, _ = _register_session(
+        token,
+        "Any other tasks we should include?",
+    )
+    session._final_task_probe_loop_active = True
+    fake_response = SimpleNamespace(
+        content='{"decision":"closure","task_name":"","clarification_question":"","reason":"participant says there is nothing more"}'
+    )
+
+    with patch("src.utils.llm.engines.get_engine", return_value=MagicMock()), patch(
+        "src.utils.llm.engines.invoke_engine",
+        return_value=fake_response,
+    ) as mock_invoke:
+        res = client.post(
+            "/api/task-followup",
+            json={
+                "session_token": token,
+                "task_text": "Nothing else",
+                "prior_tasks": ["Fix software bugs"],
+                "phase": "probing",
+            },
+        )
+
+    body = res.get_json()
+    assert res.status_code == 200
+    assert body["success"] is True
+    assert body["done"] is True
+    assert body["reply"] == ""
+    assert body["task_name"] is None
+    assert mock_invoke.call_count == 1
+    assert session._final_task_probe_loop_active is False
 
 
 def test_task_followup_prompt_requires_understanding_based_followup(client):
