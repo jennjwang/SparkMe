@@ -14,5 +14,19 @@
         ]
       }
     ]
+  },
+  {
+    "topic": "Task Inventory",
+    "allow_strategic_planner": false,
+    "allow_emergent": false,
+    "subtopics": [
+      {
+        "description": "Post-widget task completeness sweep: after the task widget, confirm no tasks were missed and probe any new task the user mentions for clear action and object.",
+        "coverage_criteria": [
+          "The user has been given the opportunity to name any tasks not captured by the widget. If they name a new task, its action and object are clear — probe once if either is vague, then accept and move on.",
+          "The user has signaled that the task list is complete. Detect any closure signal — whether negative ('no', 'nothing else') or affirmative ('that covers it', 'pretty much all we do', 'you have everything'). Do NOT pattern-match on specific words; infer the intent. One closure signal is final."
+        ]
+      }
+    ]
   }
 ]
