@@ -2809,6 +2809,20 @@ def submit_task_validation():
             f"[submit_task_validation] Saved {len(all_tasks)} tasks for user {iv.user_id}"
         )
 
+        # Mark Task Inventory collection subtopics as covered — the widget has
+        # already captured the task list. Leave the post-widget completeness
+        # subtopic uncovered so the LLM handles the follow-up sweep.
+        completeness_subtopic_id = None
+        tm = getattr(agenda, 'interview_topic_manager', None)
+        if tm is not None:
+            for topic in tm:
+                if 'task inventory' in str(getattr(topic, 'description', '')).lower():
+                    for subtopic in topic.required_subtopics.values():
+                        if 'post-widget' in str(getattr(subtopic, 'description', '')).lower():
+                            completeness_subtopic_id = str(subtopic.subtopic_id)
+                        else:
+                            subtopic.mark_covered()
+
     # Save task widget data snapshot as JSON (don't overwrite a prior submission that had tasks)
     listed_tasks = data.get('listed_tasks') or []
     eval_dir = Path(os.getenv('LOGS_DIR', 'logs')) / iv.user_id / 'evaluations'

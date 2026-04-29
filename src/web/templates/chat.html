@@ -3505,8 +3505,12 @@
         cursor: pointer;
         transition: background 0.15s;
       }
-      .aitw-submit-btn:hover {
+      .aitw-submit-btn:hover:not(:disabled) {
         background: #374151;
+      }
+      .aitw-submit-btn:disabled {
+        background: #d1d5db;
+        cursor: not-allowed;
       }
 
       /* ---- AI Task Summary ---- */
@@ -5770,86 +5774,111 @@
           }
 
           const AITW_PAGE = 4;
-          const AITW_MIN_DONE = 9;
           let pageStart = 0;
-          let selectedIndices = new Set();
+          const aiStatuses = {}; // idx → "accurate"|"removed"
+
+          function aiNumClass(idx) {
+            const s = aiStatuses[idx];
+            if (s === "accurate") return "tvw-num-confirmed";
+            if (s === "removed") return "tvw-num-removed";
+            return "";
+          }
+
+          function aiCardHTML(t, idx) {
+            const s = aiStatuses[idx];
+            const statusCls = s === "accurate" ? " tvw-card-confirmed" : s === "removed" ? " tvw-card-removed" : "";
+            return `<div class="tvw-task-card${statusCls}" id="aitw-card-${idx}">
+              <div class="tvw-card-num ${aiNumClass(idx)}">${idx + 1}</div>
+              <div class="tvw-card-body">
+                <div class="tvw-card-title-row">
+                  <span class="tvw-card-title"${s === "removed" ? ' style="text-decoration:line-through;color:#9ca3af"' : ""}>${esc(t.text)}</span>
+                </div>
+                ${t.description ? `<div class="tvw-card-desc">${esc(t.description)}</div>` : ""}
+                <div class="tvw-card-actions">
+                  <button class="tvw-action-btn tvw-accurate-btn${s === "accurate" ? " tvw-btn-active" : ""}" data-idx="${idx}">Applies to me</button>
+                  <button class="tvw-action-btn tvw-remove-btn${s === "removed" ? " tvw-btn-active" : ""}" data-idx="${idx}">Doesn't apply</button>
+                </div>
+              </div>
+            </div>`;
+          }
+
+          function setAiStatus(idx, status) {
+            aiStatuses[idx] = status;
+            const card = document.getElementById(`aitw-card-${idx}`);
+            if (!card) return;
+            card.className = `tvw-task-card${status === "accurate" ? " tvw-card-confirmed" : " tvw-card-removed"}`;
+            const num = card.querySelector(".tvw-card-num");
+            if (num) num.className = `tvw-card-num ${aiNumClass(idx)}`;
+            const title = card.querySelector(".tvw-card-title");
+            if (title) {
+              title.style.textDecoration = status === "removed" ? "line-through" : "";
+              title.style.color = status === "removed" ? "#9ca3af" : "";
+            }
+            card.querySelectorAll(".tvw-action-btn").forEach((b) => b.classList.remove("tvw-btn-active"));
+            card.querySelector(status === "accurate" ? ".tvw-accurate-btn" : ".tvw-remove-btn")
+              ?.classList.add("tvw-btn-active");
+            updateAiFooter();
+          }
+
+          function allCurrentReviewed() {
+            return _aiWidgetTasks.slice(pageStart, pageStart + AITW_PAGE).every((_, pi) => {
+              const s = aiStatuses[pageStart + pi];
+              return s === "accurate" || s === "removed";
+            });
+          }
+
+          function updateAiFooter() {
+            const btn = aiWidget.querySelector(".aitw-submit-btn");
+            if (btn) btn.disabled = !allCurrentReviewed();
+          }
+
+          function attachAiCardListeners(idx) {
+            const card = document.getElementById(`aitw-card-${idx}`);
+            if (!card) return;
+            card.querySelector(".tvw-accurate-btn")
+              ?.addEventListener("click", () => setAiStatus(idx, "accurate"));
+            card.querySelector(".tvw-remove-btn")
+              ?.addEventListener("click", () => setAiStatus(idx, "removed"));
+          }
+
+          function finishWidget() {
+            const selected = Object.entries(aiStatuses)
+              .filter(([i, s]) => s === "accurate" && !_aiWidgetTasks[+i].isAttentionCheck)
+              .map(([i]) => ({
+                text: _aiWidgetTasks[+i].text,
+                description: _aiWidgetTasks[+i].description,
+              }));
+            const aiAttnFailed = Object.entries(aiStatuses)
+              .filter(([i, s]) => s === "accurate" && _aiWidgetTasks[+i].isAttentionCheck)
+              .length;
+            const shownTasks = _aiWidgetTasks.slice(0, pageStart + AITW_PAGE);
+            const aiAttnTotal = shownTasks.filter((t) => t.isAttentionCheck).length;
+            const listedTasks = shownTasks
+              .filter((t) => !t.isAttentionCheck)
+              .map((t) => ({ text: t.text, ai_type: t.aiType || "capability" }));
+            aiWidget.remove();
+            onDone(selected, aiAttnFailed, listedTasks, aiAttnTotal);
+          }
 
           function renderPage() {
             const tasks = _aiWidgetTasks;
             const pageTasks = tasks.slice(pageStart, pageStart + AITW_PAGE);
-            const isLast =
-              !_aiWidgetHasMore && pageStart + AITW_PAGE >= tasks.length;
-            const canShowDone =
-              isLast || pageStart + AITW_PAGE >= AITW_MIN_DONE;
+            const isLast = !_aiWidgetHasMore && pageStart + AITW_PAGE >= tasks.length;
+            const reviewed = allCurrentReviewed();
 
             aiWidget.innerHTML = `
               <div class="aitw-header">
                 <span class="aitw-title">How AI may have changed your role</span>
-                <span class="aitw-counter">${selectedIndices.size} selected</span>
               </div>
-              <div class="aitw-subtitle">Select all that apply, and click any task name to edit it.</div>
-              <div class="aitw-task-list">
-                ${pageTasks
-                  .map((t, pi) => {
-                    const i = pageStart + pi;
-                    return `
-                  <div class="aitw-task-card${selectedIndices.has(i) ? " selected" : ""}" data-idx="${i}">
-                    <div class="aitw-card-num">${i + 1}</div>
-                    <div class="aitw-card-body">
-                      <div class="aitw-card-title" contenteditable="true" data-idx="${i}" spellcheck="false">${esc(t.text)}</div>
-                    </div>
-                    <div class="aitw-checkbox"></div>
-                  </div>`;
-                  })
-                  .join("")}
+              <div class="aitw-subtitle">For each task below, select whether it applies to your work.</div>
+              <div class="tvw-task-list" style="margin-top:12px;">
+                ${pageTasks.map((t, pi) => aiCardHTML(t, pageStart + pi)).join("")}
               </div>
               <div class="aitw-footer">
-                ${canShowDone ? `<button class="aitw-skip-btn">Done</button>` : ""}
-                <button class="aitw-submit-btn">${isLast ? "Continue →" : "Next →"}</button>
+                <button class="aitw-submit-btn"${reviewed ? "" : " disabled"}>${isLast ? "Continue →" : "Next →"}</button>
               </div>`;
 
-            aiWidget.querySelectorAll(".aitw-task-card").forEach((card) => {
-              card.addEventListener("click", function (e) {
-                if (e.target.classList.contains("aitw-card-title")) return;
-                const idx = parseInt(this.dataset.idx);
-                if (selectedIndices.has(idx)) selectedIndices.delete(idx);
-                else selectedIndices.add(idx);
-                this.classList.toggle("selected");
-                const counter = aiWidget.querySelector(".aitw-counter");
-                if (counter)
-                  counter.textContent = `${selectedIndices.size} selected`;
-              });
-            });
-
-            aiWidget.querySelectorAll(".aitw-card-title").forEach((el) => {
-              el.addEventListener("click", (e) => e.stopPropagation());
-              el.addEventListener("input", function () {
-                _aiWidgetTasks[parseInt(this.dataset.idx)].text =
-                  this.textContent.trim();
-              });
-            });
-
-            function finishWidget() {
-              const selected = [...selectedIndices]
-                .filter((i) => !_aiWidgetTasks[i].isAttentionCheck)
-                .map((i) => ({
-                  text: _aiWidgetTasks[i].text,
-                  description: _aiWidgetTasks[i].description,
-                }));
-              const aiAttnFailed = [...selectedIndices].filter(
-                (i) => _aiWidgetTasks[i].isAttentionCheck,
-              ).length;
-              const shownTasks = _aiWidgetTasks.slice(0, pageStart + AITW_PAGE);
-              const aiAttnTotal = shownTasks.filter((t) => t.isAttentionCheck).length;
-              const listedTasks = shownTasks
-                .filter((t) => !t.isAttentionCheck)
-                .map((t) => ({
-                  text: t.text,
-                  ai_type: t.aiType || "capability",
-                }));
-              aiWidget.remove();
-              onDone(selected, aiAttnFailed, listedTasks, aiAttnTotal);
-            }
+            pageTasks.forEach((_, pi) => attachAiCardListeners(pageStart + pi));
 
             aiWidget
               .querySelector(".aitw-submit-btn")
@@ -5858,7 +5887,6 @@
                   finishWidget();
                 } else {
                   pageStart += AITW_PAGE;
-                  // Fetch next batch if the current page won't be full
                   if (
                     _aiWidgetHasMore &&
                     pageStart + AITW_PAGE > _aiWidgetTasks.length
@@ -5870,16 +5898,11 @@
                       if (_aiWidgetFetching) await _aiWidgetFetching;
                     } catch (_) {}
                   }
-                  // Prefetch next batch in background
                   _ensureAiTaskBatch();
                   renderPage();
                   scrollToBottom();
                 }
               });
-
-            aiWidget
-              .querySelector(".aitw-skip-btn")
-              ?.addEventListener("click", finishWidget);
 
             // Prefetch next batch in background while user reviews current page
             _ensureAiTaskBatch();

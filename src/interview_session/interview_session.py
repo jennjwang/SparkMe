@@ -969,8 +969,6 @@ class InterviewSession:
         if freeze_task_fields and isinstance(portrait_data, dict):
             task_fields = (
                 "Task Inventory",
-                "Priority Tasks",
-                "Time Allocation",
             )
             for field in task_fields:
                 if isinstance(current_portrait, dict) and field in current_portrait:
