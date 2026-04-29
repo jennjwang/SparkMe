@@ -82,6 +82,12 @@ class TestProfileWidgetContinueUxRegression:
         )
 
 
+class TestFeedbackWidgetSaveRegression:
+    def test_feedback_payload_defaults_current_tasks_to_performed(self):
+        text = _chat_template_text()
+        assert "const checkedTasks = new Set(tasks);" in text
+
+
 class TestProfileWidgetRoleFirstRenderingRegression:
     def test_profile_confirm_sets_gate_before_reveal(self):
         text = _chat_template_text()

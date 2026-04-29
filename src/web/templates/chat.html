@@ -5743,7 +5743,10 @@
                   : s === "removed"
                     ? " tvw-card-removed"
                     : "";
-            const badge = s === "edited" ? `<span class="tvw-badge tvw-badge-edited">edited</span>` : "";
+            const badge =
+              s === "edited"
+                ? `<span class="tvw-badge tvw-badge-edited">edited</span>`
+                : "";
             return `<div class="tvw-task-card${statusCls}" id="aitw-card-${idx}">
               <div class="tvw-card-num ${aiNumClass(idx)}">${idx + 1}</div>
               <div class="tvw-card-body">
@@ -5836,15 +5839,32 @@
                 setAiStatus(idx, "edited");
               } else {
                 const s = aiStatuses[idx];
-                card.querySelectorAll(".tvw-action-btn").forEach((b) => b.classList.remove("tvw-btn-active"));
-                card.querySelector(s === "accurate" ? ".tvw-accurate-btn" : s === "edited" ? ".tvw-edit-btn" : s === "removed" ? ".tvw-remove-btn" : null)
+                card
+                  .querySelectorAll(".tvw-action-btn")
+                  .forEach((b) => b.classList.remove("tvw-btn-active"));
+                card
+                  .querySelector(
+                    s === "accurate"
+                      ? ".tvw-accurate-btn"
+                      : s === "edited"
+                        ? ".tvw-edit-btn"
+                        : s === "removed"
+                          ? ".tvw-remove-btn"
+                          : null,
+                  )
                   ?.classList.add("tvw-btn-active");
               }
             }
             input.addEventListener("blur", saveAiEdit);
             input.addEventListener("keydown", (ev) => {
-              if (ev.key === "Enter") { ev.preventDefault(); saveAiEdit(); }
-              if (ev.key === "Escape") { input.value = currentText; saveAiEdit(); }
+              if (ev.key === "Enter") {
+                ev.preventDefault();
+                saveAiEdit();
+              }
+              if (ev.key === "Escape") {
+                input.value = currentText;
+                saveAiEdit();
+              }
             });
           }
 
@@ -5866,7 +5886,8 @@
             const selected = Object.entries(aiStatuses)
               .filter(
                 ([i, s]) =>
-                  (s === "accurate" || s === "edited") && !_aiWidgetTasks[+i].isAttentionCheck,
+                  (s === "accurate" || s === "edited") &&
+                  !_aiWidgetTasks[+i].isAttentionCheck,
               )
               .map(([i]) => ({
                 text: _aiWidgetTasks[+i].text,
@@ -6095,7 +6116,7 @@
             const _confirmedNames = confirmed.map((t) => t.text);
             async function showAiWidgetAfterOpenQuestion(openAnswer) {
               let introMsg =
-                "Here are some AI-related tasks that may fit your work. Do any of these apply?";
+                "Here are some AI-related tasks that I think may fit your work. Do any of these apply?";
               showTyping();
               try {
                 const r = await fetch("/api/ai-widget-intro", {
@@ -6137,7 +6158,7 @@
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({
                         session_token: sessionToken,
-                        selected_from_widget: [],
+                        selected_from_widget: selectedAiTasks,
                         extra_tasks: [],
                         listed_tasks: listedAiTasks || [],
                         attn_failed: aiAttnFailed,
@@ -6358,7 +6379,7 @@
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                   session_token: sessionToken,
-                  selected_from_widget: [],
+                  selected_from_widget: selectedAiTasks,
                   extra_tasks: [],
                   listed_tasks: listedAiTasks || [],
                   attn_failed: aiAttnFailed,
@@ -6683,7 +6704,7 @@
         }
 
         // All tasks start checked (user unchecks tasks they don't perform)
-        const checkedTasks = new Set();
+        const checkedTasks = new Set(tasks);
 
         function renderTaskNodes(nodes, depth) {
           if (!Array.isArray(nodes) || nodes.length === 0) return "";

@@ -1,5 +1,6 @@
 """Regression tests for /api/task-followup behavior and prompt construction."""
 
+import json
 from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -104,18 +105,22 @@ def test_final_task_probe_advances_without_followup(client):
     assert session._final_task_probe_loop_active is False
 
 
-def test_final_task_probe_loops_when_new_task_is_clear(client):
+def test_final_task_probe_loops_when_new_task_is_clear(client, tmp_path, monkeypatch):
+    monkeypatch.setenv("LOGS_DIR", str(tmp_path))
     token = "tok-final-probe-clear-task"
     session, _ = _register_session(
         token,
         "Are there any tasks you can think of that we haven't covered?",
+    )
+    session.session_agenda = SimpleNamespace(
+        user_portrait={"Task Inventory": ["Build web pages"]}
     )
     responses = [
         SimpleNamespace(
             content='{"decision":"clear_task","task_name":"Fix software bugs; answer client questions","clarification_question":"","reason":"participant named clear action-object tasks"}'
         ),
         SimpleNamespace(
-            content='{"question":"What other work should we add to the list?"}'
+            content='{"reply":"I will add fixing software bugs and answering client questions. What other work should we add to the list?"}'
         ),
     ]
 
@@ -137,19 +142,32 @@ def test_final_task_probe_loops_when_new_task_is_clear(client):
     assert res.status_code == 200
     assert body["success"] is True
     assert body["done"] is False
-    assert body["reply"] == "What other work should we add to the list?"
+    assert body["reply"] == "I will add fixing software bugs and answering client questions. What other work should we add to the list?"
     assert body["task_name"] == "Fix software bugs; answer client questions"
     assert mock_invoke.call_count == 2
     assert session._completeness_probe_sent is False
     assert session._post_probe_followup_pending is False
     assert session._final_task_probe_loop_active is True
     assert session.chat_history[-1].role == "Interviewer"
-    assert session.chat_history[-1].content == "What other work should we add to the list?"
+    assert session.chat_history[-1].content == "I will add fixing software bugs and answering client questions. What other work should we add to the list?"
+    assert session.session_agenda.user_portrait["Task Inventory"] == [
+        "Build web pages",
+        "Fix software bugs",
+        "answer client questions",
+    ]
+    portrait_path = tmp_path / session.user_id / "user_portrait.json"
+    saved_portrait = json.loads(portrait_path.read_text())
+    assert (
+        saved_portrait["Task Inventory"]
+        == session.session_agenda.user_portrait["Task Inventory"]
+    )
     classifier_prompt = mock_invoke.call_args_list[0].args[1]
     assert "Recent loop dialogue" in classifier_prompt
     assert "Are there any tasks you can think of that we haven't covered?" in classifier_prompt
     generator_prompt = mock_invoke.call_args_list[1].args[1]
     assert "Do not repeat or closely paraphrase any recent interviewer question from the loop" in generator_prompt
+    assert "Accepted missed task to add: Fix software bugs; answer client questions" in generator_prompt
+    assert "start with a brief neutral acknowledgement" in generator_prompt
 
 
 def test_final_task_probe_generates_varied_loop_question_after_clear_task(client):
@@ -163,7 +181,7 @@ def test_final_task_probe_generates_varied_loop_question_after_clear_task(client
             content='{"decision":"clear_task","task_name":"Answer client questions","clarification_question":"","reason":"participant named a clear task"}'
         ),
         SimpleNamespace(
-            content='{"question":"Is there other work that belongs on the task list?"}'
+            content='{"reply":"I will add answering client questions. Is there other work that belongs on the task list?"}'
         ),
     ]
 
@@ -185,13 +203,14 @@ def test_final_task_probe_generates_varied_loop_question_after_clear_task(client
     assert res.status_code == 200
     assert body["success"] is True
     assert body["done"] is False
-    assert body["reply"] == "Is there other work that belongs on the task list?"
+    assert body["reply"] == "I will add answering client questions. Is there other work that belongs on the task list?"
     assert body["task_name"] == "Answer client questions"
     assert mock_invoke.call_count == 2
-    assert session.chat_history[-1].content == "Is there other work that belongs on the task list?"
+    assert session.chat_history[-1].content == "I will add answering client questions. Is there other work that belongs on the task list?"
     generator_prompt = mock_invoke.call_args_list[1].args[1]
     assert "Recent loop dialogue" in generator_prompt
     assert "Answering client questions" in generator_prompt
+    assert "Accepted missed task to add: Answer client questions" in generator_prompt
     assert "Do not repeat or closely paraphrase any recent interviewer question from the loop" in generator_prompt
     assert "Avoid generic repeated templates" in generator_prompt
 
@@ -230,7 +249,7 @@ def test_final_task_probe_only_follows_up_for_action_object_clarification(client
     assert session._final_task_probe_clarification_pending is True
     assert session.chat_history[-1].role == "Interviewer"
     assert session.chat_history[-1].content == "What concrete work does that teamwork involve?"
-    prompt = mock_invoke.call_args.args[1]
+    prompt = mock_invoke.call_args_list[0].args[1]
     assert "must NOT include examples, suggestions, or option lists" in prompt
 
 
@@ -286,7 +305,7 @@ def test_final_task_probe_clarification_answer_returns_to_missed_task_loop(clien
         content='{"decision":"clear_task","task_name":"Coordinate team responses to client questions","clarification_question":"","reason":"participant clarified action and object"}'
     )
     generated_response = SimpleNamespace(
-        content='{"question":"Any other tasks we should include?"}'
+        content='{"reply":"I will add coordinating team responses to client questions. Any other tasks we should include?"}'
     )
 
     with patch("src.utils.llm.engines.get_engine", return_value=MagicMock()), patch(
@@ -307,13 +326,13 @@ def test_final_task_probe_clarification_answer_returns_to_missed_task_loop(clien
     assert res.status_code == 200
     assert body["success"] is True
     assert body["done"] is False
-    assert body["reply"] == "Any other tasks we should include?"
+    assert body["reply"] == "I will add coordinating team responses to client questions. Any other tasks we should include?"
     assert body["task_name"] == "Coordinate team responses to client questions"
     assert mock_invoke.call_count == 2
     assert session._final_task_probe_clarification_pending is False
     assert session._final_task_probe_loop_active is True
     assert session.chat_history[-1].role == "Interviewer"
-    assert session.chat_history[-1].content == "Any other tasks we should include?"
+    assert session.chat_history[-1].content == "I will add coordinating team responses to client questions. Any other tasks we should include?"
 
 
 def test_final_task_probe_loop_ends_when_user_says_nothing_more(client):
@@ -438,7 +457,7 @@ def test_ai_task_followup_prompt_stays_ai_scoped(client):
     _register_session(token)
 
     fake_response = SimpleNamespace(
-        content='{"reply":"Using AI to draft bug fixes sounds useful - what do you usually check before applying them?","task_name":"Draft bug fixes using AI to speed implementation","done":false}'
+        content='{"reply":"What do you usually check before applying AI-suggested bug fixes?","task_name":"Draft bug fixes using AI to speed implementation","done":false}'
     )
 
     with patch("src.utils.llm.engines.get_engine", return_value=MagicMock()), patch(
@@ -464,9 +483,50 @@ def test_ai_task_followup_prompt_stays_ai_scoped(client):
     assert "This phase is ONLY about AI-related tasks" in prompt
     assert "Do NOT broaden to general work tasks" in prompt
     assert "vary the wording and keep it brief" in prompt
+    assert "brief neutral acknowledgement" in prompt
+    assert "Do not include more than a brief neutral acknowledgement" in prompt
+    assert "do not use one every turn" in prompt
+    assert "Do NOT infer benefits they did not say" in prompt
     assert "Do NOT reuse the same wording from the previous interviewer turn" in prompt
     assert "Interviewer: Any other AI-related tasks come to mind?" in prompt
     assert "Interviewer: Are there any tasks you can think of that we haven't covered?" not in prompt
+    assert "briefly reflects understanding" not in prompt
+    assert "Respond briefly to the answer" not in prompt
+
+
+def test_ai_open_done_suppresses_sycophantic_acknowledgement(client):
+    token = "tok-ai-open-neutral"
+    session, _ = _register_session(token)
+
+    fake_response = SimpleNamespace(
+        content='{"reply":"Got it, using AI to move faster through experiments makes a lot of sense for a PhD.","done":true}'
+    )
+
+    with patch("src.utils.llm.engines.get_engine", return_value=MagicMock()), patch(
+        "src.utils.llm.engines.invoke_engine",
+        return_value=fake_response,
+    ) as mock_invoke:
+        res = client.post(
+            "/api/task-followup",
+            json={
+                "session_token": token,
+                "task_text": "research projects, a lot of experiments. it doesn't really change it",
+                "phase": "ai_open",
+            },
+        )
+
+    body = res.get_json()
+    assert res.status_code == 200
+    assert body["success"] is True
+    assert body["done"] is True
+    assert body["reply"] == ""
+    assert body["open_answer"] == "research projects, a lot of experiments. it doesn't really change it"
+    assert session.chat_history[-1].role == "User"
+    prompt = mock_invoke.call_args.args[1]
+    assert 'Return an EMPTY reply (reply: "")' in prompt
+    assert "brief neutral acknowledgement" in prompt
+    assert "Do NOT infer benefits they did not say" in prompt
+    assert "If they say AI does not change their work, do not contradict" in prompt
 
 
 def test_ai_task_followup_fallback_question_is_ai_scoped(client):
@@ -494,8 +554,105 @@ def test_ai_task_followup_fallback_question_is_ai_scoped(client):
     body = res.get_json()
     assert res.status_code == 200
     assert body["success"] is True
-    assert body["reply"].endswith("Any other AI-related tasks come to mind?")
+    assert body["reply"] == "Any other AI-related tasks come to mind?"
+    assert "That helps" not in body["reply"]
     assert "other tasks are part of your work" not in body["reply"]
+
+
+def test_ai_task_followup_strips_evaluative_preamble(client):
+    token = "tok-ai-followup-no-preamble"
+    _register_session(token)
+
+    fake_response = SimpleNamespace(
+        content='{"reply":"Nice that it mostly holds up without heavy revision, so are there other ways AI shows up in your PhD work?","done":false}'
+    )
+    edited_response = SimpleNamespace(
+        content='{"reply":"Are there other ways AI shows up in your PhD work?"}'
+    )
+
+    with patch("src.utils.llm.engines.get_engine", return_value=MagicMock()), patch(
+        "src.utils.llm.engines.invoke_engine",
+        side_effect=[fake_response, edited_response],
+    ):
+        res = client.post(
+            "/api/task-followup",
+            json={
+                "session_token": token,
+                "task_text": "it lands close enough",
+                "prior_tasks": ["Draft grant proposals from scratch using AI"],
+                "phase": "ai_extras",
+            },
+        )
+
+    body = res.get_json()
+    assert res.status_code == 200
+    assert body["success"] is True
+    assert body["reply"] == "Are there other ways AI shows up in your PhD work?"
+    assert "Nice" not in body["reply"]
+    assert "holds up" not in body["reply"]
+
+
+def test_ai_task_followup_keeps_brief_neutral_acknowledgement(client):
+    token = "tok-ai-followup-neutral-ack"
+    _register_session(token)
+
+    fake_response = SimpleNamespace(
+        content='{"reply":"Got it, are there other ways AI shows up in your PhD work?","done":false}'
+    )
+    edited_response = SimpleNamespace(
+        content='{"reply":"Got it, are there other ways AI shows up in your PhD work?"}'
+    )
+
+    with patch("src.utils.llm.engines.get_engine", return_value=MagicMock()), patch(
+        "src.utils.llm.engines.invoke_engine",
+        side_effect=[fake_response, edited_response],
+    ):
+        res = client.post(
+            "/api/task-followup",
+            json={
+                "session_token": token,
+                "task_text": "it lands close enough",
+                "prior_tasks": ["Draft grant proposals from scratch using AI"],
+                "phase": "ai_extras",
+            },
+        )
+
+    body = res.get_json()
+    assert res.status_code == 200
+    assert body["success"] is True
+    assert body["reply"] == "Got it, are there other ways AI shows up in your PhD work?"
+
+
+def test_ai_task_followup_strips_hyphenated_preamble(client):
+    token = "tok-ai-followup-no-hyphen-preamble"
+    _register_session(token)
+
+    fake_response = SimpleNamespace(
+        content='{"reply":"Using AI for grant proposals sounds useful - what parts do you usually draft with it?","done":false}'
+    )
+    edited_response = SimpleNamespace(
+        content='{"reply":"What parts do you usually draft with it?"}'
+    )
+
+    with patch("src.utils.llm.engines.get_engine", return_value=MagicMock()), patch(
+        "src.utils.llm.engines.invoke_engine",
+        side_effect=[fake_response, edited_response],
+    ):
+        res = client.post(
+            "/api/task-followup",
+            json={
+                "session_token": token,
+                "task_text": "grant proposals yes",
+                "prior_tasks": ["Draft grant proposals using AI"],
+                "phase": "ai_extras",
+            },
+        )
+
+    body = res.get_json()
+    assert res.status_code == 200
+    assert body["success"] is True
+    assert body["reply"] == "What parts do you usually draft with it?"
+    assert "sounds useful" not in body["reply"]
 
 
 def test_ai_task_followup_done_prompt_requests_graceful_close(client):
@@ -524,11 +681,11 @@ def test_ai_task_followup_done_prompt_requests_graceful_close(client):
     assert res.status_code == 200
     assert body["success"] is True
     assert body["done"] is True
-    assert body["reply"]
+    assert body["reply"] == ""
     session.end_with_thankyou.assert_called_once()
 
     prompt = mock_invoke.call_args.args[1]
-    assert "transition naturally to closing the interview" in prompt
+    assert 'Return JSON: {"reply": "", "done": true}' in prompt
 
 
 def test_task_followup_reply_strips_em_dash_characters(client):

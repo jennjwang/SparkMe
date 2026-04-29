@@ -289,6 +289,100 @@ def _format_task_followup_history(history: list[Dict[str, str]]) -> str:
     return "\n".join(lines) if lines else "(none)"
 
 
+def _compact_reply_text(value: object) -> str:
+    return " ".join(str(value or "").replace("—", ",").replace("–", ",").split()).strip()
+
+
+def _load_llm_json_object(raw: object) -> dict:
+    """Parse a JSON object from an LLM response without pattern matching."""
+    text = str(raw or "").strip()
+    if not text:
+        return {}
+    if text.startswith("```"):
+        lines = text.splitlines()
+        if lines:
+            text = "\n".join(lines[1:]).strip()
+        if text.endswith("```"):
+            text = text[:-3].strip()
+
+    try:
+        parsed = json.loads(text)
+        return parsed if isinstance(parsed, dict) else {}
+    except Exception:
+        pass
+
+    decoder = json.JSONDecoder()
+    start = text.find("{")
+    while start != -1:
+        try:
+            parsed, _ = decoder.raw_decode(text[start:])
+            return parsed if isinstance(parsed, dict) else {}
+        except Exception:
+            start = text.find("{", start + 1)
+    return {}
+
+
+def _edit_ai_followup_reply(
+    *,
+    reply: str,
+    fallback: str,
+    participant_reply: str,
+    job_description: str = "",
+    recent_history: str = "",
+    prior_tasks: list[str] | None = None,
+) -> str:
+    """Use a constrained editor pass to remove over-acknowledgement semantically."""
+    from src.utils.llm.engines import get_engine, invoke_engine
+
+    candidate = _compact_reply_text(reply)
+    fallback_text = _compact_reply_text(fallback)
+    if not candidate or "?" not in candidate:
+        candidate = fallback_text
+
+    prior_block = ""
+    if prior_tasks:
+        prior_block = "AI-related tasks already collected:\n" + "\n".join(
+            f"- {str(task).strip()}" for task in prior_tasks if str(task).strip()
+        )
+
+    prompt = (
+        "Edit one interviewer reply for an AI-related task inventory.\n\n"
+        f"Occupation context: {job_description or '(unknown)'}\n"
+        f"{prior_block}\n\n"
+        f"Recent task-followup dialogue:\n{recent_history or '(none)'}\n\n"
+        f"Participant's latest message: {participant_reply}\n\n"
+        f"Candidate reply: {candidate}\n\n"
+        "Goal:\n"
+        "- Return the reply the interviewer should send next.\n"
+        "- Preserve the useful question intent from the candidate when possible.\n"
+        "- If the candidate contains praise, evaluation, reassurance, a summary, or an inferred benefit, remove that material.\n"
+        "- A brief neutral acknowledgement like 'Got it' or 'That makes sense' is allowed only if it is already in the candidate and does not make the reply feel repetitive.\n"
+        "- Do not add a new acknowledgement.\n"
+        "- Keep the reply scoped to AI-related tasks, AI-enabled work, or AI oversight responsibilities.\n"
+        "- If the candidate cannot be repaired cleanly, use this fallback instead: "
+        f"{fallback_text}\n\n"
+        "Hard constraints:\n"
+        "- One sentence max.\n"
+        "- Exactly one question mark.\n"
+        "- No em dashes or en dashes.\n"
+        "- No praise or value judgments.\n\n"
+        "Return ONLY valid JSON: {\"reply\": \"...\"}"
+    )
+
+    try:
+        engine = get_engine(model_name=_TASK_GEN_MODEL, temperature=0.2)
+        response = invoke_engine(engine, prompt)
+        raw = response.content if hasattr(response, 'content') else str(response)
+        parsed = _load_llm_json_object(raw)
+        edited = _compact_reply_text(parsed.get("reply", ""))
+        if edited.count("?") == 1:
+            return edited
+    except Exception as e:
+        app.logger.error(f"[task_followup] AI reply editor error: {e}", exc_info=True)
+
+    return fallback_text if fallback_text.count("?") == 1 else candidate
+
+
 def _latest_interviewer_message_from_chat(iv) -> str:
     for msg in reversed(getattr(iv, "chat_history", []) or []):
         role = str(getattr(msg, "role", "")).strip().lower()
@@ -372,24 +466,36 @@ def _generate_final_task_probe_continue_question(
     latest_interviewer: str,
     job_description: str = "",
     recent_history: str = "",
+    participant_reply: str = "",
+    accepted_task_name: str = "",
 ) -> str:
     """Generate varied wording for the missed-task loop continuation."""
     from src.utils.llm.engines import get_engine, invoke_engine
 
+    accepted_task_block = ""
+    if accepted_task_name:
+        accepted_task_block = (
+            f"Accepted missed task to add: {accepted_task_name}\n"
+            f"Participant wording for that task: {participant_reply or '(none)'}\n\n"
+        )
+
     prompt = (
-        "Write one short, natural interviewer question that asks whether there are more missed work tasks to add.\n\n"
+        "Write one short, natural interviewer reply for a missed-task loop.\n\n"
         f"Recent loop dialogue, oldest to newest:\n{recent_history or '(none)'}\n\n"
         f"Previous interviewer question:\n{latest_interviewer or '(none)'}\n\n"
+        f"{accepted_task_block}"
         f"Occupation context:\n{job_description or '(unknown)'}\n\n"
         "Rules:\n"
-        "- Ask only whether there are additional missed tasks or work activities.\n"
+        "- If an accepted missed task is provided, start with a brief neutral acknowledgement that you are adding it.\n"
+        "- After any acknowledgement, ask only whether there are additional missed tasks or work activities.\n"
         "- Do not ask for details about any task already mentioned.\n"
+        "- Do not praise, evaluate, or summarize the participant's work.\n"
         "- Do not ask about frequency, importance, purpose, workflow, examples, collaboration, or technical details.\n"
         "- Do not repeat or closely paraphrase any recent interviewer question from the loop.\n"
         "- Avoid generic repeated templates like 'Is there anything else you do at work that we have not covered yet?' when similar wording appears in the recent loop.\n"
-        "- One sentence, exactly one question mark.\n\n"
+        "- One or two short sentences, exactly one question mark.\n\n"
         "Return ONLY valid JSON:\n"
-        '{"question": "..."}'
+        '{"reply": "..."}'
     )
 
     try:
@@ -403,8 +509,10 @@ def _generate_final_task_probe_continue_question(
             if raw.endswith("```"):
                 raw = raw[:-3].strip()
         parsed = json.loads(raw)
-        question = str(parsed.get("question", "")).strip() if isinstance(parsed, dict) else ""
-        return question if question.count("?") == 1 else ""
+        reply = ""
+        if isinstance(parsed, dict):
+            reply = str(parsed.get("reply") or parsed.get("question") or "").strip()
+        return reply if reply.count("?") == 1 else ""
     except Exception as e:
         app.logger.error(f"[task_followup] continue-question generator error: {e}", exc_info=True)
         return ""
@@ -1985,6 +2093,55 @@ def _extract_user_mentioned_tasks(iv) -> list[str]:
     return msgs
 
 
+def _split_task_inventory_items(task_name: object) -> list[str]:
+    return [
+        " ".join(part.strip().split())
+        for part in str(task_name or "").split(";")
+        if part.strip()
+    ]
+
+
+def _append_task_inventory_items(iv, task_names: list[str]) -> list[str]:
+    """Append newly confirmed missed tasks to the portrait-backed task inventory."""
+    agenda = getattr(iv, 'session_agenda', None)
+    if agenda is None or not task_names:
+        return []
+
+    portrait = dict(getattr(agenda, 'user_portrait', None) or {})
+    current = [
+        str(t).strip()
+        for t in (portrait.get('Task Inventory') or [])
+        if str(t).strip()
+    ]
+    seen = {t.lower(): t for t in current}
+    appended = []
+
+    for name in task_names:
+        clean = " ".join(str(name).strip().split())
+        if not clean or clean.lower() in seen:
+            continue
+        current.append(clean)
+        seen[clean.lower()] = clean
+        appended.append(clean)
+
+    if not appended:
+        return []
+
+    portrait['Task Inventory'] = current
+    portrait = normalize_user_portrait(portrait)
+    agenda.user_portrait = portrait
+    portrait_path = os.path.join(
+        os.getenv('LOGS_DIR', 'logs'), iv.user_id, 'user_portrait.json'
+    )
+    os.makedirs(os.path.dirname(portrait_path), exist_ok=True)
+    with open(portrait_path, 'w') as f:
+        json.dump(portrait, f, indent=2)
+    app.logger.info(
+        f"[task_followup] Appended {len(appended)} missed task(s) for user {iv.user_id}"
+    )
+    return appended
+
+
 
 _SESSION_PERSPECTIVES = [
     "Emphasize tasks that are recurring and form the backbone of the daily or weekly routine.",
@@ -2526,7 +2683,7 @@ def ai_widget_intro():
     iv = wrapper.interview_session
     job_description = _extract_job_description(iv)
 
-    _DEFAULT = "Here are some AI-related tasks that may fit your work. Do any of these apply?"
+    _DEFAULT = "Here are some AI-related tasks that I think may fit your work. Do any of these apply?"
 
     if not open_answer:
         return jsonify({'success': True, 'message': _DEFAULT})
@@ -2537,10 +2694,11 @@ Their answer: "{open_answer}"
 
 Job context: {job_description or '(unknown)'}
 
-Task: Decide whether the participant is disclaiming AI use (e.g., saying they don't use AI, haven't adopted it, or AI hasn't affected their work). If yes, write a single warm, conversational sentence that:
-- Acknowledges their answer without repeating it back
+Task: Decide whether the participant is disclaiming AI use (e.g., saying they don't use AI, haven't adopted it, or AI hasn't affected their work). If yes, write a single neutral, conversational sentence that:
+- Acknowledges the transition without praising, validating, or repeating the answer back
 - Explains that AI may still be affecting their work indirectly — e.g. because colleagues or collaborators use it, because their field is changing, or because they've had to adapt their work around AI tools others use
 - Ends with "Do any of these apply?" so it leads naturally into a list of AI-related tasks
+- Does NOT praise or evaluate the answer with phrases like "sounds useful", "interesting", "great", "helpful", or similar
 
 If the participant is NOT disclaiming AI use (i.e., they gave a positive or neutral answer), respond with exactly: DEFAULT
 
@@ -2631,6 +2789,10 @@ def task_followup():
             task_name = str(classification.get("task_name", "")).strip() or None
             if decision == "clear_task" and not task_name:
                 task_name = task_text
+            if decision == "clear_task" and task_name:
+                _append_task_inventory_items(
+                    iv, _split_task_inventory_items(task_name)
+                )
             clarification_question = str(
                 classification.get("clarification_question", "")
             ).strip()
@@ -2704,12 +2866,14 @@ def task_followup():
                     'done': False,
                 })
 
-            next_question = _generate_final_task_probe_continue_question(
+            next_reply = _generate_final_task_probe_continue_question(
                 latest_interviewer=latest_interviewer,
                 job_description=job_description,
                 recent_history=_format_task_followup_history(history),
+                participant_reply=task_text,
+                accepted_task_name=task_name if decision == "clear_task" else "",
             )
-            if not next_question:
+            if not next_reply:
                 iv._final_task_probe_loop_active = False
                 return jsonify({
                     'success': True,
@@ -2717,20 +2881,20 @@ def task_followup():
                     'task_name': task_name if decision == "clear_task" else None,
                     'done': True,
                 })
-            history.append({"role": "Interviewer", "content": next_question})
+            history.append({"role": "Interviewer", "content": next_reply})
             if len(history) > _TASK_FOLLOWUP_HISTORY_MAX_MESSAGES:
                 del history[:-_TASK_FOLLOWUP_HISTORY_MAX_MESSAGES]
             iv.chat_history.append(Message(
                 id=uuid.uuid4().hex,
                 type=MessageType.CONVERSATION,
                 role="Interviewer",
-                content=next_question,
+                content=next_reply,
                 timestamp=_now,
                 metadata={"source": "task_followup", "phase": phase},
             ))
             return jsonify({
                 'success': True,
-                'reply': next_question,
+                'reply': next_reply,
                 'task_name': task_name if decision == "clear_task" else None,
                 'done': False,
             })
@@ -2745,7 +2909,7 @@ def task_followup():
         turn_count = sum(1 for h in history if h['role'] == 'Participant')
 
         prompt = (
-            f"You are a warm, concise interviewer. You just asked the participant:\n"
+            f"You are a neutral, concise interviewer. You just asked the participant:\n"
             f"\"With AI becoming part of so many workflows, what are new things AI has enabled you to do, "
             f"or new responsibilities you've taken on because of AI?\"\n\n"
             f"Occupation context: \"{job_description}\"\n\n"
@@ -2758,17 +2922,20 @@ def task_followup():
             "  - The participant named at least one specific AI-related activity (e.g. a tool, a use case, a task) AND this is turn 2 or later.\n"
             "  - This is turn 3 or later, regardless of answer quality.\n"
             "  - The participant said they don't use AI or AI hasn't changed their work.\n"
-            "  If the participant said they DON'T use AI or AI hasn't affected their work, return an EMPTY reply (reply: \"\") — a follow-up message will handle this case.\n"
-            "  Otherwise give a brief, warm acknowledgment (1 sentence, no question).\n"
-            "  Return JSON: {\"reply\": \"...\", \"done\": true}\n\n"
+            "  Return an EMPTY reply (reply: \"\") — the next widget intro will handle the transition.\n"
+            "  Return JSON: {\"reply\": \"\", \"done\": true}\n\n"
             "CASE B — need one clarifying question:\n"
             "  Apply this only when: the answer is too vague to understand what AI role it plays "
             "(e.g. 'a lot more', 'I use it sometimes', 'yes definitely') AND this is turn 1.\n"
             "  Ask ONE short, specific follow-up that anchors on a concrete detail they mentioned. "
-            "Do not ask generic questions like 'can you tell me more?'.\n"
+            "Do not ask generic questions like 'can you tell me more?'. Start directly with the question.\n"
             "  Return JSON: {\"reply\": \"...\", \"done\": false}\n\n"
             "Rules:\n"
             "- reply: 1 sentence max; at most one question mark\n"
+            "- An occasional brief neutral acknowledgement such as 'Got it' or 'That makes sense' is okay before a clarifying question, but do not use one every turn.\n"
+            "- Do NOT praise, validate, evaluate, or reassure the participant with claims like 'sounds useful', 'interesting', 'great', or 'helpful'.\n"
+            "- Do NOT infer benefits they did not say, such as moving faster, improving quality, or changing what they build.\n"
+            "- If they say AI does not change their work, do not contradict or reframe that claim.\n"
             "- Do NOT use em dashes or en dashes; use plain punctuation\n"
             "- Return ONLY valid JSON, no markdown fences, no extra text"
         )
@@ -2785,6 +2952,8 @@ def task_followup():
             parsed = json.loads(raw)
             reply = str(parsed.get('reply', '')).strip()
             done_flag = bool(parsed.get('done', False))
+            if done_flag:
+                reply = ""
         except Exception as e:
             app.logger.error(f"[task_followup/ai_open] error: {e}", exc_info=True)
             done_flag = True
@@ -2858,17 +3027,19 @@ def task_followup():
     scope_rule = (
         "- This phase is ONLY about AI-related tasks. Do NOT broaden to general work tasks or ask what other tasks take up their time.\n"
         "- When asking for more, vary the wording and keep it brief. Do not repeat the exact same 'other AI-related tasks' sentence after every answer.\n"
+        "- An occasional brief neutral acknowledgement such as 'Got it' or 'That makes sense' is okay, but do not use one every turn. Do not include summaries, reactions, or value judgments.\n"
         if is_ai_extras
         else ""
     )
     case_c_instruction = (
-        "  Respond briefly to the answer, then ask a short, varied continuation question scoped to AI-related tasks. "
+        "  Ask a short, varied continuation question scoped to AI-related tasks. An occasional brief neutral acknowledgement is okay, but do not use one every turn. "
         "Examples: 'Anything else AI-related come to mind?', 'Any other AI-enabled work or AI oversight tasks?', "
-        "'Are there other ways AI shows up in your work?'. Do NOT reuse the same wording from the previous interviewer turn.\n"
+        "'Are there other ways AI shows up in your work?'. Do NOT summarize, evaluate, or react to their answer. "
+        "Do NOT reuse the same wording from the previous interviewer turn.\n"
         if is_ai_extras
-        else "  Respond in 1 sentence that briefly reflects understanding, then ask a short, varied continuation question "
+        else "  Ask a short, varied continuation question "
         "scoped to their work tasks. Examples: 'What other tasks are part of your work?', 'What else takes up your time?', "
-        "'Are there other things you regularly work on?'. Do NOT reuse the same wording from the previous interviewer turn.\n"
+        "'Are there other things you regularly work on?'. Start directly with the question and do not reuse the same wording from the previous interviewer turn.\n"
     )
 
     history = _task_followup_history(session_token, phase)
@@ -2895,8 +3066,8 @@ def task_followup():
         prior_block = f"{collected_label}:\n" + "\n".join(f"- {t}" for t in prior_tasks) + "\n\n"
 
     prompt = (
-        f"You are a warm, concise interviewer collecting {inventory_scope}.\n"
-        f"Goal: {remaining_goal} while sounding like you understood what the participant just said.\n\n"
+        f"You are a neutral, concise interviewer collecting {inventory_scope}.\n"
+        f"Goal: {remaining_goal} without over-acknowledging, evaluating, or restating the participant's answer.\n\n"
         f"Occupation context: \"{job_description}\"\n"
         f"{prior_block}"
         f"Recent task-followup conversation (oldest to newest):\n{history_block}\n\n"
@@ -2911,14 +3082,12 @@ def task_followup():
         + (
         "  Return JSON: {\"reply\": \"\", \"done\": true}\n\n"
         if not is_ai_extras else
-        "  Respond warmly in 1 sentence. Do NOT reference any specific task or topic they mentioned. "
-        "  Keep it general — e.g. 'Thank you, that's everything I wanted to cover.' "
-        "  Return JSON: {\"reply\": \"...\", \"done\": true}\n\n"
+        "  Return JSON: {\"reply\": \"\", \"done\": true}\n\n"
         )
         + f"CASE B — {new_task_scope}:\n"
-        "  Ask exactly one follow-up question about that task.\n"
-        "  The question must show understanding by anchoring to a concrete detail from their latest message.\n"
-        "  Do NOT use generic filler phrases like 'Got it', 'Good one', 'Thanks for sharing', or 'Noted'.\n"
+        "  Ask exactly one direct follow-up question about that task.\n"
+        "  An occasional brief neutral acknowledgement such as 'Got it' or 'That makes sense' is okay, but do not use one every turn. You may mention a concrete noun from their latest message, but do not preface it with a summary or reaction.\n"
+        "  Do NOT use generic filler or praise like 'Good one', 'Thanks for sharing', 'Noted', or 'Nice'.\n"
         "  Do NOT end with 'anything else?' in this case.\n"
         "  Also extract a concise task name in 'Action + Object + Objective' format — a verb phrase "
         "  that captures what they do, what they do it to, and why/to what end "
@@ -2934,7 +3103,10 @@ def task_followup():
         f"{scope_rule}"
         "- reply: 1 sentence max; at most one question mark\n"
         "- task_name: starts with a verb, includes action + object + objective (purpose/outcome), aim for 8–12 words\n"
-        "- For CASE B, follow-up must be specific to this participant's latest message and show understanding\n"
+        "- For CASE B, follow-up must be specific to this participant's latest message without turning into a summary\n"
+        "- Do not include more than a brief neutral acknowledgement before the question, and do not use an acknowledgement every turn\n"
+        "- Do NOT say a task is high stakes, a real time investment, useful, helpful, nice, good, interesting, or valuable\n"
+        "- Do NOT infer benefits they did not say, such as saving time, moving faster, improving quality, or reducing effort\n"
         "- Do NOT repeat the task name verbatim in the reply\n"
         "- Do NOT use em dashes or en dashes in the reply; use plain punctuation\n"
         "- Return ONLY valid JSON, no markdown fences, no extra text"
@@ -2965,12 +3137,23 @@ def task_followup():
         app.logger.error(f"[task_followup] error: {e}", exc_info=True)
 
     # Keep replies punctuation-simple for frontend readability.
-    reply = reply.replace("—", ",").replace("–", ",")
-    reply = " ".join(reply.split())
+    reply = _compact_reply_text(reply)
+
+    if is_ai_extras and done:
+        reply = ""
 
     # Ensure non-done responses continue the probing flow with one question.
     if not done and "?" not in reply:
-        reply = f"{reply.rstrip('. ')}. {other_tasks_question}"
+        reply = other_tasks_question if is_ai_extras else f"{reply.rstrip('. ')}. {other_tasks_question}"
+    elif is_ai_extras and not done:
+        reply = _edit_ai_followup_reply(
+            reply=reply,
+            fallback=other_tasks_question,
+            participant_reply=task_text,
+            job_description=job_description,
+            recent_history=history_block,
+            prior_tasks=prior_tasks,
+        )
 
     # Update follow-up turn counter: reset on new task, increment on follow-up
     if task_name:

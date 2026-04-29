@@ -343,6 +343,69 @@ class TestHandleResponseProfileConfirm:
 class TestSpeculativeReuseLatency:
 
     @pytest.mark.asyncio
+    async def test_discards_stale_role_followup_after_delayed_coverage_completion(
+        self, interviewer, fake_session, topic_manager
+    ):
+        role_subtopic_id = interviewer._get_role_title_subtopic_id()
+        assert role_subtopic_id
+        for topic in topic_manager:
+            for st in topic.required_subtopics.values():
+                st.is_covered = str(st.subtopic_id) != str(role_subtopic_id)
+        topic_manager.revise_agenda_after_update()
+
+        fake_session._task_validation_widget_sent = False
+        fake_session._ai_task_widget_sent = False
+
+        scribe = fake_session.session_scribe
+        scribe.processing_in_progress = True
+        scribe.coverage_processing_in_progress = True
+
+        async def complete_role_coverage_then_leave_memory_running():
+            await asyncio.sleep(0.25)
+            mark_subtopic_covered(topic_manager, str(role_subtopic_id), covered=True)
+            topic_manager.revise_agenda_after_update()
+            scribe.coverage_processing_in_progress = False
+            await asyncio.sleep(0.8)
+            scribe.processing_in_progress = False
+
+        settle_task = asyncio.create_task(
+            complete_role_coverage_then_leave_memory_running()
+        )
+
+        interviewer.call_engine_async.return_value = (
+            "<tool_calls>"
+            "<respond_to_user>"
+            f"<subtopic_id>{role_subtopic_id}</subtopic_id>"
+            "<response>What are your main day-to-day responsibilities?</response>"
+            "</respond_to_user>"
+            "</tool_calls>"
+        )
+
+        from src.interview_session.session_models import Message, MessageType
+        from datetime import datetime
+
+        user_msg = Message(
+            id="u-role-done",
+            type=MessageType.CONVERSATION,
+            role="User",
+            content="I'm a PhD student in CS working on AI, about 2 years in.",
+            timestamp=datetime.now(),
+            metadata={},
+        )
+
+        start = asyncio.get_event_loop().time()
+        await interviewer._on_message_body(user_msg)
+        elapsed = asyncio.get_event_loop().time() - start
+        await settle_task
+
+        assert elapsed < 0.9
+        fake_session.trigger_task_validation_widget.assert_called_once()
+        assert not any(
+            "main day-to-day responsibilities" in str(m["content"])
+            for m in fake_session.chat_history
+        )
+
+    @pytest.mark.asyncio
     async def test_keeps_speculative_when_coverage_changed_but_target_still_uncovered(
         self, interviewer, fake_session, topic_manager
     ):
@@ -440,6 +503,27 @@ class TestSpeculativeReuseLatency:
         await settle_task
 
         assert interviewer.call_engine_async.await_count == 2
+
+
+class TestCompletenessProbeClassifier:
+
+    @pytest.mark.asyncio
+    async def test_probe_classifier_uses_semantic_prompt_not_short_reply_rule(
+        self, interviewer
+    ):
+        interviewer.call_engine_async.return_value = (
+            '{"decision":"unclear_response","clarification_question":"Are you adding another task, or are we done with the task list?","reason":"noise"}'
+        )
+
+        result = await interviewer._classify_completeness_probe_reply(
+            latest_question="Are there any tasks you can think of that we haven't covered?",
+            participant_reply="efwwef",
+        )
+
+        assert result["decision"] == "unclear_response"
+        prompt = interviewer.call_engine_async.await_args.args[0]
+        assert "by meaning, not by exact wording or length" in prompt
+        assert "Do not treat a short reply as closure" in prompt
 
 
 # ---------------------------------------------------------------------------

@@ -241,6 +241,48 @@ class Interviewer(BaseAgent, Participant):
             return False
         return bool(parsed.get("is_closing"))
 
+    async def _classify_completeness_probe_reply(
+        self,
+        latest_question: str,
+        participant_reply: str,
+    ) -> dict:
+        """Semantically classify replies to the final missed-task probe."""
+        prompt = (
+            "You are classifying a participant reply in a work-task inventory interview.\n\n"
+            "The interviewer has just asked whether any work tasks are still missing.\n"
+            "Classify the participant reply by meaning, not by exact wording or length.\n\n"
+            f"Latest interviewer question:\n{latest_question or '(unknown)'}\n\n"
+            f"Participant reply:\n{participant_reply or '(empty)'}\n\n"
+            "Decisions:\n"
+            "- closure: the participant is saying there are no additional tasks to add.\n"
+            "- new_task: the participant mentions additional work, a task, an activity, or a responsibility that may need to be added.\n"
+            "- unclear_response: the reply is noise, gibberish, accidental text, or does not clearly answer whether there are more tasks.\n\n"
+            "Rules:\n"
+            "- Do not treat a short reply as closure unless its meaning clearly indicates closure.\n"
+            "- If the participant names work they do, choose new_task even if the wording is brief.\n"
+            "- If the reply is unclear, provide one short clarification question asking whether they want to add another task or are done with the task list.\n\n"
+            "Return ONLY valid JSON:\n"
+            '{"decision": "closure|new_task|unclear_response", "clarification_question": "", "reason": "short reason"}'
+        )
+
+        try:
+            raw = await self.call_engine_async(prompt)
+            parsed = self._extract_json_dict(raw)
+            if not isinstance(parsed, dict):
+                return {"decision": "unclear_response"}
+            decision = str(parsed.get("decision", "")).strip().lower()
+            if decision not in {"closure", "new_task", "unclear_response"}:
+                decision = "unclear_response"
+            parsed["decision"] = decision
+            return parsed
+        except Exception as e:
+            SessionLogger.log_to_file(
+                "execution_log",
+                f"[PROBE-GUARD] semantic classifier failed: {e}",
+                log_level="warning",
+            )
+            return {"decision": "unclear_response"}
+
     def _no_active_topics_remaining(self) -> bool:
         """Return True when agenda has no active or incomplete topics.
 
@@ -358,14 +400,15 @@ class Interviewer(BaseAgent, Participant):
             except Exception:
                 continue
 
-        m = re.search(r"\{.*\}", text, re.DOTALL)
-        if not m:
-            return None
-        try:
-            parsed = json.loads(m.group(0))
-            return parsed if isinstance(parsed, dict) else None
-        except Exception:
-            return None
+        decoder = json.JSONDecoder()
+        start = text.find("{")
+        while start != -1:
+            try:
+                parsed, _ = decoder.raw_decode(text[start:])
+                return parsed if isinstance(parsed, dict) else None
+            except Exception:
+                start = text.find("{", start + 1)
+        return None
 
     def _get_subtopic(self, subtopic_id: str):
         sid = str(subtopic_id or "").strip()
@@ -1070,7 +1113,7 @@ class Interviewer(BaseAgent, Participant):
         sem_check_s = 0.0
 
         if should_semantic:
-            # Only run the LLM judge when the cheap regex guard didn't already fire.
+            # Only run the LLM judge when the lightweight risk gate says it is needed.
             try:
                 sem_check_start = time.perf_counter()
                 is_dup, replacement = await self._check_semantic_duplicate(
@@ -1521,13 +1564,13 @@ class Interviewer(BaseAgent, Participant):
             # allow one LLM follow-up if the user mentioned a new task.
             # Check flag first; fall back to chat-history inspection (avoids apostrophe issues).
             _probe_active = getattr(self.interview_session, "_completeness_probe_sent", False)
+            _chat = getattr(self.interview_session, 'chat_history', [])
+            _last_iv = next(
+                (m.content for m in reversed(_chat)
+                 if getattr(m, 'role', '') == self.title),
+                ""
+            )
             if not _probe_active:
-                _chat = getattr(self.interview_session, 'chat_history', [])
-                _last_iv = next(
-                    (m.content for m in reversed(_chat)
-                     if getattr(m, 'role', '') == self.title),
-                    ""
-                )
                 # Match on unambiguous substrings that don't contain apostrophes.
                 _probe_active = (
                     "any tasks" in str(_last_iv).lower()
@@ -1547,27 +1590,41 @@ class Interviewer(BaseAgent, Participant):
                 and not getattr(self.interview_session, "_post_probe_followup_pending", False)
             ):
                 self.interview_session._completeness_probe_sent = False
-                _resp = (message.content or "").strip().lower()
-                _closure_signals = [
-                    "nothing", "no ", "nope", "not that", "that's all", "that's it",
-                    "pretty much", "all we do", "you have", "have all", "covered",
-                    "nothing else", "can't think", "don't think", "i think that",
-                    "that covers", "that's everything",
-                ]
-                _is_closure = any(sig in _resp for sig in _closure_signals) or len(_resp.split()) < 6
+                _probe_classification = await self._classify_completeness_probe_reply(
+                    latest_question=_last_iv,
+                    participant_reply=message.content or "",
+                )
+                _decision = str(
+                    _probe_classification.get("decision", "")
+                ).strip().lower()
                 SessionLogger.log_to_file(
                     "execution_log",
-                    f"[PROBE-GUARD] is_closure={_is_closure} resp={repr(_resp[:80])}"
+                    f"[PROBE-GUARD] semantic_decision={_decision}"
+                    f" reason={_probe_classification.get('reason', '')!r}"
                 )
-                if _is_closure:
+                if _decision == "closure":
                     self._guarded_send_goodbye(self._default_completion_goodbye())
                     if not getattr(self.interview_session, "_feedback_widget_sent", False):
                         self.interview_session.trigger_feedback_widget()
                     self._turn_to_respond = False
                     return
-                else:
+                if _decision == "unclear_response":
+                    clarification = str(
+                        _probe_classification.get("clarification_question", "")
+                    ).strip()
+                    if not clarification:
+                        clarification = (
+                            "Are you adding another task, or are we done with the task list?"
+                        )
+                    await self._guarded_handle_response(clarification)
+                    self._turn_to_respond = False
+                    return
+
+                if _decision == "new_task":
                     # User mentioned a new task — allow one LLM turn; suppress the
                     # coverage guard below so it doesn't cut in before the LLM runs.
+                    self.interview_session._post_probe_followup_pending = True
+                else:
                     self.interview_session._post_probe_followup_pending = True
 
             elif (
@@ -1656,13 +1713,6 @@ class Interviewer(BaseAgent, Participant):
                     _max_wait_s = 6.0
                 _max_wait_s = max(0.5, _max_wait_s)
                 try:
-                    _coverage_only_fast_exit_s = float(
-                        os.getenv("INTERVIEWER_MAX_COVERAGE_ONLY_WAIT_S", "1.0")
-                    )
-                except (TypeError, ValueError):
-                    _coverage_only_fast_exit_s = 1.0
-                _coverage_only_fast_exit_s = max(0.0, _coverage_only_fast_exit_s)
-                try:
                     _coverage_stable_required_ticks = int(
                         os.getenv("INTERVIEWER_COVERAGE_STABLE_TICKS", "1")
                     )
@@ -1675,10 +1725,16 @@ class Interviewer(BaseAgent, Participant):
                         # During the profile-confirm transition we only need
                         # coverage updates to be complete; memory-writing tail
                         # should not block the next interviewer turn.
-                        _scribe_busy = getattr(
-                            scribe,
-                            'coverage_processing_in_progress',
-                            getattr(scribe, 'processing_in_progress', False),
+                        _processing_busy = bool(
+                            getattr(scribe, 'processing_in_progress', False)
+                        )
+                        _coverage_busy = getattr(
+                            scribe, 'coverage_processing_in_progress', None
+                        )
+                        _scribe_busy = (
+                            _coverage_busy
+                            if isinstance(_coverage_busy, bool)
+                            else _processing_busy
                         )
                     else:
                         _scribe_busy = getattr(scribe, 'processing_in_progress', False)
@@ -1689,17 +1745,6 @@ class Interviewer(BaseAgent, Participant):
                     _scribe_waited = True
                     await asyncio.sleep(_poll_s)
                     _elapsed_s = (_ + 1) * _poll_s
-                    # Fast-exit coverage-only waits once speculative response is ready.
-                    # This avoids waiting for long scribe tails on every turn.
-                    if (
-                        profile_confirm_pending
-                        and speculative_task is not None
-                        and speculative_task.done()
-                        and _elapsed_s >= _coverage_only_fast_exit_s
-                    ):
-                        _scribe_wait_exit = "coverage_only_fast_exit"
-                        _loop_timed_out = False
-                        break
                     # Every 5 ticks (0.5s), check if coverage has changed.
                     # If stable for N consecutive checks and the speculative
                     # result is ready, we can proceed without waiting for the rest
