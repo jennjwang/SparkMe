@@ -486,12 +486,14 @@ def _generate_final_task_probe_continue_question(
         f"{accepted_task_block}"
         f"Occupation context:\n{job_description or '(unknown)'}\n\n"
         "Rules:\n"
-        "- If an accepted missed task is provided, start with a brief neutral acknowledgement that you are adding it.\n"
+        "- If an accepted missed task is provided, make it clear it is being added, but vary the wording and sentence shape.\n"
+        "- Do not repeatedly start with 'Got it' or 'I'll add'. Use a different plain wording when recent interviewer turns used that shape.\n"
         "- After any acknowledgement, ask only whether there are additional missed tasks or work activities.\n"
         "- Do not ask for details about any task already mentioned.\n"
         "- Do not praise, evaluate, or summarize the participant's work.\n"
         "- Do not ask about frequency, importance, purpose, workflow, examples, collaboration, or technical details.\n"
         "- Do not repeat or closely paraphrase any recent interviewer question from the loop.\n"
+        "- Avoid repeating the same broad question frame, especially 'Are there any other work activities we've missed?' and 'What other work activities haven't we covered yet?'.\n"
         "- Avoid generic repeated templates like 'Is there anything else you do at work that we have not covered yet?' when similar wording appears in the recent loop.\n"
         "- One or two short sentences, exactly one question mark.\n\n"
         "Return ONLY valid JSON:\n"
@@ -516,6 +518,58 @@ def _generate_final_task_probe_continue_question(
     except Exception as e:
         app.logger.error(f"[task_followup] continue-question generator error: {e}", exc_info=True)
         return ""
+
+
+def _edit_final_task_probe_continue_reply(
+    *,
+    reply: str,
+    recent_history: str,
+    accepted_task_name: str = "",
+    participant_reply: str = "",
+    job_description: str = "",
+) -> str:
+    """Semantically vary the missed-task loop continuation when it repeats itself."""
+    from src.utils.llm.engines import get_engine, invoke_engine
+
+    candidate = _compact_reply_text(reply)
+    if candidate.count("?") != 1:
+        return ""
+
+    prompt = (
+        "Edit one interviewer reply in a missed-work-task loop.\n\n"
+        f"Recent loop dialogue, oldest to newest:\n{recent_history or '(none)'}\n\n"
+        f"Participant's latest reply:\n{participant_reply or '(none)'}\n\n"
+        f"Accepted task being added:\n{accepted_task_name or '(none)'}\n\n"
+        f"Occupation context:\n{job_description or '(unknown)'}\n\n"
+        f"Candidate reply:\n{candidate}\n\n"
+        "Task:\n"
+        "- Return the reply that should be sent next.\n"
+        "- If the candidate repeats the same conversational shape, acknowledgement opener, or broad question frame as recent interviewer turns, rewrite it.\n"
+        "- Keep the meaning: confirm the accepted task is being added, then ask whether there are more tasks to add.\n"
+        "- Do not ask for details about the task that was just accepted.\n"
+        "- Do not ask about frequency, importance, examples, workflow, collaboration, or how they do the task.\n"
+        "- Do not praise, evaluate, or summarize the participant's work.\n"
+        "- Avoid repeating 'Got it', 'I'll add', 'work activities', 'missed', and 'covered' when recent interviewer turns used that style.\n"
+        "- Prefer a fresh plain shape such as 'Adding that to the list. What else should be on it?' only if it is not close to recent wording.\n\n"
+        "Hard constraints:\n"
+        "- One or two short sentences.\n"
+        "- Exactly one question mark.\n"
+        "- No em dashes or en dashes.\n\n"
+        "Return ONLY valid JSON: {\"reply\": \"...\"}"
+    )
+
+    try:
+        engine = get_engine(model_name=_TASK_GEN_MODEL, temperature=0.4)
+        response = invoke_engine(engine, prompt)
+        raw = response.content if hasattr(response, 'content') else str(response)
+        parsed = _load_llm_json_object(raw)
+        edited = _compact_reply_text(parsed.get("reply", ""))
+        if edited.count("?") == 1:
+            return edited
+    except Exception as e:
+        app.logger.error(f"[task_followup] continue-reply editor error: {e}", exc_info=True)
+
+    return candidate
 
 
 def _parse_iso_datetime(value: Optional[object]) -> Optional[datetime]:
@@ -2872,6 +2926,21 @@ def task_followup():
                 recent_history=_format_task_followup_history(history),
                 participant_reply=task_text,
                 accepted_task_name=task_name if decision == "clear_task" else "",
+            )
+            if not next_reply:
+                iv._final_task_probe_loop_active = False
+                return jsonify({
+                    'success': True,
+                    'reply': '',
+                    'task_name': task_name if decision == "clear_task" else None,
+                    'done': True,
+                })
+            next_reply = _edit_final_task_probe_continue_reply(
+                reply=next_reply,
+                recent_history=_format_task_followup_history(history),
+                participant_reply=task_text,
+                accepted_task_name=task_name if decision == "clear_task" else "",
+                job_description=job_description,
             )
             if not next_reply:
                 iv._final_task_probe_loop_active = False
