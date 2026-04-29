@@ -98,6 +98,7 @@ async def test_llm_rewrite_keeps_original_on_invalid_payload(interviewer, fake_s
 
 def test_semantic_duplicate_gate_skips_low_risk_question(interviewer, fake_session, monkeypatch):
     _prime_prompt_methods(fake_session)
+    monkeypatch.setenv("INTERVIEWER_GUARD_LLM_MODE", "on")
     monkeypatch.setenv("INTERVIEWER_SEMANTIC_DUP_MODE", "auto")
     interviewer.add_event(
         sender="Interviewer",
@@ -110,8 +111,32 @@ def test_semantic_duplicate_gate_skips_low_risk_question(interviewer, fake_sessi
     assert should_run is False
 
 
+def test_guard_llm_checks_default_off(interviewer, fake_session, monkeypatch):
+    _prime_prompt_methods(fake_session)
+    monkeypatch.delenv("INTERVIEWER_GUARD_LLM_MODE", raising=False)
+    monkeypatch.setenv("INTERVIEWER_SEMANTIC_DUP_MODE", "always")
+    monkeypatch.setenv("INTERVIEWER_INFERABILITY_MODE", "always")
+    interviewer._guard_llm_mode = "off"
+    interviewer._inferability_mode = "always"
+    interviewer.add_event(
+        sender="User",
+        tag="message",
+        content="I prepare slide decks for talks.",
+    )
+
+    assert (
+        interviewer._should_run_semantic_duplicate_llm("Anything else on your plate?")
+        is False
+    )
+    assert interviewer._should_run_inferability_llm(
+        "For that presentation prep work, what's the main thing you're producing?",
+        subtopic_id="2.2",
+    ) is False
+
+
 def test_semantic_duplicate_gate_runs_for_breadth_probe(interviewer, fake_session, monkeypatch):
     _prime_prompt_methods(fake_session)
+    monkeypatch.setenv("INTERVIEWER_GUARD_LLM_MODE", "on")
     monkeypatch.setenv("INTERVIEWER_SEMANTIC_DUP_MODE", "auto")
     should_run = interviewer._should_run_semantic_duplicate_llm(
         "Beyond that, is there anything else you do less often?",
@@ -123,6 +148,7 @@ def test_semantic_duplicate_gate_skips_low_risk_task_list_collection_subtopic(
     interviewer, fake_session, monkeypatch
 ):
     _prime_prompt_methods(fake_session)
+    monkeypatch.setenv("INTERVIEWER_GUARD_LLM_MODE", "on")
     monkeypatch.setenv("INTERVIEWER_SEMANTIC_DUP_MODE", "auto")
     should_run = interviewer._should_run_semantic_duplicate_llm(
         "How long have you been in this postdoc role?",
@@ -164,6 +190,7 @@ def test_inferability_gate_runs_for_task_list_collection_subtopic(
     interviewer, fake_session, monkeypatch
 ):
     _prime_prompt_methods(fake_session)
+    monkeypatch.setenv("INTERVIEWER_GUARD_LLM_MODE", "on")
     monkeypatch.setenv("INTERVIEWER_INFERABILITY_MODE", "auto")
     interviewer._inferability_mode = "auto"
     interviewer.add_event(
@@ -199,6 +226,7 @@ async def test_handle_response_skips_semantic_duplicate_llm_on_low_risk_turn(
     interviewer, fake_session, monkeypatch
 ):
     _prime_prompt_methods(fake_session)
+    monkeypatch.setenv("INTERVIEWER_GUARD_LLM_MODE", "on")
     monkeypatch.setenv("INTERVIEWER_SEMANTIC_DUP_MODE", "auto")
     interviewer._check_semantic_duplicate = AsyncMock(return_value=(False, ""))
     interviewer.add_event(
@@ -220,6 +248,7 @@ async def test_handle_response_runs_semantic_duplicate_llm_for_task_list_collect
     interviewer, fake_session, monkeypatch
 ):
     _prime_prompt_methods(fake_session)
+    monkeypatch.setenv("INTERVIEWER_GUARD_LLM_MODE", "on")
     monkeypatch.setenv("INTERVIEWER_SEMANTIC_DUP_MODE", "auto")
     interviewer._check_semantic_duplicate = AsyncMock(return_value=(False, ""))
     interviewer.add_event(
@@ -302,6 +331,7 @@ async def test_handle_response_rewrites_inferable_question_before_sending(
     interviewer, fake_session, monkeypatch
 ):
     _prime_prompt_methods(fake_session)
+    monkeypatch.setenv("INTERVIEWER_GUARD_LLM_MODE", "on")
     monkeypatch.setenv("INTERVIEWER_SEMANTIC_DUP_MODE", "off")
     monkeypatch.setenv("INTERVIEWER_INFERABILITY_MODE", "always")
     interviewer._inferability_mode = "always"

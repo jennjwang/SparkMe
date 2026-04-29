@@ -408,7 +408,7 @@ def _classify_final_task_probe_response(
     job_description: str = "",
     recent_history: str = "",
 ) -> dict:
-    """Classify final task-probe replies without probing beyond action/object clarity."""
+    """Classify final task-probe replies and, when clear, draft the next loop reply."""
     from src.utils.llm.engines import get_engine, invoke_engine
 
     prompt = (
@@ -433,10 +433,13 @@ def _classify_final_task_probe_response(
         "- If the reply names a clear task but lacks purpose, still use clear_task.\n"
         "- If the reply both confirms coverage and names new work, use clear_task if action+object are clear.\n"
         "- For clear_task, provide task_name as a concise verb phrase preserving the action and object. If multiple clear tasks are named, include them separated by semicolons.\n"
+        "- For clear_task, also provide next_reply: one short interviewer reply that makes clear the task is being added, then asks whether there are more tasks to add.\n"
+        "- The next_reply must vary from recent interviewer turns. Do not repeat the same acknowledgement opener, sentence shape, or broad question frame.\n"
+        "- The next_reply must not ask for details about the task just accepted.\n"
         "- For needs_clarification, provide exactly one short question asking for the missing concrete action/object.\n"
         "- For unclear_response, provide exactly one short question asking them to clarify whether they want to add another task or are finished with the task list.\n\n"
         "Return ONLY valid JSON with this shape:\n"
-        '{"decision": "closure|clear_task|needs_clarification|unclear_response", "task_name": "", "clarification_question": "", "reason": "short reason"}'
+        '{"decision": "closure|clear_task|needs_clarification|unclear_response", "task_name": "", "next_reply": "", "clarification_question": "", "reason": "short reason"}'
     )
 
     try:
@@ -2920,36 +2923,31 @@ def task_followup():
                     'done': False,
                 })
 
-            next_reply = _generate_final_task_probe_continue_question(
-                latest_interviewer=latest_interviewer,
-                job_description=job_description,
-                recent_history=_format_task_followup_history(history),
-                participant_reply=task_text,
-                accepted_task_name=task_name if decision == "clear_task" else "",
-            )
-            if not next_reply:
-                iv._final_task_probe_loop_active = False
-                return jsonify({
-                    'success': True,
-                    'reply': '',
-                    'task_name': task_name if decision == "clear_task" else None,
-                    'done': True,
-                })
-            next_reply = _edit_final_task_probe_continue_reply(
-                reply=next_reply,
-                recent_history=_format_task_followup_history(history),
-                participant_reply=task_text,
-                accepted_task_name=task_name if decision == "clear_task" else "",
-                job_description=job_description,
-            )
-            if not next_reply:
-                iv._final_task_probe_loop_active = False
-                return jsonify({
-                    'success': True,
-                    'reply': '',
-                    'task_name': task_name if decision == "clear_task" else None,
-                    'done': True,
-                })
+            next_reply = _compact_reply_text(classification.get("next_reply", ""))
+            if next_reply.count("?") != 1:
+                next_reply = _generate_final_task_probe_continue_question(
+                    latest_interviewer=latest_interviewer,
+                    job_description=job_description,
+                    recent_history=_format_task_followup_history(history),
+                    participant_reply=task_text,
+                    accepted_task_name=task_name if decision == "clear_task" else "",
+                )
+                if next_reply:
+                    next_reply = _edit_final_task_probe_continue_reply(
+                        reply=next_reply,
+                        recent_history=_format_task_followup_history(history),
+                        participant_reply=task_text,
+                        accepted_task_name=task_name if decision == "clear_task" else "",
+                        job_description=job_description,
+                    )
+                if not next_reply:
+                    iv._final_task_probe_loop_active = False
+                    return jsonify({
+                        'success': True,
+                        'reply': '',
+                        'task_name': task_name if decision == "clear_task" else None,
+                        'done': True,
+                    })
             history.append({"role": "Interviewer", "content": next_reply})
             if len(history) > _TASK_FOLLOWUP_HISTORY_MAX_MESSAGES:
                 del history[:-_TASK_FOLLOWUP_HISTORY_MAX_MESSAGES]
@@ -3393,7 +3391,7 @@ def submit_task_validation():
     def _inject_question():
         iv.add_message_to_chat_history(
             role="Interviewer",
-            content="Are there any tasks you can think of that we haven't covered?",
+            content="Are there any tasks you can think of that we haven't covered? Think back to your recent work day. What are tasks you did that you think should be on the list?",
             message_type="conversation",
         )
         iv._completeness_probe_sent = True

@@ -115,21 +115,13 @@ def test_final_task_probe_loops_when_new_task_is_clear(client, tmp_path, monkeyp
     session.session_agenda = SimpleNamespace(
         user_portrait={"Task Inventory": ["Build web pages"]}
     )
-    responses = [
-        SimpleNamespace(
-            content='{"decision":"clear_task","task_name":"Fix software bugs; answer client questions","clarification_question":"","reason":"participant named clear action-object tasks"}'
-        ),
-        SimpleNamespace(
-            content='{"reply":"I will add fixing software bugs and answering client questions. What other work should we add to the list?"}'
-        ),
-        SimpleNamespace(
-            content='{"reply":"Adding those to the list. What else should be on it?"}'
-        ),
-    ]
+    fake_response = SimpleNamespace(
+        content='{"decision":"clear_task","task_name":"Fix software bugs; answer client questions","next_reply":"Adding those to the list. What else should be on it?","clarification_question":"","reason":"participant named clear action-object tasks"}'
+    )
 
     with patch("src.utils.llm.engines.get_engine", return_value=MagicMock()), patch(
         "src.utils.llm.engines.invoke_engine",
-        side_effect=responses,
+        return_value=fake_response,
     ) as mock_invoke:
         res = client.post(
             "/api/task-followup",
@@ -147,7 +139,7 @@ def test_final_task_probe_loops_when_new_task_is_clear(client, tmp_path, monkeyp
     assert body["done"] is False
     assert body["reply"] == "Adding those to the list. What else should be on it?"
     assert body["task_name"] == "Fix software bugs; answer client questions"
-    assert mock_invoke.call_count == 3
+    assert mock_invoke.call_count == 1
     assert session._completeness_probe_sent is False
     assert session._post_probe_followup_pending is False
     assert session._final_task_probe_loop_active is True
@@ -167,13 +159,9 @@ def test_final_task_probe_loops_when_new_task_is_clear(client, tmp_path, monkeyp
     classifier_prompt = mock_invoke.call_args_list[0].args[1]
     assert "Recent loop dialogue" in classifier_prompt
     assert "Are there any tasks you can think of that we haven't covered?" in classifier_prompt
-    generator_prompt = mock_invoke.call_args_list[1].args[1]
-    assert "Do not repeat or closely paraphrase any recent interviewer question from the loop" in generator_prompt
-    assert "Accepted missed task to add: Fix software bugs; answer client questions" in generator_prompt
-    assert "Do not repeatedly start with 'Got it' or 'I'll add'" in generator_prompt
-    editor_prompt = mock_invoke.call_args_list[2].args[1]
-    assert "If the candidate repeats the same conversational shape" in editor_prompt
-    assert "Avoid repeating 'Got it', 'I'll add', 'work activities', 'missed', and 'covered'" in editor_prompt
+    assert '"next_reply": ""' in classifier_prompt
+    assert "also provide next_reply" in classifier_prompt
+    assert "must vary from recent interviewer turns" in classifier_prompt
 
 
 def test_final_task_probe_generates_varied_loop_question_after_clear_task(client):
@@ -182,21 +170,13 @@ def test_final_task_probe_generates_varied_loop_question_after_clear_task(client
         token,
         "Are there any tasks you can think of that we haven't covered?",
     )
-    responses = [
-        SimpleNamespace(
-            content='{"decision":"clear_task","task_name":"Answer client questions","clarification_question":"","reason":"participant named a clear task"}'
-        ),
-        SimpleNamespace(
-            content='{"reply":"I will add answering client questions. Is there other work that belongs on the task list?"}'
-        ),
-        SimpleNamespace(
-            content='{"reply":"Answering client questions is on the list now. Any other regular work to add?"}'
-        ),
-    ]
+    fake_response = SimpleNamespace(
+        content='{"decision":"clear_task","task_name":"Answer client questions","next_reply":"Answering client questions is on the list now. Any other regular work to add?","clarification_question":"","reason":"participant named a clear task"}'
+    )
 
     with patch("src.utils.llm.engines.get_engine", return_value=MagicMock()), patch(
         "src.utils.llm.engines.invoke_engine",
-        side_effect=responses,
+        return_value=fake_response,
     ) as mock_invoke:
         res = client.post(
             "/api/task-followup",
@@ -214,17 +194,12 @@ def test_final_task_probe_generates_varied_loop_question_after_clear_task(client
     assert body["done"] is False
     assert body["reply"] == "Answering client questions is on the list now. Any other regular work to add?"
     assert body["task_name"] == "Answer client questions"
-    assert mock_invoke.call_count == 3
+    assert mock_invoke.call_count == 1
     assert session.chat_history[-1].content == "Answering client questions is on the list now. Any other regular work to add?"
-    generator_prompt = mock_invoke.call_args_list[1].args[1]
-    assert "Recent loop dialogue" in generator_prompt
-    assert "Answering client questions" in generator_prompt
-    assert "Accepted missed task to add: Answer client questions" in generator_prompt
-    assert "Do not repeat or closely paraphrase any recent interviewer question from the loop" in generator_prompt
-    assert "Avoid generic repeated templates" in generator_prompt
-    editor_prompt = mock_invoke.call_args_list[2].args[1]
-    assert "Candidate reply:" in editor_prompt
-    assert "I will add answering client questions" in editor_prompt
+    prompt = mock_invoke.call_args.args[1]
+    assert "Recent loop dialogue" in prompt
+    assert "Answering client questions" in prompt
+    assert "Do not repeat the same acknowledgement opener" in prompt
 
 
 def test_final_task_probe_rewrites_repeated_acknowledgement_shape(client):
@@ -233,21 +208,13 @@ def test_final_task_probe_rewrites_repeated_acknowledgement_shape(client):
         token,
         "Got it, I'll add conferences and seminars. Are there any other work activities we've missed?",
     )
-    responses = [
-        SimpleNamespace(
-            content='{"decision":"clear_task","task_name":"Meet with adviser weekly","clarification_question":"","reason":"participant named clear recurring meeting task"}'
-        ),
-        SimpleNamespace(
-            content='{"reply":"Got it, I will add your weekly adviser meetings. What other work activities have we not covered yet?"}'
-        ),
-        SimpleNamespace(
-            content='{"reply":"Weekly adviser meetings are on the list now. Anything else that belongs there?"}'
-        ),
-    ]
+    fake_response = SimpleNamespace(
+        content='{"decision":"clear_task","task_name":"Meet with adviser weekly","next_reply":"Weekly adviser meetings are on the list now. Anything else that belongs there?","clarification_question":"","reason":"participant named clear recurring meeting task"}'
+    )
 
     with patch("src.utils.llm.engines.get_engine", return_value=MagicMock()), patch(
         "src.utils.llm.engines.invoke_engine",
-        side_effect=responses,
+        return_value=fake_response,
     ) as mock_invoke:
         res = client.post(
             "/api/task-followup",
@@ -272,11 +239,11 @@ def test_final_task_probe_rewrites_repeated_acknowledgement_shape(client):
     assert body["done"] is False
     assert body["reply"] == "Weekly adviser meetings are on the list now. Anything else that belongs there?"
     assert body["task_name"] == "Meet with adviser weekly"
-    assert mock_invoke.call_count == 3
-    editor_prompt = mock_invoke.call_args_list[2].args[1]
-    assert "Got it, I'll add conferences and seminars" in editor_prompt
-    assert "What other work activities have we not covered yet?" in editor_prompt
-    assert "rewrite it" in editor_prompt
+    assert mock_invoke.call_count == 1
+    prompt = mock_invoke.call_args.args[1]
+    assert "Got it, I'll add conferences and seminars" in prompt
+    assert "I meet with my adviser weekly" in prompt
+    assert "must vary from recent interviewer turns" in prompt
 
 
 def test_final_task_probe_only_follows_up_for_action_object_clarification(client):
@@ -366,18 +333,12 @@ def test_final_task_probe_clarification_answer_returns_to_missed_task_loop(clien
     )
     session._final_task_probe_clarification_pending = True
     fake_response = SimpleNamespace(
-        content='{"decision":"clear_task","task_name":"Coordinate team responses to client questions","clarification_question":"","reason":"participant clarified action and object"}'
-    )
-    generated_response = SimpleNamespace(
-        content='{"reply":"I will add coordinating team responses to client questions. Any other tasks we should include?"}'
-    )
-    edited_response = SimpleNamespace(
-        content='{"reply":"Coordinating team responses is added. What else should I put on this list?"}'
+        content='{"decision":"clear_task","task_name":"Coordinate team responses to client questions","next_reply":"Coordinating team responses is added. What else should I put on this list?","clarification_question":"","reason":"participant clarified action and object"}'
     )
 
     with patch("src.utils.llm.engines.get_engine", return_value=MagicMock()), patch(
         "src.utils.llm.engines.invoke_engine",
-        side_effect=[fake_response, generated_response, edited_response],
+        return_value=fake_response,
     ) as mock_invoke:
         res = client.post(
             "/api/task-followup",
@@ -395,7 +356,7 @@ def test_final_task_probe_clarification_answer_returns_to_missed_task_loop(clien
     assert body["done"] is False
     assert body["reply"] == "Coordinating team responses is added. What else should I put on this list?"
     assert body["task_name"] == "Coordinate team responses to client questions"
-    assert mock_invoke.call_count == 3
+    assert mock_invoke.call_count == 1
     assert session._final_task_probe_clarification_pending is False
     assert session._final_task_probe_loop_active is True
     assert session.chat_history[-1].role == "Interviewer"

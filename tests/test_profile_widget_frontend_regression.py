@@ -428,3 +428,19 @@ class TestTaskDedupCoreRegression:
         assert 'writing: "write"' in text
         assert 'running: "run"' in text
         assert "if (t.endsWith(\"ing\") && t.length > 5) return t.slice(0, -3);" in text
+
+
+class TestTaskWidgetLoadLatencyRegression:
+    def test_initial_task_page_renders_before_background_work(self):
+        text = _chat_template_text()
+        start = text.index("async function showTaskValidationWidget()")
+        end = text.index("async function showAiTaskWidget()", start)
+        block = text[start:end]
+
+        assert "await Promise.all([" not in block
+        assert "Promise.race([fetchAttentionChecks()" not in block
+        assert "const attnTimeout" not in block
+        assert "await fetchUntilFull(_PAGE_SIZE);" in block
+        assert block.index("await fetchUntilFull(_PAGE_SIZE);") < block.index("showBatch(0);")
+        assert block.index("showBatch(0);") < block.index("fetchAttentionChecks();")
+        assert block.index("showBatch(0);") < block.index("_fetchAiDistractors();")

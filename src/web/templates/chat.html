@@ -5146,6 +5146,15 @@
             .replace(/"/g, "&quot;");
         }
 
+        function refreshConversationTaskTexts() {
+          _conversationTaskTexts = (
+            (lastPortrait && lastPortrait["Task Inventory"]) ||
+            []
+          )
+            .map((t) => String(t).trim())
+            .filter(Boolean);
+        }
+
         async function fetchBatch(idx) {
           const prior = [
             ..._conversationTaskTexts,
@@ -6055,7 +6064,7 @@
             // 3. Transition message + open AI question
             appendMessage(
               "bot",
-              "With AI becoming part of so many workflows, I want to ask about how it may have changed your role. What are new things AI has enabled you to do, or new responsibilities you've taken on because of AI?",
+              "With AI becoming part of so many workflows, I want to ask about how it may have changed your role. Are there any new things AI has enabled you to do, or new responsibilities you've taken on because of AI?",
               "ai-transition-" + Date.now(),
             );
             scrollToBottom();
@@ -6298,40 +6307,32 @@
         scrollToBottom();
 
         try {
-          // Refresh portrait so Task Inventory reflects the completed session before pre-loading.
-          try {
-            const _sr = await fetch(
-              `/api/session-state?session_token=${sessionToken}`,
-            );
-            const _sd = await _sr.json();
-            if (_sd.user_portrait) lastPortrait = _sd.user_portrait;
-          } catch (_) {}
+          // Use whatever portrait is already in memory for dedupe context. The
+          // fresh session-state load can happen after the first page is visible.
+          refreshConversationTaskTexts();
 
-          // Pass conversation-mentioned tasks as prior context so the LLM avoids regenerating them,
-          // but don't display them directly — they're raw interview extracts, not formatted tasks.
-          _conversationTaskTexts = (
-            (lastPortrait && lastPortrait["Task Inventory"]) ||
-            []
-          )
-            .map((t) => String(t).trim())
-            .filter(Boolean);
-
-          // Prefetch AI task batches and distractors while user reviews main task list
-          _fetchAiDistractors();
-          _ensureAiTaskBatch().then(() => _ensureAiTaskBatch());
-          // Fetch first task batch and attention checks in parallel.
-          // Attention checks get up to 8s (with retries); task batch runs concurrently so the widget
-          // doesn't block longer than whichever takes more time.
-          const attnTimeout = new Promise((r) => setTimeout(r, 8000));
-          await Promise.all([
-            Promise.race([fetchAttentionChecks(), attnTimeout]),
-            fetchUntilFull(_PAGE_SIZE),
-          ]);
+          await fetchUntilFull(_PAGE_SIZE);
           if (!allTasks.length) {
             widget.innerHTML = `<div style="padding:16px;color:#6b7280;font-size:13px;">Could not generate tasks. Please continue in chat.</div>`;
             return;
           }
           showBatch(0);
+
+          // Lower-priority work starts after the spinner clears.
+          fetch(`/api/session-state?session_token=${sessionToken}`)
+            .then((r) => r.json())
+            .then((_sd) => {
+              if (_sd.user_portrait) {
+                lastPortrait = _sd.user_portrait;
+                refreshConversationTaskTexts();
+              }
+            })
+            .catch(() => {});
+          fetchAttentionChecks();
+          _fetchAiDistractors();
+          _ensureAiTaskBatch()
+            .then(() => _ensureAiTaskBatch())
+            .catch(() => {});
         } catch (e) {
           widget.innerHTML = `<div style="padding:16px;color:#6b7280;font-size:13px;">Failed to load tasks. Please continue in chat.</div>`;
         }

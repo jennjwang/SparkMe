@@ -57,6 +57,9 @@ class Interviewer(BaseAgent, Participant):
         self._response_lock = asyncio.Lock()
         self._turn_start: float | None = None
         self._last_sent_message_text: str = ""
+        self._guard_llm_mode = str(
+            os.getenv("INTERVIEWER_GUARD_LLM_MODE", "off")
+        ).strip().lower()
         self._inferability_mode = str(
             os.getenv("INTERVIEWER_INFERABILITY_MODE", "auto")
         ).strip().lower()
@@ -84,6 +87,7 @@ class Interviewer(BaseAgent, Participant):
         except (TypeError, ValueError):
             self._prompt_recent_interviewer_limit = 8
         self._prompt_recent_interviewer_limit = max(4, self._prompt_recent_interviewer_limit)
+
         try:
             self._prompt_recent_user_answers_limit = int(
                 os.getenv("INTERVIEWER_PROMPT_RECENT_USER_ANSWERS", "8")
@@ -111,6 +115,13 @@ class Interviewer(BaseAgent, Participant):
                 )
             )
         }
+
+    def _guard_llm_checks_enabled(self) -> bool:
+        """Return whether post-generation guard LLM calls may run."""
+        mode = str(
+            os.getenv("INTERVIEWER_GUARD_LLM_MODE", self._guard_llm_mode)
+        ).strip().lower()
+        return mode in {"on", "true", "1", "yes", "auto"}
 
     def _handle_quantify_response(self, quantified_response: str,
                                   original_response: str) -> Tuple[str, Rubric]:
@@ -449,6 +460,9 @@ class Interviewer(BaseAgent, Participant):
 
     def _should_run_inferability_llm(self, proposed_question: str, subtopic_id: str = "") -> bool:
         """Gate inferability checks to avoid asking answerable questions."""
+        if not self._guard_llm_checks_enabled():
+            return False
+
         mode = self._inferability_mode
         if mode == "off":
             return False
@@ -616,6 +630,9 @@ class Interviewer(BaseAgent, Participant):
 
     def _should_run_semantic_duplicate_llm(self, proposed_question: str, subtopic_id: str = "") -> bool:
         """Gate expensive semantic-duplicate checks behind cheap local risk signals."""
+        if not self._guard_llm_checks_enabled():
+            return False
+
         mode = str(os.getenv("INTERVIEWER_SEMANTIC_DUP_MODE", "auto")).strip().lower()
         if mode == "off":
             return False
