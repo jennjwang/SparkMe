@@ -3998,7 +3998,7 @@
         >
           Progress
         </button>
-        <button class="end-btn" id="end-session-btn">End Session</button>
+        <button class="end-btn" id="end-session-btn" style="display:none">End Session</button>
       </div>
     </div>
 
@@ -5151,7 +5151,7 @@
         document.getElementById("chat-box").appendChild(widget);
         scrollToBottom();
 
-        const _PAGE_SIZE = 3; // tasks shown per page — must match _TASK_BATCH_SIZE on server
+        const _PAGE_SIZE = 3; // tasks shown per page (server returns 6 per batch = 2 pages)
         const _MIN_DONE_SHOWN_TASKS = 9;
         const _ATTN_INTERVAL = 5; // inject one attention check per N real tasks
         const _TARGET_REAL_TASKS = regularTaskTarget(_PAGE_SIZE);
@@ -5239,7 +5239,6 @@
                 if (data.success && data.tasks?.length) {
                   pendingAttentionChecks = (data.tasks || []).map((t) => ({
                     text: t.name || "",
-                    description: t.description || "",
                     status: "unreviewed",
                     isAttentionCheck: true,
                   }));
@@ -5275,7 +5274,6 @@
               if (data.success) {
                 _aiPendingDistractors = (data.tasks || []).map((t) => ({
                   text: t.name || "",
-                  description: t.description || "",
                   isAttentionCheck: true,
                 }));
               }
@@ -5316,7 +5314,6 @@
               seenAiTexts.add(key);
               _aiWidgetTasks.push({
                 text: t.name || "",
-                description: t.description || "",
                 aiType: t.ai_type || "capability",
                 isAttentionCheck: false,
               });
@@ -5503,13 +5500,14 @@
 
         function prefetchAhead(idx) {
           if (done || prefetchPromise) return;
-          // Stay at most 1 page ahead of the current view — don't fetch everything eagerly
-          if (allTasks.length >= viewStart + _PAGE_SIZE * 2) return;
+          // Keep 2 pages buffered ahead of the current view
+          if (allTasks.length >= viewStart + _PAGE_SIZE * 3) return;
           prefetchPromise = fetchBatch(idx)
             .then(async (batch) => {
               prefetchPromise = null;
-              // Eagerly add to allTasks so handleNext finds them ready
               await receiveBatch(batch);
+              // Chain: immediately fetch the next batch if still below the buffer target
+              prefetchAhead(batchesLoaded);
             })
             .catch(() => {
               prefetchPromise = null;
@@ -6357,7 +6355,7 @@
             <span class="tvw-progress-text" id="tvw-progress-text">0 reviewed</span>
           </div>
           <ul class="tvw-subtitle">
-            <li><strong>Applies to me</strong> — this is something you're doing right now</li>
+            <li><strong>Applies to me</strong> — this is something you do or have done</li>
             <li><strong>Edit</strong> — the task name is wrong or only partially right</li>
             <li><strong>Doesn't apply</strong> — you don't do this task</li>
           </ul>

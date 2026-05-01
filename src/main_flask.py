@@ -2057,9 +2057,9 @@ def _default_task_gen_model() -> str:
     return "gpt-4o"                      # OpenAI fallback
 
 _TASK_GEN_MODEL = os.getenv("TASK_GEN_MODEL", _default_task_gen_model())
-_TASK_BATCH_SIZE = 3    # tasks shown per batch; each LLM call generates exactly this many
-_TASK_MIN_BATCHES = 10  # LLM cannot stop before this many batches (~30 tasks min)
-_TASK_MAX_BATCHES = 30  # hard cap to avoid infinite generation
+_TASK_BATCH_SIZE = 6    # tasks per LLM call; frontend pages show 3 at a time
+_TASK_MIN_BATCHES = 5   # LLM cannot stop before this many batches (~30 tasks min)
+_TASK_MAX_BATCHES = 15  # hard cap to avoid infinite generation
 
 
 def _parse_tasks_json(raw: str) -> dict:
@@ -2303,15 +2303,13 @@ def _llm_generate_task_batch(
             f"3. Maximize breadth of coverage across their full work profile, not just the most salient items.\n"
         )
 
-    # On batch 0, surface tasks explicitly mentioned in the conversation first.
+    # All batches: treat mentioned tasks as already covered so the LLM focuses on gaps.
     mentioned_block = ""
-    if batch_index == 0 and mentioned_tasks:
+    if mentioned_tasks:
         ml = "\n".join(f"- {t}" for t in mentioned_tasks[:20])
         mentioned_block = (
-            f"\nTasks this person explicitly mentioned doing:\n{ml}\n"
-            f"IMPORTANT: Your output MUST include all of these (verbatim or lightly cleaned up "
-            f"to fit the 5–12 word action+object format), unless they are already in the "
-            f"'Tasks already shown' list above. Do not omit any.\n"
+            f"\nTasks already discussed in the interview (the participant already knows about these — "
+            f"do NOT generate them; focus on tasks they have NOT mentioned):\n{ml}\n"
         )
 
     stop_hint = (
@@ -2352,9 +2350,8 @@ def _llm_generate_task_batch(
         "  Good: 'Review pull requests and leave code comments'\n"
         "  Bad: 'Review code'\n"
         f"- {stop_hint}\n"
-        "- Each task needs a name (5–12 words) and a description (1 sentence, what it involves).\n"
         "- Return ONLY valid JSON (no markdown fences):\n"
-        f'  {{"tasks": [{{"name": "Task name here", "description": "One sentence describing what this involves."}}, ...], "has_more": true}}'
+        f'  {{"tasks": [{{"name": "Task name here"}}, ...], "has_more": true}}'
     )
 
     engine = get_engine(model_name=_TASK_GEN_MODEL, temperature=0.9)
@@ -2368,47 +2365,22 @@ def _llm_generate_task_batch(
         for t in tasks_raw:
             if isinstance(t, dict):
                 name = str(t.get("name", "")).strip()
-                desc = str(t.get("description", "")).strip()
                 if name and len(name.split()) >= 3:
-                    tasks.append({"name": name, "description": desc})
+                    tasks.append({"name": name})
             elif isinstance(t, str) and len(t.strip().split()) >= 3:
-                tasks.append({"name": t.strip(), "description": ""})
+                tasks.append({"name": t.strip()})
         has_more = bool(parsed.get("has_more", True))
     except Exception:
         _JSON_KEYS = {"tasks", "name", "description", "has_more", "ai_type",
                       "capability", "governance", "true", "false", "null"}
         names = _re.findall(r'"([^"]{4,80})"', raw)
         tasks = [
-            {"name": n.strip(), "description": ""}
+            {"name": n.strip()}
             for n in names
             if n.strip() and n.strip().lower() not in _JSON_KEYS
             and len(n.strip().split()) >= 3
         ]
         has_more = True
-
-    # Fill any missing descriptions in one extra LLM call rather than making
-    # the frontend fire per-card requests later.
-    missing = [t for t in tasks if not t["description"]]
-    if missing:
-        numbered = "\n".join(f"{i+1}. {t['name']}" for i, t in enumerate(missing))
-        fill_prompt = (
-            f'Job context: "{job_description}"\n\n'
-            "For each task below write exactly one sentence (under 20 words) describing what it involves. "
-            "Start each with a verb. Return ONLY a JSON object mapping task name to description:\n"
-            '{"task name": "description", ...}\n\n'
-            f"Tasks:\n{numbered}"
-        )
-        try:
-            fill_engine = get_engine(model_name=_TASK_GEN_MODEL, temperature=0.7)
-            fill_response = invoke_engine(fill_engine, fill_prompt)
-            fill_raw = (fill_response.content if hasattr(fill_response, "content") else str(fill_response)).strip()
-            fill_raw = _re.sub(r'^```[a-z]*\n?', '', fill_raw)
-            fill_raw = _re.sub(r'\n?```$', '', fill_raw).strip()
-            fill_map = json.loads(fill_raw)
-            for t in missing:
-                t["description"] = str(fill_map.get(t["name"], "")).strip()
-        except Exception:
-            pass  # leave descriptions empty; frontend batch-fetch is the safety net
 
     return tasks, has_more
 
@@ -2444,7 +2416,7 @@ def generate_tasks():
 
     try:
         perspective = _session_perspective(session_token or "")
-        mentioned = _extract_user_mentioned_tasks(iv) if batch_index == 0 else None
+        mentioned = _extract_user_mentioned_tasks(iv)
         typical_week = _extract_typical_week_context(iv)
         tasks, has_more = _llm_generate_task_batch(
             job_description, prior_tasks, batch_index, perspective, mentioned, typical_week
@@ -2573,11 +2545,10 @@ def ai_era_tasks():
         "Do NOT make every task the same level of specificity.\n"
         "- Each task: 5–12 words, starts with an action verb, sentence case\n"
         "- Use plain, everyday language — no jargon or technical phrasing\n"
-        "- Each needs a name and a one-sentence description (also plain language)\n"
         "- Label each with type: 'capability' or 'governance'\n"
         f"- {stop_hint}\n"
         "- Return ONLY valid JSON (no markdown fences):\n"
-        '  {"tasks": [{"name": "...", "description": "...", "ai_type": "capability"}, ...], "has_more": true}'
+        '  {"tasks": [{"name": "...", "ai_type": "capability"}, ...], "has_more": true}'
     )
 
     try:
@@ -2591,7 +2562,6 @@ def ai_era_tasks():
         tasks = []
         for t in (parsed.get("tasks") or []):
             name = str(t.get("name", "")).strip()
-            desc = str(t.get("description", "")).strip()
             ai_type = str(t.get("ai_type", "capability")).strip()
             if not name:
                 continue
@@ -2599,7 +2569,7 @@ def ai_era_tasks():
             if not any(kw in name_lower for kw in _AI_KEYWORDS):
                 app.logger.warning(f"[ai_era_tasks] Dropping task with no AI mention: {name!r}")
                 continue
-            tasks.append({"name": name, "description": desc, "ai_type": ai_type})
+            tasks.append({"name": name, "ai_type": ai_type})
         has_more = bool(parsed.get("has_more", batch_index + 1 < _AI_MAX_BATCHES))
         if batch_index + 1 >= _AI_MAX_BATCHES:
             has_more = False
@@ -2636,9 +2606,8 @@ def attention_check_tasks():
         "Rules:\n"
         "- Each task must be unambiguously wrong for this profession (e.g. a software engineer would never 'Perform appendectomy surgery')\n"
         "- Still write them in the same format: 5–12 words, starts with an action verb, sentence case\n"
-        "- Each needs a name (5–12 words) and a description (1 sentence describing what the task actually involves — write it as if it were a real task, same length and detail as any other task description)\n"
         "- Return ONLY valid JSON (no markdown fences):\n"
-        '  {"tasks": [{"name": "Task name here", "description": "One sentence describing what this involves."}, ...]}'
+        '  {"tasks": [{"name": "Task name here"}, ...]}'
     )
 
     try:
@@ -2649,9 +2618,8 @@ def attention_check_tasks():
         tasks = []
         for t in (parsed.get("tasks") or []):
             name = str(t.get("name", "")).strip()
-            desc = str(t.get("description", "")).strip()
             if name:
-                tasks.append({"name": name, "description": desc, "is_attention_check": True})
+                tasks.append({"name": name, "is_attention_check": True})
     except Exception as e:
         app.logger.error(f"[attention_check_tasks] error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -2688,9 +2656,8 @@ def ai_attention_check_tasks():
         "- Each task MUST involve AI — include 'using AI', 'with AI', or a specific AI tool in the name\n"
         "- The task must be plausible for that other occupation, but obviously irrelevant to the participant's actual role\n"
         "- Write them in the same format as the other tasks: 5–12 words, starts with an action verb, sentence case\n"
-        "- Each needs a name and a one-sentence description\n"
         "- Return ONLY valid JSON (no markdown fences):\n"
-        '  {"tasks": [{"name": "Task name here", "description": "One sentence describing what this involves."}, ...]}'
+        '  {"tasks": [{"name": "Task name here"}, ...]}'
     )
 
     try:
@@ -2701,9 +2668,8 @@ def ai_attention_check_tasks():
         tasks = []
         for t in (parsed.get("tasks") or []):
             name = str(t.get("name", "")).strip()
-            desc = str(t.get("description", "")).strip()
             if name:
-                tasks.append({"name": name, "description": desc, "is_attention_check": True})
+                tasks.append({"name": name, "is_attention_check": True})
     except Exception as e:
         app.logger.error(f"[ai_attention_check_tasks] error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500

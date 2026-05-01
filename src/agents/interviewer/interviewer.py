@@ -537,7 +537,7 @@ class Interviewer(BaseAgent, Participant):
         llm_s = 0.0
         try:
             llm_start = time.perf_counter()
-            response = await asyncio.to_thread(invoke_engine, self.engine, judge_prompt)
+            response = await asyncio.to_thread(invoke_engine, self._get_judge_engine(), judge_prompt)
             llm_s = time.perf_counter() - llm_start
             raw = response.content if hasattr(response, "content") else str(response)
         except Exception as e:
@@ -860,7 +860,8 @@ class Interviewer(BaseAgent, Participant):
         llm_s = 0.0
         try:
             llm_start = time.perf_counter()
-            raw = await self.call_engine_async(judge_prompt)
+            response = await asyncio.to_thread(invoke_engine, self._get_judge_engine(), judge_prompt)
+            raw = response.content if hasattr(response, "content") else str(response)
             llm_s = time.perf_counter() - llm_start
         except Exception as e:
             SessionLogger.log_to_file(
