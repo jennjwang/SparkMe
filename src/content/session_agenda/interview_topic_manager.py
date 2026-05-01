@@ -127,6 +127,7 @@ class InterviewTopicManager(BaseModel):
                     subtopic_description = subtopic
                     subtopic_criteria = []
                 subtopic_priority = subtopic.get('priority_weight', 1.0) if isinstance(subtopic, dict) else 1.0
+                subtopic_max_followups = subtopic.get('max_followups', None) if isinstance(subtopic, dict) else None
                 curr_subtopic = SubTopic(
                     subtopic_id=subtopic_id,
                     core_topic_id=topic_id,
@@ -135,6 +136,7 @@ class InterviewTopicManager(BaseModel):
                     is_covered=False,
                     coverage_criteria=subtopic_criteria,
                     priority_weight=subtopic_priority,
+                    max_followups=subtopic_max_followups,
                 )
                 curr_core_topic.add_required_subtopic(curr_subtopic)
 

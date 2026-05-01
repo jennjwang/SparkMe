@@ -67,6 +67,7 @@ class SubTopic(BaseModel):
     coverage_criteria: List[str] = Field(default_factory=list)
     criteria_coverage: List[bool] = Field(default_factory=list)  # parallel to coverage_criteria
     priority_weight: float = 1.0
+    max_followups: Optional[int] = None
     
     def __iter__(self):
         """Iterate over questions in this subtopic."""
@@ -172,6 +173,7 @@ class SubTopic(BaseModel):
             'coverage_criteria': self.coverage_criteria,
             'criteria_coverage': self.criteria_coverage,
             'priority_weight': self.priority_weight,
+            'max_followups': self.max_followups,
         }
 
     @classmethod
@@ -189,6 +191,7 @@ class SubTopic(BaseModel):
             coverage_criteria=subtopic_dict.get('coverage_criteria', []),
             criteria_coverage=subtopic_dict.get('criteria_coverage', []),
             priority_weight=subtopic_dict.get('priority_weight', 1.0),
+            max_followups=subtopic_dict.get('max_followups', None),
         )
 
 class CoreTopic(BaseModel):

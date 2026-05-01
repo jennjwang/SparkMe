@@ -2747,6 +2747,39 @@
         border-left-color: #ec4899 !important;
         background: #fdf2f8;
       }
+      .tvw-recency-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 8px;
+        flex-wrap: wrap;
+      }
+      .tvw-recency-label {
+        font-size: 12px;
+        color: #6b7280;
+        white-space: nowrap;
+      }
+      .tvw-recency-btn {
+        font-size: 12px;
+        padding: 3px 10px;
+        border-radius: 12px;
+        border: 1px solid #d1d5db;
+        background: #f9fafb;
+        color: #374151;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      .tvw-recency-btn:hover {
+        border-color: #6366f1;
+        color: #4338ca;
+        background: #eef2ff;
+      }
+      .tvw-recency-btn.tvw-recency-active {
+        border-color: #6366f1;
+        background: #eef2ff;
+        color: #4338ca;
+        font-weight: 600;
+      }
       .tvw-card-input {
         font-size: 14px;
         font-weight: 600;
@@ -5340,6 +5373,14 @@
                 ? `<span class="tvw-badge tvw-badge-convo">you mentioned this</span>`
                 : "";
 
+          const recencyHidden = (t.status === "removed" || t.status === "unreviewed") ? ' style="display:none"' : '';
+          const recencyRow = `
+            <div class="tvw-recency-row" id="tvw-recency-${idx}"${recencyHidden}>
+              <span class="tvw-recency-label">When?</span>
+              <button class="tvw-recency-btn${t.recency === 'past' ? ' tvw-recency-active' : ''}" data-idx="${idx}" data-recency="past">Used to do</button>
+              <button class="tvw-recency-btn${t.recency === 'current' ? ' tvw-recency-active' : ''}" data-idx="${idx}" data-recency="current">Currently do</button>
+              <button class="tvw-recency-btn${t.recency === 'new' ? ' tvw-recency-active' : ''}" data-idx="${idx}" data-recency="new">Recently started</button>
+            </div>`;
           const actions = `
             <div class="tvw-card-actions">
               <button class="tvw-action-btn tvw-accurate-btn" data-idx="${idx}">Applies to me</button>
@@ -5353,6 +5394,7 @@
                 <span class="tvw-card-title">${esc(t.text)}</span>${badge}
               </div>
               ${actions}
+              ${recencyRow}
             </div>
           </div>`;
         }
@@ -5381,7 +5423,7 @@
           const footer = document.getElementById("tvw-widget-footer");
           if (!footer) return;
           const hasNext = !done || viewStart + _PAGE_SIZE < allTasks.length;
-          const canShowDone = viewStart >= 3 * _PAGE_SIZE;
+          const canShowDone = viewStart >= 4 * _PAGE_SIZE;
           const allReviewed = allTasks
             .slice(viewStart, viewStart + _PAGE_SIZE)
             .every((t) => t.status !== "unreviewed");
@@ -5507,6 +5549,11 @@
                   : null,
           );
           if (activeBtn) activeBtn.classList.add("tvw-btn-active");
+          // Show recency row for confirmed/edited, hide for removed/unreviewed
+          const recencyRow = card.querySelector(`#tvw-recency-${idx}`);
+          if (recencyRow) {
+            recencyRow.style.display = (status === "removed" || status === "unreviewed") ? "none" : "";
+          }
           updateProgress();
           updateFooter();
         }
@@ -5579,6 +5626,14 @@
           card
             .querySelector(".tvw-remove-btn")
             ?.addEventListener("click", () => setTaskStatus(idx, "removed"));
+          card.querySelectorAll(".tvw-recency-btn").forEach((btn) => {
+            btn.addEventListener("click", () => {
+              const r = btn.dataset.recency;
+              allTasks[idx].recency = allTasks[idx].recency === r ? null : r;
+              card.querySelectorAll(".tvw-recency-btn").forEach((b) => b.classList.remove("tvw-recency-active"));
+              if (allTasks[idx].recency) btn.classList.add("tvw-recency-active");
+            });
+          });
           card.querySelector(".tvw-wish-btn")?.addEventListener("click", () => {
             const isWished = allTasks[idx].wishlisted;
             allTasks[idx].wishlisted = !isWished;
@@ -6027,6 +6082,7 @@
                   text: t.text,
                   original_text: t.originalText || t.text,
                   status: t.status,
+                  recency: t.recency || null,
                 })),
             }),
           })
@@ -6059,7 +6115,13 @@
             return;
           }
 
-          // 2. Probing loop — when done, move to AI tasks section
+          // 2. Probing loop — open with a bot question so the user knows to respond
+          appendMessage(
+            "bot",
+            "Before we move on — are there any tasks or responsibilities we haven't covered yet that you'd like to add?",
+            "probe-open-" + Date.now(),
+          );
+          scrollToBottom();
           startProbingLoop(function () {
             // 3. Transition message + open AI question
             appendMessage(

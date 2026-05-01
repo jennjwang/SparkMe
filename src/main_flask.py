@@ -2150,6 +2150,53 @@ def _extract_user_mentioned_tasks(iv) -> list[str]:
     return msgs
 
 
+def _extract_typical_week_context(iv) -> str:
+    """Return the participant's typical-week narrative from subtopic notes or raw chat history.
+
+    Looks for the subtopic whose topic description contains 'typical week' (case-insensitive).
+    If the scribe has written notes, returns those. Otherwise falls back to the raw user
+    messages collected while that topic was active (identified by adjacent interviewer questions
+    that mention 'typical week' or 'regular activities').
+    """
+    try:
+        topic_manager = iv.session_agenda.interview_topic_manager
+        for core_topic in topic_manager.get_all_topics():
+            if "typical week" not in core_topic.description.lower():
+                continue
+            for subtopic in core_topic:
+                # Prefer the scribe's aggregated summary / notes
+                if subtopic.final_summary and subtopic.final_summary.strip():
+                    return subtopic.final_summary.strip()
+                if subtopic.notes:
+                    return " ".join(subtopic.notes).strip()
+    except Exception:
+        pass
+
+    # Fallback: find user messages that followed an interviewer question about typical week
+    try:
+        history = iv.chat_history
+        for i, msg in enumerate(history):
+            if msg.role != "Interviewer":
+                continue
+            content_lower = (msg.content or "").lower()
+            if "typical week" not in content_lower and "regular activities" not in content_lower:
+                continue
+            # Collect the next user response(s) in this exchange
+            parts = []
+            for j in range(i + 1, min(i + 4, len(history))):
+                m = history[j]
+                if m.role == "User" and getattr(m, "type", "conversation") == "conversation":
+                    parts.append(m.content.strip())
+                elif m.role == "Interviewer":
+                    break
+            if parts:
+                return " ".join(parts)
+    except Exception:
+        pass
+
+    return ""
+
+
 def _split_task_inventory_items(task_name: object) -> list[str]:
     return [
         " ".join(part.strip().split())
@@ -2229,6 +2276,7 @@ def _llm_generate_task_batch(
     batch_index: int,
     session_perspective: str = "",
     mentioned_tasks: list[str] | None = None,
+    typical_week_context: str = "",
 ) -> tuple[list[str], bool]:
     """Generate the next batch of tasks, ordered by importance, deduped against prior_tasks."""
     import re as _re
@@ -2240,6 +2288,19 @@ def _llm_generate_task_batch(
         prior_block = (
             f"\nTasks already shown (STRICT: do NOT repeat or rephrase any of these — "
             f"treat semantically similar tasks as duplicates):\n{prior_list}\n"
+        )
+
+    # Anchor on the participant's own description of their typical week.
+    typical_week_block = ""
+    if typical_week_context:
+        typical_week_block = (
+            f"\nThis participant described their typical work week as follows:\n"
+            f"\"{typical_week_context}\"\n\n"
+            f"Use this as your primary anchor. Generate tasks that:\n"
+            f"1. Prioritize areas of work this person did NOT mention — probe the gaps in their self-description.\n"
+            f"2. Fill gaps where their description was high-level (e.g. 'meetings' → break into "
+            f"specific meeting types; 'admin work' → specific admin tasks).\n"
+            f"3. Maximize breadth of coverage across their full work profile, not just the most salient items.\n"
         )
 
     # On batch 0, surface tasks explicitly mentioned in the conversation first.
@@ -2279,6 +2340,7 @@ def _llm_generate_task_batch(
     prompt = (
         f"Occupation context: \"{job_description}\"\n"
         f"{perspective_line}"
+        f"{typical_week_block}"
         f"{prior_block}"
         f"{mentioned_block}\n"
         f"{coverage_hint}\n\n"
@@ -2383,8 +2445,9 @@ def generate_tasks():
     try:
         perspective = _session_perspective(session_token or "")
         mentioned = _extract_user_mentioned_tasks(iv) if batch_index == 0 else None
+        typical_week = _extract_typical_week_context(iv)
         tasks, has_more = _llm_generate_task_batch(
-            job_description, prior_tasks, batch_index, perspective, mentioned
+            job_description, prior_tasks, batch_index, perspective, mentioned, typical_week
         )
     except Exception as e:
         app.logger.error(f"[generate_tasks] LLM error: {e}", exc_info=True)
@@ -3104,9 +3167,10 @@ def task_followup():
         "'Are there other ways AI shows up in your work?'. Do NOT summarize, evaluate, or react to their answer. "
         "Do NOT reuse the same wording from the previous interviewer turn.\n"
         if is_ai_extras
-        else "  Ask a short, varied continuation question "
-        "scoped to their work tasks. Examples: 'What other tasks are part of your work?', 'What else takes up your time?', "
-        "'Are there other things you regularly work on?'. Start directly with the question and do not reuse the same wording from the previous interviewer turn.\n"
+        else "  An occasional brief neutral acknowledgement such as 'Got it' or 'Makes sense' is okay, but do not use one every turn. "
+        "Then ask a short, varied continuation question scoped to their work tasks. "
+        "Examples: 'What other tasks are part of your work?', 'What else takes up your time?', "
+        "'Are there other things you regularly work on?'. Do not reuse the same wording from the previous interviewer turn.\n"
     )
 
     history = _task_followup_history(session_token, phase)
@@ -3385,22 +3449,6 @@ def submit_task_validation():
             _end_early()
         return jsonify({'success': True, 'task_count': len(all_tasks), 'attn_disqualified': True})
 
-    # Ask the participant if anything was missed before ending.
-    # Set a flag so the interviewer's next on_message fires end_conversation
-    # deterministically, without an LLM turn.
-    def _inject_question():
-        iv.add_message_to_chat_history(
-            role="Interviewer",
-            content="Are there any tasks you can think of that we haven't covered? Think back to your recent work day. What are tasks you did that you think should be on the list?",
-            message_type="conversation",
-        )
-        iv._completeness_probe_sent = True
-
-    if hasattr(wrapper, 'loop'):
-        wrapper.loop.call_soon_threadsafe(_inject_question)
-    else:
-        _inject_question()
-
     return jsonify({'success': True, 'task_count': len(all_tasks)})
 
 
@@ -3495,6 +3543,101 @@ def submit_ai_tasks():
         return jsonify({'success': True, 'disqualified': True, 'task_count': len(all_ai_tasks)})
 
     return jsonify({'success': True, 'task_count': len(all_ai_tasks)})
+
+
+@app.route('/api/extract-missing-tasks', methods=['POST'])
+@agent_or_login_required
+def extract_missing_tasks():
+    """Use LLM to extract new task names from a participant's free-form brain-dump text."""
+    data = request.get_json(silent=True) or {}
+    session_token = data.get('session_token')
+    text = (data.get('text') or '').strip()
+    confirmed_tasks = data.get('confirmed_tasks') or []
+
+    wrapper = get_session_wrapper(session_token)
+    if not wrapper:
+        return jsonify({'success': False, 'error': 'Invalid or expired session'}), 400
+
+    if not text:
+        return jsonify({'success': True, 'tasks': []})
+
+    confirmed_str = '\n'.join(f'- {t}' for t in confirmed_tasks) if confirmed_tasks else 'None'
+
+    prompt = f"""You are helping catalog work tasks from a research participant.
+
+The participant was asked to freely write any tasks they do regularly at work that weren't already captured.
+
+Their already-confirmed task list:
+{confirmed_str}
+
+Their free-form response:
+\"\"\"{text}\"\"\"
+
+Extract any distinct work tasks mentioned in the response that are NOT already in the confirmed list. For each task:
+- Write a concise action phrase (verb + object, 3-8 words, e.g. "Prepare slides for lab meetings")
+- Write a one-sentence description
+
+Return ONLY valid JSON in this format:
+{{
+  "tasks": [
+    {{"name": "Task name here", "description": "One-sentence description."}},
+    ...
+  ]
+}}
+
+Rules:
+- Only include tasks genuinely distinct from the confirmed list
+- Do not split one task into many
+- If no new tasks are mentioned, return {{"tasks": []}}
+- Do not include tasks about checking emails or general administrative work unless specifically mentioned"""
+
+    try:
+        engine = get_engine(model_name=_TASK_GEN_MODEL, temperature=0.3)
+        raw = engine.generate(prompt)
+        parsed = _load_llm_json_object(raw)
+        tasks = parsed.get('tasks') or []
+        cleaned = [
+            {'name': str(t.get('name', '')).strip(), 'description': str(t.get('description', '')).strip()}
+            for t in tasks
+            if isinstance(t, dict) and str(t.get('name', '')).strip()
+        ]
+        return jsonify({'success': True, 'tasks': cleaned})
+    except Exception as e:
+        app.logger.error(f'[extract_missing_tasks] Error: {e}')
+        return jsonify({'success': True, 'tasks': []})
+
+
+@app.route('/api/save-extra-tasks', methods=['POST'])
+@agent_or_login_required
+def save_extra_tasks():
+    """Append confirmed brain-dump tasks to the participant's Task Inventory."""
+    data = request.get_json(silent=True) or {}
+    session_token = data.get('session_token')
+    tasks = data.get('tasks') or []  # [{name, description}]
+
+    wrapper = get_session_wrapper(session_token)
+    if not wrapper:
+        return jsonify({'success': False, 'error': 'Invalid or expired session'}), 400
+
+    iv = wrapper.interview_session
+    task_names = [str(t.get('name', t) if isinstance(t, dict) else t).strip() for t in tasks if t]
+    task_names = [n for n in task_names if n]
+
+    if not task_names:
+        return jsonify({'success': True, 'added': 0})
+
+    added = _append_task_inventory_items(iv, task_names)
+
+    # Persist updated portrait
+    agenda = getattr(iv, 'session_agenda', None)
+    if agenda is not None:
+        portrait_path = os.path.join(os.getenv('LOGS_DIR', 'logs'), iv.user_id, 'user_portrait.json')
+        os.makedirs(os.path.dirname(portrait_path), exist_ok=True)
+        with open(portrait_path, 'w') as f:
+            json.dump(dict(agenda.user_portrait or {}), f, indent=2)
+
+    app.logger.info(f'[save_extra_tasks] Appended {len(added)} extra tasks for user {iv.user_id}')
+    return jsonify({'success': True, 'added': len(added)})
 
 
 # =============================================================================

@@ -10,11 +10,11 @@
     "category": "Operations",
     "tasks": [
       {
-        "task_statement": "Review clinical and financial data using Microsoft Copilot to identify missed items or abnormalities and improve operational services for physician providers.",
+        "task_statement": "Review clinical and financial data to identify missed items or abnormalities and improve operational services for physician providers.",
         "action": "Review",
         "object": "clinical and financial data",
         "purpose": "to identify missed items or abnormalities and improve operational services for physician providers",
-        "tools": "Microsoft Copilot",
+        "tools": "",
         "information_sources": "",
         "method": "Use Microsoft Copilot to review data for missed items or abnormalities, enhancing data analysis responsibilities.",
         "judgment": "",
@@ -36,7 +36,11 @@
         },
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "Concrete review of specific data for operational improvement is a recognizable task for medical and health services managers."
+        "_screen_reason": "Concrete review of specific data for operational improvement is a recognizable task for medical and health services managers.",
+        "_tool_original_task_statement": "Review clinical and financial data using Microsoft Copilot to identify missed items or abnormalities and improve operational services for physician providers.",
+        "_tool_original_tools": "Microsoft Copilot",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
         "task_statement": "Analyze financial data to support clinical revenue improvement for physician providers.",
@@ -63,14 +67,17 @@
         },
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "Analyzing financial data for revenue improvement is a standard, bounded management task in healthcare operations."
+        "_screen_reason": "Analyzing financial data for revenue improvement is a standard, bounded management task in healthcare operations.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
-        "task_statement": "Pull and correlate gross charges from Excel spreadsheets to net patient income in order to explain trends in clinical revenue.",
+        "task_statement": "Pull and correlate gross charges to net patient income in order to explain trends in clinical revenue.",
         "action": "Pull and correlate",
         "object": "gross charges from Excel spreadsheets and net patient income",
         "purpose": "to explain trends in clinical revenue",
-        "tools": "Excel",
+        "tools": "",
         "information_sources": "",
         "method": "Pull gross charges from Excel and correlate them to net patient income for trend explanation.",
         "judgment": "",
@@ -91,14 +98,18 @@
         },
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "This is a specific financial analysis task using concrete data sources and is typical of healthcare service management."
+        "_screen_reason": "This is a specific financial analysis task using concrete data sources and is typical of healthcare service management.",
+        "_tool_original_task_statement": "Pull and correlate gross charges from Excel spreadsheets to net patient income in order to explain trends in clinical revenue.",
+        "_tool_original_tools": "Excel",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "Draft and summarize work communications using AI tools to make them more professional and concise for improved team collaboration.",
+        "task_statement": "Draft and summarize work communications to make them more professional and concise for improved team collaboration.",
         "action": "Use AI tools to reword and summarize",
         "object": "email messages and work communications",
         "purpose": "to make them more professional and concise for improved team collaboration",
-        "tools": "AI tools (e.g., Microsoft Copilot)",
+        "tools": "",
         "information_sources": "",
         "method": "Consistently use AI tools to reword email messages and summarize work to be shortened and briefed.",
         "judgment": "",
@@ -120,14 +131,18 @@
         },
         "_original_statement": "Use AI tools to reword email messages and summarize work communications to be more professional and concise for improved team collaboration.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The activity is real and bounded, but using AI to reword emails is not common enough to the occupation as stated; rewritten to focus on the underlying communication task."
+        "_screen_reason": "The activity is real and bounded, but using AI to reword emails is not common enough to the occupation as stated; rewritten to focus on the underlying communication task.",
+        "_tool_original_task_statement": "Draft and summarize work communications using AI tools to make them more professional and concise for improved team collaboration.",
+        "_tool_original_tools": "AI tools (e.g., Microsoft Copilot)",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
         "task_statement": "Implement and refine contracting processes by developing submission forms and dividing communications among staff to streamline workflows.",
         "action": "Collaborate to implement and refine",
         "object": "contracting processes (including submission forms and communication workflows)",
         "purpose": "to streamline contracting and billing work for physicians",
-        "tools": "form stack",
+        "tools": "",
         "information_sources": "input from admin operations team and staff",
         "method": "Formulate a form stack and submission process, divide communications among staff, and devise an implementation plan collaboratively.",
         "judgment": "",
@@ -150,7 +165,10 @@
         },
         "_original_statement": "Collaborate with the team to implement and refine contracting processes by developing submission forms and dividing communications among staff to streamline workflows.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The original uses the vague verb 'collaborate'; rewritten with a more specific core action while preserving the same work activity."
+        "_screen_reason": "The original uses the vague verb 'collaborate'; rewritten with a more specific core action while preserving the same work activity.",
+        "_tool_original_tools": "form stack",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       }
     ],
     "rejected_tasks": []
@@ -188,14 +206,17 @@
         },
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "This is a clear, concrete, bounded task that is typical of psychology work."
+        "_screen_reason": "This is a clear, concrete, bounded task that is typical of psychology work.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
-        "task_statement": "Analyze research data using SPSS and R code, sometimes with the assistance of ChatGPT, to generate research results.",
+        "task_statement": "Analyze research data to generate research results.",
         "action": "analyze",
         "object": "research data",
         "purpose": "generate research results",
-        "tools": "SPSS, R code, ChatGPT",
+        "tools": "",
         "information_sources": "literature, colleagues, past work",
         "method": "",
         "judgment": "",
@@ -216,7 +237,11 @@
         },
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "This is a specific and common research task for psychologists, with concrete tools and a clear purpose."
+        "_screen_reason": "This is a specific and common research task for psychologists, with concrete tools and a clear purpose.",
+        "_tool_original_task_statement": "Analyze research data using SPSS and R code, sometimes with the assistance of ChatGPT, to generate research results.",
+        "_tool_original_tools": "SPSS, R code, ChatGPT",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
         "task_statement": "Write research papers to contribute to the field.",
@@ -241,7 +266,10 @@
         },
         "_original_statement": "Write research papers as a doctoral student to fulfill academic requirements and contribute to the field.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The task is specific and bounded, but fulfilling doctoral academic requirements is student-specific rather than common to most psychologists. Rewritten to retain the core research activity and remove the idiosyncratic student context."
+        "_screen_reason": "The task is specific and bounded, but fulfilling doctoral academic requirements is student-specific rather than common to most psychologists. Rewritten to retain the core research activity and remove the idiosyncratic student context.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
         "task_statement": "Create lesson plans and course slides to prepare for teaching forensic psychology classes.",
@@ -266,7 +294,10 @@
         },
         "_original_statement": "Create lesson plans and course slides to prepare for teaching forensic psychology classes.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The task is well-formed, but teaching preparation is not common to most workers in the psychologists occupation category. Kept wording because it already states the task clearly."
+        "_screen_reason": "The task is well-formed, but teaching preparation is not common to most workers in the psychologists occupation category. Kept wording because it already states the task clearly.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
         "task_statement": "Grade student assignments to assess learning and provide feedback.",
@@ -291,7 +322,10 @@
         },
         "_original_statement": "Grade student assignments to assess learning and provide feedback.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The task is specific and bounded, but grading is tied to a teaching role and is not common to most psychologists. Kept wording because it is already a clear task statement."
+        "_screen_reason": "The task is specific and bounded, but grading is tied to a teaching role and is not common to most psychologists. Kept wording because it is already a clear task statement.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       }
     ],
     "rejected_tasks": []
@@ -307,11 +341,11 @@
     "category": "Sales & Business Development",
     "tasks": [
       {
-        "task_statement": "Manually track and update inventory stock and SKUs for the trading card shop using Google Sheets formulas to maintain accurate records.",
+        "task_statement": "Manually track and update inventory stock and SKUs for the trading card shop to maintain accurate records.",
         "action": "Track and update",
         "object": "inventory stock and SKUs",
         "purpose": "to maintain accurate records",
-        "tools": "Google Sheets with formulas",
+        "tools": "",
         "information_sources": "",
         "method": "Manually enter and adjust inventory data in Google Sheets using formulas.",
         "judgment": "",
@@ -332,7 +366,11 @@
         },
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "This is a specific, observable inventory-recordkeeping task with a concrete object and tool, and it is common in retail buying work."
+        "_screen_reason": "This is a specific, observable inventory-recordkeeping task with a concrete object and tool, and it is common in retail buying work.",
+        "_tool_original_task_statement": "Manually track and update inventory stock and SKUs for the trading card shop using Google Sheets formulas to maintain accurate records.",
+        "_tool_original_tools": "Google Sheets with formulas",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
         "task_statement": "Set prices for merchandise based on real-time updates from team members to facilitate buying and selling decisions.",
@@ -361,7 +399,10 @@
         },
         "_original_statement": "Set prices for trading card collections or singles based on real-time updates from team members to facilitate buying and selling decisions.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The task is concrete and bounded, but the object is highly specific to this worker's niche business. Rewritten to a more occupation-relevant buying/pricing task without adding new details beyond generalizing the merchandise."
+        "_screen_reason": "The task is concrete and bounded, but the object is highly specific to this worker's niche business. Rewritten to a more occupation-relevant buying/pricing task without adding new details beyond generalizing the merchandise.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
         "task_statement": "Coordinate foreign currency transactions with established agents to fulfill customer requests such as USD or Alipay balances.",
@@ -389,7 +430,10 @@
         },
         "_original_statement": "Facilitate foreign currency transactions for customers by coordinating with established agents to fulfill requests such as USD or Alipay balances.",
         "_screen_status": "rewritten",
-        "_screen_reason": "Replaced the vague verb 'facilitate' with the more specific implied action 'coordinate.' The activity appears real and bounded, but it is not typical of wholesale and retail buyers."
+        "_screen_reason": "Replaced the vague verb 'facilitate' with the more specific implied action 'coordinate.' The activity appears real and bounded, but it is not typical of wholesale and retail buyers.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
         "task_statement": "Buy and sell digital game currency based on current market conditions to ensure timely and profitable transactions.",
@@ -418,7 +462,10 @@
         },
         "_original_statement": "Buy and sell digital game currency with close attention to current market conditions to ensure timely and profitable transactions.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The task is specific and coherent, but trading digital game currency is not a common duty for wholesale and retail buyers. Minor rewrite improves clarity."
+        "_screen_reason": "The task is specific and coherent, but trading digital game currency is not a common duty for wholesale and retail buyers. Minor rewrite improves clarity.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
         "task_statement": "Assign roles to team members to cover additional business functions as the businesses grow.",
@@ -445,7 +492,10 @@
         },
         "_original_statement": "Assign roles and expand the team to cover additional business functions as the businesses grow, ensuring effective management.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The original bundles staffing expansion with role assignment and uses a vague object. Rewritten to the single clearest task, but it remains not typical of wholesale and retail buyers."
+        "_screen_reason": "The original bundles staffing expansion with role assignment and uses a vague object. Rewritten to the single clearest task, but it remains not typical of wholesale and retail buyers.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       }
     ],
     "rejected_tasks": []
@@ -461,34 +511,58 @@
     "category": "Operations",
     "tasks": [
       {
-        "task_statement": "[Supply Chain & Operations Intern (FMCG)] Check inventory levels and outstanding orders across e-commerce, retail, and B2B channels using spreadsheets and internal tracking systems to flag potential shortages or overstock risks.",
+        "task_statement": "Check inventory levels and outstanding orders across e-commerce, retail, and B2B channels to flag potential shortages or overstock risks.",
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "Concrete review task with a specific object and clear purpose; typical of logistics work."
+        "_screen_reason": "Concrete review task with a specific object and clear purpose; typical of logistics work.",
+        "_tool_original_task_statement": "[Supply Chain & Operations Intern (FMCG)] Check inventory levels and outstanding orders across e-commerce, retail, and B2B channels using spreadsheets and internal tracking systems to flag potential shortages or overstock risks.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "[Supply Chain & Operations Intern (FMCG)] Manually cross-check and reconcile data between WMS, ERP, and Google Sheets to verify inventory accuracy and resolve discrepancies.",
+        "task_statement": "Manually cross-check and reconcile data to verify inventory accuracy and resolve discrepancies.",
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "Specific, bounded data reconciliation task using named systems; common in logistics and inventory control."
+        "_screen_reason": "Specific, bounded data reconciliation task using named systems; common in logistics and inventory control.",
+        "_tool_original_task_statement": "[Supply Chain & Operations Intern (FMCG)] Manually cross-check and reconcile data between WMS, ERP, and Google Sheets to verify inventory accuracy and resolve discrepancies.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "[Supply Chain & Operations Intern (FMCG)] Document operational issues and follow-ups to prevent recurrence and improve process reliability.",
+        "task_statement": "Document operational issues and follow-ups to prevent recurrence and improve process reliability.",
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "Clear documentation task with a concrete object and purpose; typical for process tracking and continuous improvement in logistics."
+        "_screen_reason": "Clear documentation task with a concrete object and purpose; typical for process tracking and continuous improvement in logistics.",
+        "_tool_original_task_statement": "[Supply Chain & Operations Intern (FMCG)] Document operational issues and follow-ups to prevent recurrence and improve process reliability.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "Review procurement timelines, production schedules, and fulfilment status with suppliers and the warehouse using spreadsheets and internal tracking systems to address issues and ensure smooth operations.",
+        "task_statement": "Review procurement timelines, production schedules, and fulfilment status with suppliers and the warehouse to address issues and ensure smooth operations.",
         "_original_statement": "[Supply Chain & Operations Intern (FMCG)] Coordinate with suppliers and the warehouse on procurement timelines, production schedules, and fulfilment status to address issues and ensure smooth operations.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The verb 'Coordinate' is too vague; rewritten with a more observable action while preserving the same logistics activity."
+        "_screen_reason": "The verb 'Coordinate' is too vague; rewritten with a more observable action while preserving the same logistics activity.",
+        "_tool_original_task_statement": "Review procurement timelines, production schedules, and fulfilment status with suppliers and the warehouse using spreadsheets and internal tracking systems to address issues and ensure smooth operations.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
         "task_statement": "Resolve operational exceptions such as delayed shipments, inventory discrepancies, or last-minute order changes by gathering data, communicating with teams, and proposing actionable solutions.",
         "_original_statement": "[Supply Chain & Operations Intern (FMCG)] Handle operational exceptions such as delayed shipments, inventory discrepancies, or last-minute order changes by gathering data, communicating with teams, and proposing actionable solutions.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The verb 'Handle' is vague; rewritten with a more specific action. The sub-steps are closely related to one exception-resolution task."
+        "_screen_reason": "The verb 'Handle' is vague; rewritten with a more specific action. The sub-steps are closely related to one exception-resolution task.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       }
     ],
     "rejected_tasks": []
@@ -504,34 +578,58 @@
     "category": "IT Support",
     "tasks": [
       {
-        "task_statement": "Look up Excel formulas using AI tools to efficiently process data in Excel when the required formula is unknown.",
+        "task_statement": "Look up formulas to efficiently process data when the required formula is unknown.",
         "_original_statement": "[IT Officer] Ask AI tools for Excel formulas to efficiently process data in Excel when the required formula is unknown.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The task is concrete and bounded, but asking AI tools for formulas is too tool-specific and not common to most computer user support specialists. Rewritten to emphasize the underlying work activity."
+        "_screen_reason": "The task is concrete and bounded, but asking AI tools for formulas is too tool-specific and not common to most computer user support specialists. Rewritten to emphasize the underlying work activity.",
+        "_tool_original_task_statement": "Look up Excel formulas using AI tools to efficiently process data in Excel when the required formula is unknown.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "Provide business context to AI tools before using them to ensure the AI provides relevant support for the specific subsidiary's business process.",
+        "task_statement": "Provide business context to ensure relevant support for the specific subsidiary's business process.",
         "_original_statement": "[IT Officer] Clarify the business context to AI tools before using them, to ensure the AI provides relevant support for the specific subsidiary's business process.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The statement describes a real, bounded action, but it is specific to AI prompting and a particular subsidiary context rather than a common task across the occupation."
+        "_screen_reason": "The statement describes a real, bounded action, but it is specific to AI prompting and a particular subsidiary context rather than a common task across the occupation.",
+        "_tool_original_task_statement": "Provide business context to AI tools before using them to ensure the AI provides relevant support for the specific subsidiary's business process.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "Review AI-generated answers for logic or coding tasks by questioning the AI's reasoning and providing screenshots when answers appear incorrect to ensure the accuracy and logical validity of the output.",
+        "task_statement": "Review generated answers for logic or coding tasks by questioning the reasoning and providing evidence when answers appear incorrect to ensure the accuracy and logical validity of the output.",
         "_original_statement": "[IT Officer] Critically review AI-generated answers, especially for logic or coding tasks, by questioning the AI's reasoning and providing screenshots when answers appear incorrect.",
         "_screen_status": "rewritten",
-        "_screen_reason": "This is a coherent review task, but it is centered on AI-generated answers and coding logic, which is not typical for most computer user support specialists."
+        "_screen_reason": "This is a coherent review task, but it is centered on AI-generated answers and coding logic, which is not typical for most computer user support specialists.",
+        "_tool_original_task_statement": "Review AI-generated answers for logic or coding tasks by questioning the AI's reasoning and providing screenshots when answers appear incorrect to ensure the accuracy and logical validity of the output.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
         "task_statement": "Discuss work results and processes with the team or management to ensure collaborative review and alignment.",
         "_original_statement": "[IT Officer] Discuss the results and processes of work collaboratively with the team or management, regardless of whether AI tools were used.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The original object was too vague ('work'). Rewritten to make the task more concise while preserving the collaborative review activity."
+        "_screen_reason": "The original object was too vague ('work'). Rewritten to make the task more concise while preserving the collaborative review activity.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
-        "task_statement": "Verify AI-generated answers by cross-checking and researching as needed to ensure the information is accurate.",
+        "task_statement": "Verify generated answers by cross-checking and researching as needed to ensure the information is accurate.",
         "_original_statement": "[IT Officer] Verify AI-generated answers by cross-checking and researching as needed, recognizing that the time spent is similar to traditional research methods.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The task is specific and bounded, but verifying AI-generated answers is too AI-specific to be common across the occupation. Rewritten to remove commentary and retain the core activity."
+        "_screen_reason": "The task is specific and bounded, but verifying AI-generated answers is too AI-specific to be common across the occupation. Rewritten to remove commentary and retain the core activity.",
+        "_tool_original_task_statement": "Verify AI-generated answers by cross-checking and researching as needed to ensure the information is accurate.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       }
     ],
     "rejected_tasks": []
@@ -547,34 +645,58 @@
     "category": "Sales & Business Development",
     "tasks": [
       {
-        "task_statement": "[Sales Representative (Solar Industry)] Conduct weekly market research using AI tools to stay updated on market dynamics and industry trends, such as monitoring product price increases.",
+        "task_statement": "Conduct weekly market research to stay updated on market dynamics and industry trends, such as monitoring product price increases.",
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "This is a specific, bounded, and recognizable sales activity focused on researching market trends relevant to solar sales."
+        "_screen_reason": "This is a specific, bounded, and recognizable sales activity focused on researching market trends relevant to solar sales.",
+        "_tool_original_task_statement": "[Sales Representative (Solar Industry)] Conduct weekly market research using AI tools to stay updated on market dynamics and industry trends, such as monitoring product price increases.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "[Sales Representative (Solar Industry)] Develop B2B sales strategies using AI to determine customer approach methods and gather competitor information.",
+        "task_statement": "Develop B2B sales strategies to determine customer approach methods and gather competitor information.",
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "Developing sales strategies for B2B customers using market and competitor information is a coherent and common task for solar sales representatives."
+        "_screen_reason": "Developing sales strategies for B2B customers using market and competitor information is a coherent and common task for solar sales representatives.",
+        "_tool_original_task_statement": "[Sales Representative (Solar Industry)] Develop B2B sales strategies using AI to determine customer approach methods and gather competitor information.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "[Sales Representative (Solar Industry)] Consult AI for reply suggestions when texting prospects, then combine AI-generated responses with personal judgment to engage potential customers.",
+        "task_statement": "Draft and revise replies to prospects, then apply personal judgment to engage potential customers.",
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "Drafting or refining prospect text replies is a concrete, bounded, and common sales communication task."
+        "_screen_reason": "Drafting or refining prospect text replies is a concrete, bounded, and common sales communication task.",
+        "_tool_original_task_statement": "[Sales Representative (Solar Industry)] Consult AI for reply suggestions when texting prospects, then combine AI-generated responses with personal judgment to engage potential customers.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "Revise messages to Chinese colleagues using AI translation tools to facilitate clearer multilingual communication.",
+        "task_statement": "Revise messages to Chinese colleagues to facilitate clearer multilingual communication.",
         "_original_statement": "[Sales Representative (Solar Industry)] Use AI translation tools to improve sentences when communicating with Chinese colleagues, facilitating clearer multilingual discussions.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The task is specific and bounded, but communicating with Chinese colleagues is not common to most workers in this occupation; the rewrite clarifies the concrete action."
+        "_screen_reason": "The task is specific and bounded, but communicating with Chinese colleagues is not common to most workers in this occupation; the rewrite clarifies the concrete action.",
+        "_tool_original_task_statement": "Revise messages to Chinese colleagues using AI translation tools to facilitate clearer multilingual communication.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
         "task_statement": "Prepare personalized souvenirs for customers to ensure a personal touch.",
         "_original_statement": "[Sales Representative (Solar Industry)] Prepare personalized souvenirs for customers manually without using AI to ensure a personal touch.",
         "_screen_status": "rewritten",
-        "_screen_reason": "This is a real, bounded activity, but it is idiosyncratic and not common to most solar sales representatives; the rewrite removes the irrelevant AI contrast."
+        "_screen_reason": "This is a real, bounded activity, but it is idiosyncratic and not common to most solar sales representatives; the rewrite removes the irrelevant AI contrast.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       }
     ],
     "rejected_tasks": []
@@ -616,7 +738,10 @@
         },
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "Concrete monitoring task focused on shipments and documentation; this is a typical logistics activity."
+        "_screen_reason": "Concrete monitoring task focused on shipments and documentation; this is a typical logistics activity.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
         "task_statement": "Contact suppliers based on customer inquiries to verify if requested items match supplier offerings.",
@@ -645,7 +770,10 @@
         },
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "Specific supplier coordination task with a clear object and purpose that is common in logistics work."
+        "_screen_reason": "Specific supplier coordination task with a clear object and purpose that is common in logistics work.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
         "task_statement": "Develop and refine documentation requirements for every transaction type to establish clearer guidelines and reduce errors.",
@@ -675,7 +803,10 @@
         },
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "Clear process-documentation task with a concrete object and recognizable relevance to logistics operations."
+        "_screen_reason": "Clear process-documentation task with a concrete object and recognizable relevance to logistics operations.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
         "task_statement": "Verify transaction archive documentation for accuracy to complete transaction archives in the absence of strict SOPs.",
@@ -705,7 +836,10 @@
         },
         "_original_statement": "Supervise new administrative staff in completing transaction archives and verify documentation accuracy in the absence of strict SOPs.",
         "_screen_status": "rewritten",
-        "_screen_reason": "Original statement bundles supervising staff with verifying documentation, and the staff-supervision aspect is less typical for the occupation than the documentation-control task."
+        "_screen_reason": "Original statement bundles supervising staff with verifying documentation, and the staff-supervision aspect is less typical for the occupation than the documentation-control task.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
         "task_statement": "Document errors during task execution to prevent repeated mistakes and improve processes.",
@@ -735,7 +869,10 @@
         },
         "_original_statement": "Document personal experiences and errors during task execution to prevent repeated mistakes and improve processes.",
         "_screen_status": "rewritten",
-        "_screen_reason": "Removed the idiosyncratic 'personal experiences' phrasing to make the task more concrete and job-relevant, though it remains somewhat less standard than core logistics tasks."
+        "_screen_reason": "Removed the idiosyncratic 'personal experiences' phrasing to make the task more concrete and job-relevant, though it remains somewhat less standard than core logistics tasks.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       }
     ],
     "rejected_tasks": []
@@ -779,10 +916,13 @@
         },
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "Concrete action on a specific object with a clear purpose; literature review is a common task for computer and information research scientists."
+        "_screen_reason": "Concrete action on a specific object with a clear purpose; literature review is a common task for computer and information research scientists.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
-        "task_statement": "Survey, compare, and select AI techniques for adaptation and application to identified climate science problems.",
+        "task_statement": "Survey, compare, and select techniques for adaptation and application to identified climate science problems.",
         "action": "Survey, compare, and select",
         "object": "AI techniques",
         "purpose": "adapt and apply them to identified climate science problems",
@@ -811,10 +951,14 @@
         },
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "This is a coherent research task focused on evaluating and choosing methods, which is typical for the occupation."
+        "_screen_reason": "This is a coherent research task focused on evaluating and choosing methods, which is typical for the occupation.",
+        "_tool_original_task_statement": "Survey, compare, and select AI techniques for adaptation and application to identified climate science problems.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+        "task_statement": "Conduct experiments with selected methods to apply them to climate science problems and evaluate their effectiveness.",
         "action": "Conduct experiments",
         "object": "selected AI methods",
         "purpose": "apply them to climate science problems and evaluate their effectiveness",
@@ -842,7 +986,11 @@
         },
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "A concrete, bounded experimental task on selected AI methods; coding and debugging are closely related sub-steps within one coherent activity common to the occupation."
+        "_screen_reason": "A concrete, bounded experimental task on selected AI methods; coding and debugging are closely related sub-steps within one coherent activity common to the occupation.",
+        "_tool_original_task_statement": "Conduct experiments with selected AI methods, including coding and debugging, to apply them to climate science problems and evaluate their effectiveness.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
         "task_statement": "Write up research findings and results from experiments for documentation or publication.",
@@ -870,10 +1018,13 @@
         },
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "Clear writing task acting on specific research outputs with a defined purpose; this is common for research scientists."
+        "_screen_reason": "Clear writing task acting on specific research outputs with a defined purpose; this is common for research scientists.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
-        "task_statement": "Consult climate science experts to identify key problems and challenges in the field that can be addressed using AI techniques.",
+        "task_statement": "Consult climate science experts to identify key problems and challenges in the field that can be addressed using advanced techniques.",
         "action": "Collaborate and communicate",
         "object": "climate science experts",
         "purpose": "identify key problems and challenges in the field that can be addressed using AI techniques",
@@ -900,7 +1051,11 @@
         },
         "_original_statement": "Collaborate and communicate with climate science experts to identify key problems and challenges in the field that can be addressed using AI techniques.",
         "_screen_status": "rewritten",
-        "_screen_reason": "Replaced vague bundled verbs with a more specific action. The original is somewhat domain-specific to climate science experts, so it is not common to most workers in the broader occupation category."
+        "_screen_reason": "Replaced vague bundled verbs with a more specific action. The original is somewhat domain-specific to climate science experts, so it is not common to most workers in the broader occupation category.",
+        "_tool_original_task_statement": "Consult climate science experts to identify key problems and challenges in the field that can be addressed using AI techniques.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       }
     ],
     "rejected_tasks": []
@@ -916,34 +1071,59 @@
     "category": "Teaching & Education",
     "tasks": [
       {
-        "task_statement": "[Senior Digital Education Specialist] Create training materials such as videos, e-learning courses, and software simulations to instruct clients and internal employees on how to utilize company software.",
+        "task_statement": "Create training materials such as videos, e-learning courses, and simulations to instruct clients and internal employees on company workflows.",
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "Clear, observable action applied to specific training materials; this is a standard training and development task."
+        "_screen_reason": "Clear, observable action applied to specific training materials; this is a standard training and development task.",
+        "_tool_original_task_statement": "[Senior Digital Education Specialist] Create training materials such as videos, e-learning courses, and software simulations to instruct clients and internal employees on how to utilize company software.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "[Senior Digital Education Specialist] Request team review of drafted training scripts to ensure accuracy and prevent the dissemination of false information.",
+        "task_statement": "Request team review of drafted training scripts to ensure accuracy and prevent the dissemination of false information.",
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "This is a specific, bounded quality-review task involving a concrete work product and is common in training content development."
+        "_screen_reason": "This is a specific, bounded quality-review task involving a concrete work product and is common in training content development.",
+        "_tool_original_task_statement": "[Senior Digital Education Specialist] Request team review of drafted training scripts to ensure accuracy and prevent the dissemination of false information.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "[Senior Digital Education Specialist] Record training videos based on finalized scripts to create educational content for clients and employees.",
+        "task_statement": "Record training videos based on finalized scripts to create educational content for clients and employees.",
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "Concrete production task with a clear deliverable and purpose; typical for specialists who develop digital training content."
+        "_screen_reason": "Concrete production task with a clear deliverable and purpose; typical for specialists who develop digital training content.",
+        "_tool_original_task_statement": "[Senior Digital Education Specialist] Record training videos based on finalized scripts to create educational content for clients and employees.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "Gather information from software demo sessions to create training scripts and materials.",
+        "task_statement": "Gather information from demo sessions to create training scripts and materials.",
         "_original_statement": "[Senior Digital Education Specialist] Attend software demo sessions to gather information needed for creating training scripts and materials.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The original activity is concrete, but 'attend software demo sessions' is somewhat context-specific; rewriting emphasizes the broadly relevant information-gathering task common to training development work."
+        "_screen_reason": "The original activity is concrete, but 'attend software demo sessions' is somewhat context-specific; rewriting emphasizes the broadly relevant information-gathering task common to training development work.",
+        "_tool_original_task_statement": "Gather information from software demo sessions to create training scripts and materials.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "Draft training scripts using CoPilot and demo meeting recordings to prepare training content.",
+        "task_statement": "Draft training scripts from meeting recordings to prepare training content.",
         "_original_statement": "[Senior Digital Education Specialist] Use CoPilot to generate a script skeleton from demo meeting recordings, then refine the script to prepare training content.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The original statement is a real task but is too tool- and workflow-specific to be common across the occupation; the rewrite preserves the core task of drafting scripts for training content."
+        "_screen_reason": "The original statement is a real task but is too tool- and workflow-specific to be common across the occupation; the rewrite preserves the core task of drafting scripts for training content.",
+        "_tool_original_task_statement": "Draft training scripts using CoPilot and demo meeting recordings to prepare training content.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       }
     ],
     "rejected_tasks": []
@@ -985,7 +1165,10 @@
         },
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "Concrete, bounded analytical task on a specific object that is typical for research scientists."
+        "_screen_reason": "Concrete, bounded analytical task on a specific object that is typical for research scientists.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
         "task_statement": "Design experiments to ensure technical rigor in model evaluation frameworks.",
@@ -1014,10 +1197,13 @@
         },
         "_original_statement": "Design experiments and explore new NLP architectures to ensure technical rigor in model evaluation frameworks.",
         "_screen_status": "rewritten",
-        "_screen_reason": "Bundles two activities: designing experiments and exploring new NLP architectures. Kept the clearest single task."
+        "_screen_reason": "Bundles two activities: designing experiments and exploring new NLP architectures. Kept the clearest single task.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
-        "task_statement": "Develop code for experiments, model inference, and training scripts to translate theoretical NLP concepts into tangible results.",
+        "task_statement": "Develop experiments, model inference, and training processes to translate theoretical NLP concepts into tangible results.",
         "action": "Develop and run",
         "object": "code for experiments, model inference, and training scripts",
         "purpose": "to translate theoretical NLP concepts into tangible results",
@@ -1042,7 +1228,11 @@
         },
         "_original_statement": "Develop and run code for experiments, model inference, and training scripts to translate theoretical NLP concepts into tangible results.",
         "_screen_status": "rewritten",
-        "_screen_reason": "Combines developing and running code across several related activities. Rewritten to one coherent coding task."
+        "_screen_reason": "Combines developing and running code across several related activities. Rewritten to one coherent coding task.",
+        "_tool_original_task_statement": "Develop code for experiments, model inference, and training scripts to translate theoretical NLP concepts into tangible results.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
         "task_statement": "Annotate data to ensure high-quality ground truth data for robust evaluations.",
@@ -1070,14 +1260,17 @@
         },
         "_original_statement": "Handle data annotation workflows to ensure high-quality ground truth data for robust evaluations.",
         "_screen_status": "rewritten",
-        "_screen_reason": "Replaced vague verb 'Handle' with the more specific action implied by the statement."
+        "_screen_reason": "Replaced vague verb 'Handle' with the more specific action implied by the statement.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
-        "task_statement": "Organize experimental results, model checkpoints, and configuration files using Weights & Biases to facilitate actionable insights.",
+        "task_statement": "Organize experimental results, model checkpoints, and configuration files to facilitate actionable insights.",
         "action": "Organize and manage",
         "object": "experimental results, model checkpoints, and configuration files during ablation studies",
         "purpose": "to facilitate actionable insights",
-        "tools": "Weights & Biases",
+        "tools": "",
         "information_sources": "",
         "method": "Manual organization and meticulous version control across many iterations",
         "judgment": "",
@@ -1100,7 +1293,11 @@
         },
         "_original_statement": "Organize and manage experimental results, model checkpoints, and configuration files during ablation studies to facilitate actionable insights.",
         "_screen_status": "rewritten",
-        "_screen_reason": "Original uses vague management language. Rewritten with a more observable action while preserving the tool and purpose."
+        "_screen_reason": "Original uses vague management language. Rewritten with a more observable action while preserving the tool and purpose.",
+        "_tool_original_task_statement": "Organize experimental results, model checkpoints, and configuration files using Weights & Biases to facilitate actionable insights.",
+        "_tool_original_tools": "Weights & Biases",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       }
     ],
     "rejected_tasks": []
@@ -1116,34 +1313,57 @@
     "category": "HR & Admin",
     "tasks": [
       {
-        "task_statement": "[Employment Counselor (Non-Profit)] Input client registration information and update case notes in the portal to maintain accurate records required for program funding and tracking.",
+        "task_statement": "Input client registration information and update case notes to maintain accurate records required for program funding and tracking.",
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "This is a specific, bounded recordkeeping task on concrete client information and is common in counseling and advising roles."
+        "_screen_reason": "This is a specific, bounded recordkeeping task on concrete client information and is common in counseling and advising roles.",
+        "_tool_original_task_statement": "[Employment Counselor (Non-Profit)] Input client registration information and update case notes in the portal to maintain accurate records required for program funding and tracking.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "[Employment Counselor (Non-Profit)] Schedule appointments and coordinate meetings, including sending Zoom links or arranging in-person sessions, to facilitate client coaching and support.",
+        "task_statement": "Schedule appointments and coordinate meetings to facilitate client coaching and support.",
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "This is a concrete scheduling and meeting-coordination task with clear objects and a typical purpose for the occupation."
+        "_screen_reason": "This is a concrete scheduling and meeting-coordination task with clear objects and a typical purpose for the occupation.",
+        "_tool_original_task_statement": "[Employment Counselor (Non-Profit)] Schedule appointments and coordinate meetings, including sending Zoom links or arranging in-person sessions, to facilitate client coaching and support.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "[Employment Counselor (Non-Profit)] Prioritize and respond to client emails and meeting requests to address urgent client needs in a timely manner.",
+        "task_statement": "Prioritize and respond to client emails and meeting requests to address urgent client needs in a timely manner.",
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "This is a specific communication task involving concrete client requests and is typical for employment counselors."
+        "_screen_reason": "This is a specific communication task involving concrete client requests and is typical for employment counselors.",
+        "_tool_original_task_statement": "[Employment Counselor (Non-Profit)] Prioritize and respond to client emails and meeting requests to address urgent client needs in a timely manner.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
         "task_statement": "Meet with clients to provide career advice and interview preparation to help them find suitable employment.",
         "_original_statement": "[Employment Counselor (Non-Profit)] Meet with clients to provide career advice, review resumes and cover letters, and support interview preparation to help them find suitable employment.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The original bundles multiple related activities; rewritten to one coherent counseling task while preserving the purpose."
+        "_screen_reason": "The original bundles multiple related activities; rewritten to one coherent counseling task while preserving the purpose.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
         "task_statement": "Provide process documentation, templates, and on-the-job shadowing to train new staff for handling client support and administrative tasks.",
         "_original_statement": "[Employment Counselor (Non-Profit)] Train new staff by providing process documentation, templates, and on-the-job shadowing to prepare them for handling client support and administrative tasks.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The task is concrete and valid, but training new staff is not common to most workers in this occupation; rewritten for clarity only."
+        "_screen_reason": "The task is concrete and valid, but training new staff is not common to most workers in this occupation; rewritten for clarity only.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       }
     ],
     "rejected_tasks": []
@@ -1159,28 +1379,46 @@
     "category": "Research",
     "tasks": [
       {
-        "task_statement": "[AI Researcher] Perform data analysis on the peer review platform to support decision-making and improve platform outcomes.",
+        "task_statement": "Perform data analysis on the peer review platform to support decision-making and improve platform outcomes.",
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "This is a clear, bounded analytical task on a specific system and is common in research-oriented computing roles."
+        "_screen_reason": "This is a clear, bounded analytical task on a specific system and is common in research-oriented computing roles.",
+        "_tool_original_task_statement": "[AI Researcher] Perform data analysis on the peer review platform to support decision-making and improve platform outcomes.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
         "task_statement": "Coordinate workflows for a peer review platform to support an NLP organization.",
         "_original_statement": "[AI Researcher] Manage workflows for a peer review platform to ensure smooth operation and support for an NLP organization.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The original uses the vague verb 'manage' and describes a platform-operations duty that is not typical for most computer and information research scientists. Rewritten to a more observable action while preserving the activity."
+        "_screen_reason": "The original uses the vague verb 'manage' and describes a platform-operations duty that is not typical for most computer and information research scientists. Rewritten to a more observable action while preserving the activity.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
         "task_statement": "Troubleshoot user issues on the peer review platform to maintain platform functionality.",
         "_original_statement": "[AI Researcher] Provide technical support for the peer review platform to resolve user issues and maintain platform functionality.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The original uses the vague phrase 'provide technical support.' Rewritten to the concrete action implied by the statement. Platform support is also not a typical task for most workers in this occupation."
+        "_screen_reason": "The original uses the vague phrase 'provide technical support.' Rewritten to the concrete action implied by the statement. Platform support is also not a typical task for most workers in this occupation.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
-        "task_statement": "Build a large language model (LLM) for a university in the UAE.",
+        "task_statement": "Build a large language model for a university in the UAE.",
         "_original_statement": "[AI Researcher] Serve as a research associate to help build a large language model (LLM) for a university in the UAE.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The original begins with the role phrase 'serve as a research associate' rather than a task. Rewritten to the concrete work activity implied."
+        "_screen_reason": "The original begins with the role phrase 'serve as a research associate' rather than a task. Rewritten to the concrete work activity implied.",
+        "_tool_original_task_statement": "Build a large language model (LLM) for a university in the UAE.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       }
     ],
     "rejected_tasks": [
@@ -1203,34 +1441,58 @@
     "category": "Finance & Analysis",
     "tasks": [
       {
-        "task_statement": "[Energy Market Analyst] Analyze the energy market landscape in specific countries to assess the current electricity mix, renewable procurement options, and future plans. | action: Analyze | object: energy market landscape in specific countries | purpose: to assess the current electricity mix, renewable procurement options, and future plans",
+        "task_statement": "Analyze the energy market landscape in specific countries to assess the current electricity mix, renewable procurement options, and future plans.",
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "Clear analytical task with a specific object and purpose; typical of environmental and energy economics work."
+        "_screen_reason": "Clear analytical task with a specific object and purpose; typical of environmental and energy economics work.",
+        "_tool_original_task_statement": "[Energy Market Analyst] Analyze the energy market landscape in specific countries to assess the current electricity mix, renewable procurement options, and future plans. | action: Analyze | object: energy market landscape in specific countries | purpose: to assess the current electricity mix, renewable procurement options, and future plans",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "[Energy Market Analyst] Conduct long-term electricity price forecasting using in-house methodologies and scenario planning. | action: Conduct | object: long-term electricity price forecasting | purpose: using in-house methodologies and scenario planning",
+        "task_statement": "Apply methodologies and scenario planning to conduct long-term electricity price forecasting.",
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "Describes a specific forecasting activity on a concrete analytical output that is common in this occupation."
+        "_screen_reason": "Describes a specific forecasting activity on a concrete analytical output that is common in this occupation.",
+        "_tool_original_task_statement": "[Energy Market Analyst] Conduct long-term electricity price forecasting using in-house methodologies and scenario planning. | action: Conduct | object: long-term electricity price forecasting | purpose: using in-house methodologies and scenario planning",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "[Energy Market Analyst] Write insights for reports based on data analysis and calculations. | action: Write | object: insights for reports | purpose: based on data analysis and calculations | frequency: around four to five hours daily",
+        "task_statement": "Write insights for reports based on data analysis and calculations.",
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "Writing report insights from analysis is a specific, bounded, and common task in this occupation."
+        "_screen_reason": "Writing report insights from analysis is a specific, bounded, and common task in this occupation.",
+        "_tool_original_task_statement": "[Energy Market Analyst] Write insights for reports based on data analysis and calculations. | action: Write | object: insights for reports | purpose: based on data analysis and calculations | frequency: around four to five hours daily",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "Prepare deliverable Excel sheets using Excel according to specific client requirements.",
+        "task_statement": "Prepare deliverable sheets according to specific client requirements.",
         "_original_statement": "[Energy Market Analyst] Format Excel sheets according to specific client requirements to prepare deliverables. | action: Format | object: Excel sheets | purpose: to prepare deliverables according to specific client requirements | tools: Excel",
         "_screen_status": "rewritten",
-        "_screen_reason": "The activity is real and bounded, but 'format Excel sheets' is somewhat support-oriented and not clearly common to most environmental economists; rewritten to emphasize the concrete deliverable-preparation task."
+        "_screen_reason": "The activity is real and bounded, but 'format Excel sheets' is somewhat support-oriented and not clearly common to most environmental economists; rewritten to emphasize the concrete deliverable-preparation task.",
+        "_tool_original_task_statement": "Prepare deliverable Excel sheets using Excel according to specific client requirements.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
         "task_statement": "Discuss work progress in group meetings to update colleagues.",
         "_original_statement": "[Energy Market Analyst] Participate in group meetings to discuss and update colleagues on work progress. | action: Participate | object: group meetings | purpose: to discuss and update colleagues on work progress | frequency: takes up most of the time on Monday",
         "_screen_status": "rewritten",
-        "_screen_reason": "Replaced vague verb 'participate in' with the more specific observable action implied by the statement. Meeting attendance is real work, but not strongly occupation-specific."
+        "_screen_reason": "Replaced vague verb 'participate in' with the more specific observable action implied by the statement. Meeting attendance is real work, but not strongly occupation-specific.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       }
     ],
     "rejected_tasks": []
@@ -1269,7 +1531,10 @@
         },
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "Concrete sales activity with a specific object and clear purpose that is typical for service sales representatives."
+        "_screen_reason": "Concrete sales activity with a specific object and clear purpose that is typical for service sales representatives.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
         "task_statement": "Assist team lead by preparing proposals and offering letters for client leads.",
@@ -1295,7 +1560,10 @@
         },
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "Preparing proposals and offer letters for leads is a specific, bounded business development task common in service sales."
+        "_screen_reason": "Preparing proposals and offer letters for leads is a specific, bounded business development task common in service sales.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
         "task_statement": "Attend networking events to generate new leads.",
@@ -1321,14 +1589,17 @@
         },
         "_original_statement": "Attend networking events to generate new leads and support other needs from the team lead.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The original bundles a clear lead-generation task with vague additional support work; the rewrite keeps the core sales activity."
+        "_screen_reason": "The original bundles a clear lead-generation task with vague additional support work; the rewrite keeps the core sales activity.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
-        "task_statement": "Create proposals using Claude AI and company databases and requirements to automate and speed up proposal creation.",
+        "task_statement": "Create proposals from company requirements to speed up proposal completion.",
         "action": "Use",
         "object": "Claude AI by inputting company databases and requirements",
         "purpose": "to automate and speed up proposal creation",
-        "tools": "Claude AI",
+        "tools": "",
         "information_sources": "company databases such as decks and previous proposals",
         "method": "input the databases of our company like decks and previous proposals; input the requirement and adjust based on the outcome",
         "judgment": "",
@@ -1350,7 +1621,11 @@
         },
         "_original_statement": "Use Claude AI by inputting company databases and requirements to automate and speed up proposal creation.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The tool-specific phrasing is idiosyncratic, but the underlying task of creating proposals is valid; the rewrite centers the core work activity while retaining the stated tool."
+        "_screen_reason": "The tool-specific phrasing is idiosyncratic, but the underlying task of creating proposals is valid; the rewrite centers the core work activity while retaining the stated tool.",
+        "_tool_original_task_statement": "Create proposals using Claude AI and company databases and requirements to automate and speed up proposal creation.",
+        "_tool_original_tools": "Claude AI",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
         "task_statement": "Prepare multiple proposals to ensure timely completion and approval when other teams are attending meetings and events.",
@@ -1377,7 +1652,10 @@
         },
         "_original_statement": "Manage multiple proposals and a grant pitch deck independently when other teams are unavailable.",
         "_screen_status": "rewritten",
-        "_screen_reason": "Manage is too vague, and the grant pitch deck is less typical for this occupation; the rewrite extracts the clearer, more occupation-relevant proposal task."
+        "_screen_reason": "Manage is too vague, and the grant pitch deck is less typical for this occupation; the rewrite extracts the clearer, more occupation-relevant proposal task.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       }
     ],
     "rejected_tasks": []
@@ -1416,7 +1694,10 @@
         },
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "Concrete analytical task with a specific action and object that is common in data science work."
+        "_screen_reason": "Concrete analytical task with a specific action and object that is common in data science work.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
         "task_statement": "Conduct flexible analyses and create multiple scenarios to adapt to possible changes in the product roadmap during organizational reorganizations.",
@@ -1443,10 +1724,13 @@
         },
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "Describes a recognizable analytical task with clear outputs that data scientists commonly perform."
+        "_screen_reason": "Describes a recognizable analytical task with clear outputs that data scientists commonly perform.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
-        "task_statement": "Optimize specific metrics during decision-making for AI product launches to plan product launches involving AI.",
+        "task_statement": "Optimize specific metrics during decision-making to plan product launches.",
         "action": "Plan",
         "object": "product launches involving AI",
         "purpose": "by optimizing for specific metrics during decision-making",
@@ -1469,7 +1753,11 @@
         },
         "_original_statement": "Plan product launches involving AI by optimizing for specific metrics during decision-making.",
         "_screen_status": "rewritten",
-        "_screen_reason": "Original verb was too broad and the task was framed around product launch planning, which is not typical for most data scientists. Rewritten to emphasize the more data-science-relevant analytical activity present in the statement."
+        "_screen_reason": "Original verb was too broad and the task was framed around product launch planning, which is not typical for most data scientists. Rewritten to emphasize the more data-science-relevant analytical activity present in the statement.",
+        "_tool_original_task_statement": "Optimize specific metrics during decision-making for AI product launches to plan product launches involving AI.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
         "task_statement": "Review documentation created by teammates to understand workflows and processes.",
@@ -1496,7 +1784,10 @@
         },
         "_original_statement": "Review documentation created by teammates and observe their organization to understand workflows and processes.",
         "_screen_status": "rewritten",
-        "_screen_reason": "Removed the less concrete and less occupation-specific observation component. Reviewing teammate documentation is a real bounded activity, though more onboarding-specific than core data science work."
+        "_screen_reason": "Removed the less concrete and less occupation-specific observation component. Reviewing teammate documentation is a real bounded activity, though more onboarding-specific than core data science work.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       }
     ],
     "rejected_tasks": [
@@ -1566,7 +1857,10 @@
         },
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "This is a clear, bounded, and common task for data warehousing specialists."
+        "_screen_reason": "This is a clear, bounded, and common task for data warehousing specialists.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
         "task_statement": "Discuss timelines, requirements, and strategies with business users and project managers to support data pipeline development.",
@@ -1597,14 +1891,17 @@
         },
         "_original_statement": "Participate in meetings with business users and project managers to discuss timelines, requirements, and strategies for data pipeline development.",
         "_screen_status": "rewritten",
-        "_screen_reason": "Replaced vague action 'Participate in meetings' with the more specific observable action 'Discuss' while preserving the meeting-related activity."
+        "_screen_reason": "Replaced vague action 'Participate in meetings' with the more specific observable action 'Discuss' while preserving the meeting-related activity.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
-        "task_statement": "Troubleshoot errors and issues in data pipelines using AI tools to resolve problems and ensure smooth operation.",
+        "task_statement": "Troubleshoot errors and issues in data pipelines to resolve problems and ensure smooth operation.",
         "action": "Troubleshoot",
         "object": "errors and issues in data pipelines",
         "purpose": "to resolve problems and ensure smooth operation",
-        "tools": "AI tools",
+        "tools": "",
         "information_sources": "",
         "method": "",
         "judgment": "",
@@ -1626,14 +1923,18 @@
         },
         "_original_statement": "Troubleshoot errors and issues in data pipelines using AI tools to assist in problem solving and ideation.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The core troubleshooting task is common to the occupation, but the phrasing around 'ideation' was vague; rewritten to emphasize the standard troubleshooting activity and stated purpose."
+        "_screen_reason": "The core troubleshooting task is common to the occupation, but the phrasing around 'ideation' was vague; rewritten to emphasize the standard troubleshooting activity and stated purpose.",
+        "_tool_original_task_statement": "Troubleshoot errors and issues in data pipelines using AI tools to resolve problems and ensure smooth operation.",
+        "_tool_original_tools": "AI tools",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "Use AI chatbots, including in-house developed tools, to assist in problem solving during development tasks.",
+        "task_statement": "Assist in problem solving during development tasks.",
         "action": "Use",
         "object": "AI chatbots, including in-house developed tools",
         "purpose": "to automate and assist in problem solving during development tasks",
-        "tools": "AI chatbots (including in-house developed chatbot)",
+        "tools": "",
         "information_sources": "",
         "method": "",
         "judgment": "",
@@ -1653,10 +1954,14 @@
         },
         "_original_statement": "Use AI chatbots, including in-house developed tools, to automate and assist in problem solving during development tasks.",
         "_screen_status": "rewritten",
-        "_screen_reason": "Using AI chatbots is not yet common to most workers in this occupation, and 'automate and assist' was slightly bundled; rewritten to the single core activity described."
+        "_screen_reason": "Using AI chatbots is not yet common to most workers in this occupation, and 'automate and assist' was slightly bundled; rewritten to the single core activity described.",
+        "_tool_original_task_statement": "Use AI chatbots, including in-house developed tools, to assist in problem solving during development tasks.",
+        "_tool_original_tools": "AI chatbots (including in-house developed chatbot)",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "Learn new tools and technologies to stay updated in the data engineering field.",
+        "task_statement": "Learn new technologies to stay updated in the data engineering field.",
         "action": "Allocate time to learning",
         "object": "new tools and technologies",
         "purpose": "to stay updated in the data engineering field",
@@ -1680,7 +1985,11 @@
         },
         "_original_statement": "Allocate time to learning new tools and technologies to stay updated in the data engineering field.",
         "_screen_status": "rewritten",
-        "_screen_reason": "Replaced the vague time-allocation phrasing with the concrete activity 'Learn'; this captures the real work activity more directly."
+        "_screen_reason": "Replaced the vague time-allocation phrasing with the concrete activity 'Learn'; this captures the real work activity more directly.",
+        "_tool_original_task_statement": "Learn new tools and technologies to stay updated in the data engineering field.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       }
     ],
     "rejected_tasks": []
@@ -1696,16 +2005,26 @@
     "category": "Teaching & Education",
     "tasks": [
       {
-        "task_statement": "[Elementary School Teacher] Build relationships with students through morning meetings to foster respect and improve learning outcomes. | action: Build relationships | object: students through morning meetings | purpose: to foster respect and improve learning outcomes",
+        "task_statement": "Build relationships with students through morning meetings to foster respect and improve learning outcomes.",
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "This describes a recognizable, bounded classroom activity with a specific action and object that is common for elementary teachers."
+        "_screen_reason": "This describes a recognizable, bounded classroom activity with a specific action and object that is common for elementary teachers.",
+        "_tool_original_task_statement": "[Elementary School Teacher] Build relationships with students through morning meetings to foster respect and improve learning outcomes. | action: Build relationships | object: students through morning meetings | purpose: to foster respect and improve learning outcomes",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "Teach reading, writing, science, and social studies to fourth grade students using one-on-one devices to facilitate their learning during the school day.",
+        "task_statement": "Teach reading, writing, science, and social studies to fourth grade students to facilitate their learning during the school day.",
         "_original_statement": "[Elementary School Teacher] Teach reading, writing, science, and social studies to a class of 26 fourth grade students to facilitate their learning during the school day. | action: Teach | object: reading, writing, science, and social studies to a class of 26 fourth grade students | purpose: to facilitate their learning during the school day | tools: one-on-one devices | frequency: 81% of contracted hours (7:30-3:30), when students are present",
         "_screen_status": "rewritten",
-        "_screen_reason": "The original bundles multiple subject areas into one statement, but they are closely related as classroom instruction. Rewritten to a cleaner single teaching task."
+        "_screen_reason": "The original bundles multiple subject areas into one statement, but they are closely related as classroom instruction. Rewritten to a cleaner single teaching task.",
+        "_tool_original_task_statement": "Teach reading, writing, science, and social studies to fourth grade students using one-on-one devices to facilitate their learning during the school day.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
         "task_statement": "Plan and prepare lessons for reading, writing, science, and social studies to ensure effective classroom instruction.",
@@ -1735,7 +2054,10 @@
         },
         "_original_statement": "[Elementary School Teacher] Plan and prepare lessons for reading, writing, science, and social studies to ensure effective classroom instruction. | action: Plan and prepare lessons | object: reading, writing, science, and social studies | purpose: to ensure effective classroom instruction | frequency: 45-minute daily planning block (reduced to ~30 minutes); additional 12 hours weekly outside contracted hours",
         "_screen_status": "rewritten",
-        "_screen_reason": "Planning and preparing are closely related, but the statement spans multiple subjects. It is still salvageable as one lesson-planning task and rewritten in standard task form."
+        "_screen_reason": "Planning and preparing are closely related, but the statement spans multiple subjects. It is still salvageable as one lesson-planning task and rewritten in standard task form.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
         "task_statement": "Attend IEP and 504 meetings to discuss and coordinate support for students with special needs.",
@@ -1764,13 +2086,20 @@
         },
         "_original_statement": "[Elementary School Teacher] Attend IEP and 504 meetings to discuss and coordinate support for students with special needs. | action: Attend | object: IEP and 504 meetings | purpose: to discuss and coordinate support for students with special needs | frequency: One day a week during planning and often after school",
         "_screen_status": "rewritten",
-        "_screen_reason": "The task itself is clear and bounded, but it may not be performed by most elementary teachers in all settings. Rewritten only for consistency."
+        "_screen_reason": "The task itself is clear and bounded, but it may not be performed by most elementary teachers in all settings. Rewritten only for consistency.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
         "task_statement": "Teach the cover-up strategy for reading tests to help students improve their performance on state assessments.",
         "_original_statement": "[Elementary School Teacher] Adapt and teach the cover-up strategy for reading tests to help students improve their performance on state assessments. | action: Adapt and teach | object: the cover-up strategy for reading tests | purpose: to help students improve their performance on state assessments",
         "_screen_status": "rewritten",
-        "_screen_reason": "The original is a real task, but the named strategy is idiosyncratic rather than common across the occupation. Rewritten to the core instructional activity."
+        "_screen_reason": "The original is a real task, but the named strategy is idiosyncratic rather than common across the occupation. Rewritten to the core instructional activity.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       }
     ],
     "rejected_tasks": []
@@ -1815,14 +2144,17 @@
         },
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "Concrete review activity on specific technical artifacts; this is a typical software development collaboration task."
+        "_screen_reason": "Concrete review activity on specific technical artifacts; this is a typical software development collaboration task.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
-        "task_statement": "Review and summarize technical documents using AI tools to identify strengths, weaknesses, and missing elements.",
+        "task_statement": "Review and summarize technical documents to identify strengths, weaknesses, and missing elements.",
         "action": "Use AI tools to review and summarize",
         "object": "technical documents",
         "purpose": "to identify strengths, weaknesses, and missing elements and enhance work effectiveness",
-        "tools": "AI",
+        "tools": "",
         "information_sources": "",
         "method": "",
         "judgment": "Assess what is good, bad, or missing in the document from a technical standpoint using AI-generated summaries.",
@@ -1844,7 +2176,11 @@
         },
         "_original_statement": "Use AI tools to review and summarize technical documents, identifying strengths, weaknesses, and missing elements to enhance work effectiveness.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The core task is concrete and bounded, but use of AI tools is not common to most software developers; rewritten to focus on the underlying document review activity."
+        "_screen_reason": "The core task is concrete and bounded, but use of AI tools is not common to most software developers; rewritten to focus on the underlying document review activity.",
+        "_tool_original_task_statement": "Review and summarize technical documents using AI tools to identify strengths, weaknesses, and missing elements.",
+        "_tool_original_tools": "AI",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
         "task_statement": "Lead meetings with offshore teams to enhance project diagrams and clarify technical details.",
@@ -1874,14 +2210,17 @@
         },
         "_original_statement": "Coordinate and lead early-morning meetings with offshore teams to collaboratively enhance project diagrams and clarify technical details.",
         "_screen_status": "rewritten",
-        "_screen_reason": "Removed the vaguer bundled verb 'coordinate' and the idiosyncratic timing detail; the rewritten task captures the concrete meeting activity."
+        "_screen_reason": "Removed the vaguer bundled verb 'coordinate' and the idiosyncratic timing detail; the rewritten task captures the concrete meeting activity.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
-        "task_statement": "Review code using AI tools to assist with daily work.",
+        "task_statement": "Review code to assist with daily work.",
         "action": "Use AI tools",
         "object": "coding tasks, code review, and technical solution identification",
         "purpose": "to assist with and enhance daily work",
-        "tools": "AI",
+        "tools": "",
         "information_sources": "",
         "method": "",
         "judgment": "",
@@ -1902,10 +2241,14 @@
         },
         "_original_statement": "Use AI tools to assist with coding, code review, and identifying technical solutions as part of daily work.",
         "_screen_status": "rewritten",
-        "_screen_reason": "Original statement bundles multiple distinct activities and relies on AI usage, which is not universal; rewritten to one common, concrete software development task drawn from the statement."
+        "_screen_reason": "Original statement bundles multiple distinct activities and relies on AI usage, which is not universal; rewritten to one common, concrete software development task drawn from the statement.",
+        "_tool_original_task_statement": "Review code using AI tools to assist with daily work.",
+        "_tool_original_tools": "AI",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "Execute ETL processes and data transfer tasks to support database and AI application development.",
+        "task_statement": "Execute ETL processes and data transfer tasks to support database and application development.",
         "action": "Manage",
         "object": "ETL processes and data transfer tasks",
         "purpose": "to support database and AI application development",
@@ -1929,7 +2272,11 @@
         },
         "_original_statement": "Manage ETL processes and data transfer tasks to support database and AI application development.",
         "_screen_status": "rewritten",
-        "_screen_reason": "Replaced vague verb 'manage' with a more observable action. The task is real, though more typical of data engineering than software developers broadly."
+        "_screen_reason": "Replaced vague verb 'manage' with a more observable action. The task is real, though more typical of data engineering than software developers broadly.",
+        "_tool_original_task_statement": "Execute ETL processes and data transfer tasks to support database and AI application development.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       }
     ],
     "rejected_tasks": []
@@ -1945,40 +2292,68 @@
     "category": "Students & Researchers in Training",
     "tasks": [
       {
-        "task_statement": "Complete coursework for mandatory PhD classes using AI tools to accelerate understanding.",
+        "task_statement": "Complete coursework for mandatory PhD classes to accelerate understanding.",
         "_original_statement": "[PhD Student] Use AI tools to accelerate understanding and completion of coursework for mandatory PhD classes.",
         "_screen_status": "rewritten",
-        "_screen_reason": "Original object was vague because it focused on using tools rather than the work product; coursework is a clearer task object. Coursework for mandatory classes is not common to most Computer and Information Research Scientists."
+        "_screen_reason": "Original object was vague because it focused on using tools rather than the work product; coursework is a clearer task object. Coursework for mandatory classes is not common to most Computer and Information Research Scientists.",
+        "_tool_original_task_statement": "Complete coursework for mandatory PhD classes using AI tools to accelerate understanding.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "Review research literature using AI tools to increase productivity.",
+        "task_statement": "Review research literature to increase productivity.",
         "_original_statement": "[PhD Student] Conduct independent research, including implementation, literature review, and brainstorming new ideas, using AI tools to increase productivity.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The statement bundles several distinct activities and uses a broad object. Rewritten to one clear, common research task drawn directly from the original."
+        "_screen_reason": "The statement bundles several distinct activities and uses a broad object. Rewritten to one clear, common research task drawn directly from the original.",
+        "_tool_original_task_statement": "Review research literature using AI tools to increase productivity.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
         "task_statement": "Review new literature in the vision-language model (VLM) space to identify relevant papers for research.",
         "_original_statement": "[PhD Student] Sift through large volumes of new literature in the vision-language model (VLM) space to identify relevant papers for research.",
         "_screen_status": "rewritten",
-        "_screen_reason": "Rewritten only to use a more standard observable verb. The task is valid, but the VLM-specific focus is narrower than what most workers in this occupation perform."
+        "_screen_reason": "Rewritten only to use a more standard observable verb. The task is valid, but the VLM-specific focus is narrower than what most workers in this occupation perform.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
         "task_statement": "Prototype new architectures for multimodal alignment to validate research hypotheses.",
         "_original_statement": "[PhD Student] Brainstorm and prototype new architectures for multimodal alignment or novel evaluation metrics to validate research hypotheses.",
         "_screen_status": "rewritten",
-        "_screen_reason": "Original statement combined alternative activities and was highly specialized. Rewritten to one coherent task using details from the statement, but it remains narrower than typical occupation-wide work."
+        "_screen_reason": "Original statement combined alternative activities and was highly specialized. Rewritten to one coherent task using details from the statement, but it remains narrower than typical occupation-wide work.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
-        "task_statement": "Automate boilerplate coding using AI tools to reduce tedium and focus on research.",
+        "task_statement": "Automate boilerplate coding to reduce tedium and focus on research.",
         "_original_statement": "[PhD Student] Offload repetitive boilerplate coding, data preparation, and verification tasks to AI tools to reduce tedium and focus on research.",
         "_screen_status": "rewritten",
-        "_screen_reason": "Offload is not a concrete observable work action, and the statement bundles multiple tasks. Rewritten to one specific, common technical activity."
+        "_screen_reason": "Offload is not a concrete observable work action, and the statement bundles multiple tasks. Rewritten to one specific, common technical activity.",
+        "_tool_original_task_statement": "Automate boilerplate coding using AI tools to reduce tedium and focus on research.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "Review prior works using AI tools before meetings with advisors to assess feasibility of proposed research topics.",
+        "task_statement": "Review prior works before meetings with advisors to assess feasibility of proposed research topics.",
         "_original_statement": "[PhD Student] Use AI tools to conduct deep research before meetings with advisors to discuss prior works and assess feasibility of proposed research topics.",
         "_screen_status": "rewritten",
-        "_screen_reason": "Original phrasing was vague about both action and object. Rewritten to a clearer research activity, but advisor meetings are specific to the student's setting rather than common to most workers in the occupation."
+        "_screen_reason": "Original phrasing was vague about both action and object. Rewritten to a clearer research activity, but advisor meetings are specific to the student's setting rather than common to most workers in the occupation.",
+        "_tool_original_task_statement": "Review prior works using AI tools before meetings with advisors to assess feasibility of proposed research topics.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       }
     ],
     "rejected_tasks": []
@@ -1994,11 +2369,11 @@
     "category": "HR & Admin",
     "tasks": [
       {
-        "task_statement": "Analyze employee development needs for soft and hard skills using AI tools to determine the best training modules.",
+        "task_statement": "Analyze employee development needs for soft and hard skills to determine the best training modules.",
         "action": "Analyze",
         "object": "employee development needs for soft and hard skills",
         "purpose": "to determine the best training modules",
-        "tools": "AI tools such as Gemini AI, ChatGPT, Copilot AI",
+        "tools": "",
         "information_sources": "",
         "method": "",
         "judgment": "",
@@ -2018,14 +2393,18 @@
         },
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "Clear analysis task with a concrete object and a typical training and development purpose."
+        "_screen_reason": "Clear analysis task with a concrete object and a typical training and development purpose.",
+        "_tool_original_task_statement": "Analyze employee development needs for soft and hard skills using AI tools to determine the best training modules.",
+        "_tool_original_tools": "AI tools such as Gemini AI, ChatGPT, Copilot AI",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "Create training content, including e-learning modules and videos, using AI tools like Story Journey.",
+        "task_statement": "Create training content, including e-learning modules and videos.",
         "action": "Create",
         "object": "training content, including e-learning modules and videos",
         "purpose": "to develop training materials for employees",
-        "tools": "Story Journey AI tool",
+        "tools": "",
         "information_sources": "",
         "method": "",
         "judgment": "",
@@ -2045,14 +2424,18 @@
         },
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "Creating training materials is a standard, bounded task for training and development specialists."
+        "_screen_reason": "Creating training materials is a standard, bounded task for training and development specialists.",
+        "_tool_original_task_statement": "Create training content, including e-learning modules and videos, using AI tools like Story Journey.",
+        "_tool_original_tools": "Story Journey AI tool",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "Conduct quarterly webinar sharing sessions using AI to generate topics and key points for the sessions.",
+        "task_statement": "Conduct quarterly webinar sharing sessions by generating topics and key points for the sessions.",
         "action": "Conduct",
         "object": "quarterly webinar sharing sessions",
         "purpose": "to facilitate knowledge sharing among employees",
-        "tools": "AI tools",
+        "tools": "",
         "information_sources": "",
         "method": "",
         "judgment": "",
@@ -2073,14 +2456,18 @@
         },
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "Conducting webinar sessions is a coherent recurring task common in training roles; AI support is incidental."
+        "_screen_reason": "Conducting webinar sessions is a coherent recurring task common in training roles; AI support is incidental.",
+        "_tool_original_task_statement": "Conduct quarterly webinar sharing sessions using AI to generate topics and key points for the sessions.",
+        "_tool_original_tools": "AI tools",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "Generate webinar titles using AI tools to attract employees to join webinars.",
+        "task_statement": "Generate webinar titles to attract employees to join webinars.",
         "action": "Generate and select",
         "object": "suitable webinar titles",
         "purpose": "to attract employees to join webinars",
-        "tools": "AI tools",
+        "tools": "",
         "information_sources": "",
         "method": "iteratively prompting and combining AI-generated ideas",
         "judgment": "deciding which AI-generated title or combination is most suitable and interesting",
@@ -2102,7 +2489,11 @@
         },
         "_original_statement": "Generate and select suitable webinar titles using AI, iteratively prompting and combining AI outputs to create engaging titles.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The original task is somewhat idiosyncratic and over-specific in method; rewritten to the core title-generation activity."
+        "_screen_reason": "The original task is somewhat idiosyncratic and over-specific in method; rewritten to the core title-generation activity.",
+        "_tool_original_task_statement": "Generate webinar titles using AI tools to attract employees to join webinars.",
+        "_tool_original_tools": "AI tools",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
         "task_statement": "Schedule needs analysis, content creation, and collaboration activities based on priorities and due dates to manage workload efficiently.",
@@ -2129,7 +2520,10 @@
         },
         "_original_statement": "Prioritize and schedule tasks such as needs analysis, content creation, and collaboration based on priorities and due dates.",
         "_screen_status": "rewritten",
-        "_screen_reason": "Original object was too vague ('tasks') and bundled multiple activities; rewritten to a clearer scheduling task, though still more administrative than occupation-specific."
+        "_screen_reason": "Original object was too vague ('tasks') and bundled multiple activities; rewritten to a clearer scheduling task, though still more administrative than occupation-specific.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       }
     ],
     "rejected_tasks": []
@@ -2176,7 +2570,10 @@
         },
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "Uses a specific action on a concrete marketing deliverable and describes a typical bounded marketing management task."
+        "_screen_reason": "Uses a specific action on a concrete marketing deliverable and describes a typical bounded marketing management task.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
         "task_statement": "Report business performance to VPs and the global team to keep leadership informed about APAC online business status.",
@@ -2207,10 +2604,13 @@
         },
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "Describes a clear, bounded reporting task with a concrete object that is common for marketing managers."
+        "_screen_reason": "Describes a clear, bounded reporting task with a concrete object that is common for marketing managers.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
-        "task_statement": "Check and compile data from multiple platforms for reporting, despite manual and repetitive processes.",
+        "task_statement": "Check and compile data from multiple sources for reporting, despite manual and repetitive processes.",
         "action": "Check and compile",
         "object": "data from multiple platforms",
         "purpose": "for reporting",
@@ -2237,14 +2637,18 @@
         },
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "Describes a specific, bounded reporting-preparation task involving concrete data sources and a common marketing analytics activity."
+        "_screen_reason": "Describes a specific, bounded reporting-preparation task involving concrete data sources and a common marketing analytics activity.",
+        "_tool_original_task_statement": "Check and compile data from multiple platforms for reporting, despite manual and repetitive processes.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
         "task_statement": "Identify risks and opportunities in APAC markets using data, traffic performance reports, and budget information to support sales target achievement.",
         "action": "Support",
         "object": "APAC markets to achieve their sales targets",
         "purpose": "by identifying risks and opportunities and implementing mitigation strategies when needed",
-        "tools": "data, traffic performance reports, budget information",
+        "tools": "",
         "information_sources": "market data, traffic performance, budget information, input from senior colleagues",
         "method": "Analyze available data to interpret what works and what doesn't; validate assumptions with senior colleagues; if sales risk is detected, implement mitigation in another channel or country.",
         "judgment": "Interpret data to identify sales risks/opportunities and determine appropriate mitigation actions; check feasibility with seniors.",
@@ -2270,7 +2674,10 @@
         },
         "_original_statement": "Support APAC markets to achieve their sales targets by identifying risks and opportunities and implementing mitigation strategies when needed.",
         "_screen_status": "rewritten",
-        "_screen_reason": "Replaced vague verb 'Support' with a specific observable action and narrowed the object to a concrete analytic activity; removed bundled mitigation work to keep it as one coherent task."
+        "_screen_reason": "Replaced vague verb 'Support' with a specific observable action and narrowed the object to a concrete analytic activity; removed bundled mitigation work to keep it as one coherent task.",
+        "_tool_original_tools": "data, traffic performance reports, budget information",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
         "task_statement": "Create photoshoot briefs for gifting platforms to ensure local relevance and brand alignment.",
@@ -2301,7 +2708,10 @@
         },
         "_original_statement": "Create creative assets and photoshoot briefs for gifting platforms to ensure local relevance and brand alignment.",
         "_screen_status": "rewritten",
-        "_screen_reason": "Original bundles two deliverables and includes asset creation that may be less typical for most marketing managers; rewritten to the more common marketing planning task."
+        "_screen_reason": "Original bundles two deliverables and includes asset creation that may be less typical for most marketing managers; rewritten to the more common marketing planning task.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       }
     ],
     "rejected_tasks": []
@@ -2317,11 +2727,11 @@
     "category": "Software Engineering",
     "tasks": [
       {
-        "task_statement": "Use AI assistants like Claude to assist with coding and debugging.",
+        "task_statement": "Assist with coding and debugging.",
         "action": "Use",
         "object": "AI assistants like Claude",
         "purpose": "assist with coding, debugging, and learning new coding patterns faster",
-        "tools": "AI assistants like Claude",
+        "tools": "",
         "information_sources": "",
         "method": "",
         "judgment": "",
@@ -2341,7 +2751,11 @@
         },
         "_original_statement": "Use AI assistants like Claude to assist with coding, debugging, and learning new coding patterns faster.",
         "_screen_status": "rewritten",
-        "_screen_reason": "Original statement bundled multiple activities, and the specific tool named is not yet common to most software developers. Rewritten to the core work activity while preserving the stated tool and purpose."
+        "_screen_reason": "Original statement bundled multiple activities, and the specific tool named is not yet common to most software developers. Rewritten to the core work activity while preserving the stated tool and purpose.",
+        "_tool_original_task_statement": "Use AI assistants like Claude to assist with coding and debugging.",
+        "_tool_original_tools": "AI assistants like Claude",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
         "task_statement": "Document client requirements and changes to manage shifting expectations during projects.",
@@ -2368,7 +2782,10 @@
         },
         "_original_statement": "Document all client requirements and changes immediately to manage shifting expectations during projects.",
         "_screen_status": "rewritten",
-        "_screen_reason": "This is a valid task, but it is more characteristic of a consultant or analyst role than of most software developers. Rewritten only to remove the absolute wording \"all\" and timing adverb \"immediately.\""
+        "_screen_reason": "This is a valid task, but it is more characteristic of a consultant or analyst role than of most software developers. Rewritten only to remove the absolute wording \"all\" and timing adverb \"immediately.\"",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
         "task_statement": "Implement industry standard workflows to improve quality control and team collaboration.",
@@ -2395,7 +2812,10 @@
         },
         "_original_statement": "Implement industry standard workflows and best practices to improve quality control and team collaboration.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The object was somewhat abstract because it combined workflows and best practices broadly. Rewritten to a more coherent single object while keeping the original purpose."
+        "_screen_reason": "The object was somewhat abstract because it combined workflows and best practices broadly. Rewritten to a more coherent single object while keeping the original purpose.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
         "task_statement": "Meet with clients to gather requirements and set clear boundaries to prevent scope creep and unrealistic expectations.",
@@ -2422,7 +2842,10 @@
         },
         "_original_statement": "Meet with clients to gather requirements and set clear boundaries to prevent scope creep and unrealistic expectations.",
         "_screen_status": "rewritten",
-        "_screen_reason": "This is a coherent task, but client expectation-setting is not common to most software developers across the occupation category. No substantive rewrite was needed."
+        "_screen_reason": "This is a coherent task, but client expectation-setting is not common to most software developers across the occupation category. No substantive rewrite was needed.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
         "task_statement": "Write features to perform technical development work.",
@@ -2450,7 +2873,10 @@
         },
         "_original_statement": "Write features, fix bugs, and conduct code reviews as part of technical development work.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The original bundled three distinct development activities. Rewritten to a single core task using details already present."
+        "_screen_reason": "The original bundled three distinct development activities. Rewritten to a single core task using details already present.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       }
     ],
     "rejected_tasks": []
@@ -2466,40 +2892,68 @@
     "category": "Software Engineering",
     "tasks": [
       {
-        "task_statement": "[Software Engineer Intern] Attend team meetings and provide progress updates in daily stand-ups to communicate project status.",
+        "task_statement": "Attend team meetings and provide progress updates in daily stand-ups to communicate project status.",
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "This is a recognizable, concrete, recurring software development task involving status communication in meetings."
+        "_screen_reason": "This is a recognizable, concrete, recurring software development task involving status communication in meetings.",
+        "_tool_original_task_statement": "[Software Engineer Intern] Attend team meetings and provide progress updates in daily stand-ups to communicate project status.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "[Software Engineer Intern] Migrate organizational test suites to support the team workflow and maintain codebase integrity.",
+        "task_statement": "Migrate organizational test suites to support the team workflow and maintain codebase integrity.",
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "This is a specific software engineering task acting on a concrete artifact and is common in development work."
+        "_screen_reason": "This is a specific software engineering task acting on a concrete artifact and is common in development work.",
+        "_tool_original_task_statement": "[Software Engineer Intern] Migrate organizational test suites to support the team workflow and maintain codebase integrity.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "[Software Engineer Intern] Redesign the bulk DML implementation to improve speed and reduce memory usage after identifying inefficiencies in the initial design.",
+        "task_statement": "Redesign the bulk DML implementation to improve speed and reduce memory usage after identifying inefficiencies in the initial design.",
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "This is a clear engineering task focused on improving performance of an implementation, which is common for software developers."
+        "_screen_reason": "This is a clear engineering task focused on improving performance of an implementation, which is common for software developers.",
+        "_tool_original_task_statement": "[Software Engineer Intern] Redesign the bulk DML implementation to improve speed and reduce memory usage after identifying inefficiencies in the initial design.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "Re-implement bulk DML plans in Unistore to enable pipelined constraint checks and bulk merges.",
+        "task_statement": "Re-implement bulk DML plans to enable pipelined constraint checks and bulk merges.",
         "_original_statement": "[Software Engineer Intern] Re-implement bulk DML plans in Unistore to enable features like pipelined constraint checks and bulk merges.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The task is concrete and well-formed, but it is highly specific to one product/system rather than common to most software developers."
+        "_screen_reason": "The task is concrete and well-formed, but it is highly specific to one product/system rather than common to most software developers.",
+        "_tool_original_task_statement": "Re-implement bulk DML plans in Unistore to enable pipelined constraint checks and bulk merges.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
         "task_statement": "Format data for bulk operations to avoid unnecessary sorting overhead while meeting the requirement for global sorting.",
         "_original_statement": "[Software Engineer Intern] Overcome the design constraint of global sorting in bulk operations by formatting data to avoid unnecessary sorting overhead.",
         "_screen_status": "rewritten",
-        "_screen_reason": "Rewritten to center the concrete action. The original task is valid work but is somewhat idiosyncratic to a specific system/design constraint rather than common to most software developers."
+        "_screen_reason": "Rewritten to center the concrete action. The original task is valid work but is somewhat idiosyncratic to a specific system/design constraint rather than common to most software developers.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
         "task_statement": "Test code to ensure correctness and production readiness.",
         "_original_statement": "[Software Engineer Intern] Perform testing on code to ensure correctness and production readiness.",
         "_screen_status": "rewritten",
-        "_screen_reason": "Rewritten to replace the generic verb phrase 'Perform testing' with the more specific action 'Test.'"
+        "_screen_reason": "Rewritten to replace the generic verb phrase 'Perform testing' with the more specific action 'Test.'",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       }
     ],
     "rejected_tasks": []
@@ -2515,34 +2969,59 @@
     "category": "Students & Researchers in Training",
     "tasks": [
       {
-        "task_statement": "[Research Assistant] Use AI tools to summarize and interpret academic research papers to better understand their content. | action: summarize and interpret | object: academic research papers | purpose: to better understand the content of the papers | tools: AI tools",
+        "task_statement": "Summarize and interpret academic research papers to better understand their content.",
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "Describes a specific, bounded research task on a concrete object that is common for research assistants."
+        "_screen_reason": "Describes a specific, bounded research task on a concrete object that is common for research assistants.",
+        "_tool_original_task_statement": "[Research Assistant] Use AI tools to summarize and interpret academic research papers to better understand their content. | action: summarize and interpret | object: academic research papers | purpose: to better understand the content of the papers | tools: AI tools",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "Generate first-draft code for research models using AI tools to obtain an initial codebase as a starting point for building models.",
+        "task_statement": "Generate first-draft code for research models to obtain an initial codebase as a starting point for building models.",
         "_original_statement": "[Research Assistant] Use AI to generate first draft code for research models by describing the desired structure and instructing the AI to write code in the required language and library. | action: generate first draft code | object: research models | purpose: to obtain an initial codebase as a starting point for building models | tools: AI tools",
         "_screen_status": "rewritten",
-        "_screen_reason": "The task is specific and coherent, but using AI to generate code is not clearly common to most workers in this broad technician occupation; rewritten to a cleaner task form."
+        "_screen_reason": "The task is specific and coherent, but using AI to generate code is not clearly common to most workers in this broad technician occupation; rewritten to a cleaner task form.",
+        "_tool_original_task_statement": "Generate first-draft code for research models using AI tools to obtain an initial codebase as a starting point for building models.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "Generate command line scripts or commands using AI tools to set up research environments efficiently without needing to recall exact command details.",
+        "task_statement": "Prepare environment setup steps efficiently without needing to recall exact command details.",
         "_original_statement": "[Research Assistant] Use AI to provide command line scripts or commands for setting up research environments when exact details are not remembered. | action: provide command line scripts or commands | object: research environments | purpose: to set up the environment efficiently without needing to recall exact command details | tools: AI tools",
         "_screen_status": "rewritten",
-        "_screen_reason": "The original wording implies the AI provides the scripts rather than the worker performing the task; rewritten to center the worker action. It remains somewhat idiosyncratic for the occupation."
+        "_screen_reason": "The original wording implies the AI provides the scripts rather than the worker performing the task; rewritten to center the worker action. It remains somewhat idiosyncratic for the occupation.",
+        "_tool_original_task_statement": "Generate command line scripts or commands using AI tools to set up research environments efficiently without needing to recall exact command details.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "Debug code using AI tools to identify and resolve errors in code.",
+        "task_statement": "Debug code to identify and resolve errors.",
         "_original_statement": "[Research Assistant] Use AI to debug code, sometimes encountering issues such as repeated unnecessary changes or hallucinations, and employ strategies like restarting the session, switching AI tools, or manual debugging when needed. | action: debug | object: code | purpose: to identify and resolve errors in code | tools: AI tools (e.g., ChatGPT, Claude)",
         "_screen_status": "rewritten",
-        "_screen_reason": "The original bundles the main task with multiple workaround strategies and tool issues. Rewritten to the core single task; AI-based debugging is not clearly common to most workers in this occupation."
+        "_screen_reason": "The original bundles the main task with multiple workaround strategies and tool issues. Rewritten to the core single task; AI-based debugging is not clearly common to most workers in this occupation.",
+        "_tool_original_task_statement": "Debug code using AI tools to identify and resolve errors in code.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "Adjust prompts for AI tools to improve the clarity and relevance of answers to research or coding questions.",
+        "task_statement": "Adjust prompts to improve the clarity and relevance of answers to research or coding questions.",
         "_original_statement": "[Research Assistant] Instruct AI to answer research or coding questions clearly, concisely, and directly, adjusting prompts to improve answer quality and clarity. | action: instruct | object: AI answers to research or coding questions | purpose: to improve clarity and relevance of AI responses | tools: AI tools",
         "_screen_status": "rewritten",
-        "_screen_reason": "The original object, 'AI answers,' is not a concrete work object, and the phrasing is awkward. Rewritten to a clearer task focused on prompt adjustment; still not clearly common to most workers in this occupation."
+        "_screen_reason": "The original object, 'AI answers,' is not a concrete work object, and the phrasing is awkward. Rewritten to a clearer task focused on prompt adjustment; still not clearly common to most workers in this occupation.",
+        "_tool_original_task_statement": "Adjust prompts for AI tools to improve the clarity and relevance of answers to research or coding questions.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       }
     ],
     "rejected_tasks": []
@@ -2558,22 +3037,36 @@
     "category": "Content Creation",
     "tasks": [
       {
-        "task_statement": "[Gaming Content Creator] Create guides and informational content based on new game updates to inform and assist viewers.",
+        "task_statement": "Create guides and informational content based on new game updates to inform and assist viewers.",
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "This is a specific, bounded writing task focused on producing guides and informational content, which is recognizable work for Writers and Authors."
+        "_screen_reason": "This is a specific, bounded writing task focused on producing guides and informational content, which is recognizable work for Writers and Authors.",
+        "_tool_original_task_statement": "[Gaming Content Creator] Create guides and informational content based on new game updates to inform and assist viewers.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "[Gaming Content Creator] Generate content ideas by monitoring popular community trends and memes to increase engagement and relevance.",
+        "task_statement": "Generate content ideas by monitoring popular community trends and memes to increase engagement and relevance.",
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "Generating ideas from audience and community trends is a common prewriting activity for Writers and Authors and is stated as a coherent task."
+        "_screen_reason": "Generating ideas from audience and community trends is a common prewriting activity for Writers and Authors and is stated as a coherent task.",
+        "_tool_original_task_statement": "[Gaming Content Creator] Generate content ideas by monitoring popular community trends and memes to increase engagement and relevance.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
         "task_statement": "Capture gameplay footage from games such as Arknights, Genshin Impact, and Honkai Star Rail to use in content creation and guides.",
         "_original_statement": "[Gaming Content Creator] Play games such as Arknights, Genshin Impact, and Honkai Star Rail to capture gameplay footage for use in content creation and guides.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The activity is real and bounded, but 'play games' is framed around a niche gaming-creator workflow rather than a task common to Writers and Authors. Rewritten to the core work activity of capturing footage."
+        "_screen_reason": "The activity is real and bounded, but 'play games' is framed around a niche gaming-creator workflow rather than a task common to Writers and Authors. Rewritten to the core work activity of capturing footage.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
         "task_statement": "Edit captured gameplay clips into videos or guides to produce engaging content for viewers.",
@@ -2603,7 +3096,10 @@
         },
         "_original_statement": "[Gaming Content Creator] Edit captured gameplay clips into videos or guides to produce engaging content for viewers.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The statement is already specific and well-bounded, but editing gameplay clips is not a task most Writers and Authors would perform. Rewritten only to preserve the valid task wording."
+        "_screen_reason": "The statement is already specific and well-bounded, but editing gameplay clips is not a task most Writers and Authors would perform. Rewritten only to preserve the valid task wording.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       }
     ],
     "rejected_tasks": [
@@ -2651,7 +3147,10 @@
         },
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "Describes a clear, bounded administrative task involving urgent paperwork, which is common for administrative assistants."
+        "_screen_reason": "Describes a clear, bounded administrative task involving urgent paperwork, which is common for administrative assistants.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
         "task_statement": "Watch trainings and take notes to prepare for working on standard operating procedures (SOPs).",
@@ -2679,14 +3178,17 @@
         },
         "_original_statement": "Use waiting periods to watch trainings and take notes in preparation for working on standard operating procedures (SOPs).",
         "_screen_status": "rewritten",
-        "_screen_reason": "The original includes context about waiting periods, which is incidental. Training-related activity is real work, but not clearly common to most workers in this occupation as stated."
+        "_screen_reason": "The original includes context about waiting periods, which is incidental. Training-related activity is real work, but not clearly common to most workers in this occupation as stated.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
-        "task_statement": "Research and verify required documentation by contacting government offices and compile the findings into a PDF to ensure completeness and clarity for future use.",
+        "task_statement": "Research and verify required documentation by contacting government offices and compile the findings to ensure completeness and clarity for future use.",
         "action": "Research and verify",
         "object": "required documentation",
         "purpose": "to ensure completeness and clarity for future use",
-        "tools": "Phone, PDF creation software",
+        "tools": "",
         "information_sources": "Appropriate government offices",
         "method": "Contact government offices to obtain accurate information, then compile all important documentation into a PDF explained in a way anyone can understand.",
         "judgment": "Determine when all necessary documentation has been identified and ensure explanations are clear to prevent future confusion.",
@@ -2710,14 +3212,18 @@
         },
         "_original_statement": "Research and verify required documentation by contacting government offices, then compile findings into a clear, user-friendly PDF for future use.",
         "_screen_status": "rewritten",
-        "_screen_reason": "This is a coherent task with concrete actions and objects. It was rewritten for format consistency, but contacting government offices for documentation is somewhat specialized rather than common to most administrative assistants."
+        "_screen_reason": "This is a coherent task with concrete actions and objects. It was rewritten for format consistency, but contacting government offices for documentation is somewhat specialized rather than common to most administrative assistants.",
+        "_tool_original_task_statement": "Research and verify required documentation by contacting government offices and compile the findings into a PDF to ensure completeness and clarity for future use.",
+        "_tool_original_tools": "Phone, PDF creation software",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "Create spreadsheets using AI tools to maintain organized records or data as part of daily work.",
+        "task_statement": "Maintain organized records or data as part of daily work.",
         "action": "Create",
         "object": "spreadsheets",
         "purpose": "to maintain organized records or data as part of daily work",
-        "tools": "AI tools",
+        "tools": "",
         "information_sources": "",
         "method": "",
         "judgment": "",
@@ -2738,14 +3244,18 @@
         },
         "_original_statement": "Create spreadsheets as a repetitive task, potentially using AI tools to expedite the process.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The original is valid but vague about purpose; the rewrite preserves the stated purpose from the structured fields and standardizes the task format."
+        "_screen_reason": "The original is valid but vague about purpose; the rewrite preserves the stated purpose from the structured fields and standardizes the task format.",
+        "_tool_original_task_statement": "Create spreadsheets using AI tools to maintain organized records or data as part of daily work.",
+        "_tool_original_tools": "AI tools",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "Research information using ChatGPT and review AI-generated content for accuracy to obtain information more quickly.",
+        "task_statement": "Research information and review generated content for accuracy to obtain information more quickly.",
         "action": "Use",
         "object": "ChatGPT",
         "purpose": "to support research tasks and obtain information more quickly",
-        "tools": "ChatGPT",
+        "tools": "",
         "information_sources": "",
         "method": "Use ChatGPT as an information tool, then review its output to ensure correctness before applying it.",
         "judgment": "Review AI-generated content to make sure it\u2019s correctly done before use.",
@@ -2767,7 +3277,11 @@
         },
         "_original_statement": "Use ChatGPT to support research tasks and obtain information more quickly, reviewing AI-generated content for accuracy before use.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The original centers on a tool rather than the work activity and uses a vague object. The rewrite makes the task itself explicit, though use of ChatGPT is not yet common to most workers in this occupation."
+        "_screen_reason": "The original centers on a tool rather than the work activity and uses a vague object. The rewrite makes the task itself explicit, though use of ChatGPT is not yet common to most workers in this occupation.",
+        "_tool_original_task_statement": "Research information using ChatGPT and review AI-generated content for accuracy to obtain information more quickly.",
+        "_tool_original_tools": "ChatGPT",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       }
     ],
     "rejected_tasks": []
@@ -2809,7 +3323,10 @@
         },
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "This is a specific, bounded HR task with a concrete output and is typical of HR specialist work."
+        "_screen_reason": "This is a specific, bounded HR task with a concrete output and is typical of HR specialist work.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
         "task_statement": "Respond to adhoc employee questions about vacation balance to address their concerns.",
@@ -2836,14 +3353,17 @@
         },
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "This is a specific, concrete, and common HR support task directed at employee leave information."
+        "_screen_reason": "This is a specific, concrete, and common HR support task directed at employee leave information.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
-        "task_statement": "Update the employee database using HRIS to ensure it is up to date, particularly for payroll purposes.",
+        "task_statement": "Update employee records to ensure they are current, particularly for payroll purposes.",
         "action": "Manage",
         "object": "employee database through HRIS",
         "purpose": "to ensure it is up to date, particularly for payroll purposes",
-        "tools": "HRIS",
+        "tools": "",
         "information_sources": "",
         "method": "Prioritize updating the database first when payroll deadlines are approaching.",
         "judgment": "Prioritize tasks based on due dates, focusing on urgent needs such as updating the employee database for payroll.",
@@ -2867,7 +3387,11 @@
         },
         "_original_statement": "Manage the employee database through HRIS to ensure it is up to date, particularly for payroll purposes.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The verb \"Manage\" is too vague; replaced it with the more observable action \"Update.\""
+        "_screen_reason": "The verb \"Manage\" is too vague; replaced it with the more observable action \"Update.\"",
+        "_tool_original_task_statement": "Update the employee database using HRIS to ensure it is up to date, particularly for payroll purposes.",
+        "_tool_original_tools": "HRIS",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
         "task_statement": "Coordinate recruitment from end to end to fill open positions.",
@@ -2894,7 +3418,10 @@
         },
         "_original_statement": "Handle recruitment from end-to-end to fill open positions.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The verb \"Handle\" is too vague; replaced it with the more specific action \"Coordinate\" while preserving the full recruitment activity."
+        "_screen_reason": "The verb \"Handle\" is too vague; replaced it with the more specific action \"Coordinate\" while preserving the full recruitment activity.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
         "task_statement": "Arrange social events to foster employee engagement.",
@@ -2920,7 +3447,10 @@
         },
         "_original_statement": "Arrange social events such as the Christmas lunch party to foster employee engagement.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The task is a real activity, but the example \"Christmas lunch party\" is idiosyncratic; generalized it to a broader event-planning task."
+        "_screen_reason": "The task is a real activity, but the example \"Christmas lunch party\" is idiosyncratic; generalized it to a broader event-planning task.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       }
     ],
     "rejected_tasks": []
@@ -2936,11 +3466,11 @@
     "category": "HR & Admin",
     "tasks": [
       {
-        "task_statement": "Input client and case data into the system to maintain up-to-date records.",
+        "task_statement": "Input client and case data to maintain up-to-date records.",
         "action": "input",
         "object": "client and case data",
         "purpose": "to maintain up-to-date records",
-        "tools": "system",
+        "tools": "",
         "information_sources": "",
         "method": "",
         "judgment": "",
@@ -2962,7 +3492,11 @@
         },
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "This is a specific, observable, single data-entry task commonly performed in customer service roles."
+        "_screen_reason": "This is a specific, observable, single data-entry task commonly performed in customer service roles.",
+        "_tool_original_task_statement": "Input client and case data into the system to maintain up-to-date records.",
+        "_tool_original_tools": "system",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
         "task_statement": "Answer 100-200 client emails and calls per day to address client needs and inquiries.",
@@ -2990,14 +3524,17 @@
         },
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "This is a clear, routine customer communication task typical of customer service representatives."
+        "_screen_reason": "This is a clear, routine customer communication task typical of customer service representatives.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
-        "task_statement": "Retrieve records from the database to provide information needed for client service activities.",
+        "task_statement": "Retrieve records to provide information needed for client service activities.",
         "action": "retrieve",
         "object": "records from the database",
         "purpose": "to provide information needed for client service activities",
-        "tools": "database",
+        "tools": "",
         "information_sources": "",
         "method": "",
         "judgment": "",
@@ -3018,14 +3555,18 @@
         },
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "This is a specific and bounded information-retrieval task that is common in customer service work."
+        "_screen_reason": "This is a specific and bounded information-retrieval task that is common in customer service work.",
+        "_tool_original_task_statement": "Retrieve records from the database to provide information needed for client service activities.",
+        "_tool_original_tools": "database",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "Summarize transcripts using AI technology to streamline information processing.",
+        "task_statement": "Summarize transcripts to streamline information processing.",
         "action": "summarize",
         "object": "transcripts",
         "purpose": "to streamline information processing",
-        "tools": "AI technology",
+        "tools": "",
         "information_sources": "",
         "method": "",
         "judgment": "",
@@ -3046,7 +3587,11 @@
         },
         "_original_statement": "Use AI technology to summarize transcripts in order to streamline information processing.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The task is concrete and bounded, but use of AI to summarize transcripts is not clearly common to most customer service representatives. Rewritten to center the core task."
+        "_screen_reason": "The task is concrete and bounded, but use of AI to summarize transcripts is not clearly common to most customer service representatives. Rewritten to center the core task.",
+        "_tool_original_task_statement": "Summarize transcripts using AI technology to streamline information processing.",
+        "_tool_original_tools": "AI technology",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
         "task_statement": "Resolve client issues to address their concerns.",
@@ -3074,7 +3619,10 @@
         },
         "_original_statement": "Make decisions on how to handle client issues in order to resolve their concerns.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The original verb phrase is vague and indirect. Rewritten with a more concrete action while preserving the task's purpose."
+        "_screen_reason": "The original verb phrase is vague and indirect. Rewritten with a more concrete action while preserving the task's purpose.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       }
     ],
     "rejected_tasks": []
@@ -3090,22 +3638,37 @@
     "category": "Operations",
     "tasks": [
       {
-        "task_statement": "[Operations Manager (Nonprofit)] Onboard new clients to integrate them into the organization's services and processes.",
+        "task_statement": "Onboard new clients to integrate them into the organization's services and processes.",
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "This is a specific, coherent, and common client-service task for this occupation."
+        "_screen_reason": "This is a specific, coherent, and common client-service task for this occupation.",
+        "_tool_original_task_statement": "[Operations Manager (Nonprofit)] Onboard new clients to integrate them into the organization's services and processes.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "Create and send organizational newsletters using ChatGPT to communicate updates and information to stakeholders.",
+        "task_statement": "Create and send organizational newsletters to communicate updates and information to stakeholders.",
         "_original_statement": "[Operations Manager (Nonprofit)] Create and send newsletters for the organization to communicate updates and information to stakeholders.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The task is specific and bounded, but creating newsletters is not common to most Social and Community Service Managers; retained as a real activity and added the stated tool."
+        "_screen_reason": "The task is specific and bounded, but creating newsletters is not common to most Social and Community Service Managers; retained as a real activity and added the stated tool.",
+        "_tool_original_task_statement": "Create and send organizational newsletters using ChatGPT to communicate updates and information to stakeholders.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "Input staff work hours for payroll using ChatGPT to ensure accurate and timely payment.",
+        "task_statement": "Input staff work hours for payroll to ensure accurate and timely payment.",
         "_original_statement": "[Operations Manager (Nonprofit)] Input staff work hours for payroll to ensure accurate and timely payment.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The task is concrete and well-bounded, but payroll hour entry is not typical for most Social and Community Service Managers; retained as a valid reported activity and added the stated tool."
+        "_screen_reason": "The task is concrete and well-bounded, but payroll hour entry is not typical for most Social and Community Service Managers; retained as a valid reported activity and added the stated tool.",
+        "_tool_original_task_statement": "Input staff work hours for payroll using ChatGPT to ensure accurate and timely payment.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
         "task_statement": "Book venues and coordinate events to facilitate organizational activities.",
@@ -3131,13 +3694,20 @@
         },
         "_original_statement": "[Operations Manager (Nonprofit)] Book venues and coordinate events to facilitate organizational activities.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The task is specific and bounded, but event and venue coordination is not common to most Social and Community Service Managers."
+        "_screen_reason": "The task is specific and bounded, but event and venue coordination is not common to most Social and Community Service Managers.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
         "task_statement": "Create organizational policy to ensure compliance and organizational effectiveness.",
         "_original_statement": "[Operations Manager (Nonprofit)] Perform legal and HR work such as reading materials, comparing documents, and creating policy to ensure compliance and organizational effectiveness.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The original used a vague verb, a broad object, and bundled multiple activities. Rewritten to the most concrete single task stated."
+        "_screen_reason": "The original used a vague verb, a broad object, and bundled multiple activities. Rewritten to the most concrete single task stated.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       }
     ],
     "rejected_tasks": []
@@ -3153,7 +3723,7 @@
     "category": "Data & ML",
     "tasks": [
       {
-        "task_statement": "Write SQL queries to retrieve and analyze data for operational tasks.",
+        "task_statement": "Write queries to retrieve and analyze data for operational tasks.",
         "action": "Write",
         "object": "SQL queries",
         "purpose": "to retrieve and analyze data for operational tasks",
@@ -3179,10 +3749,14 @@
         },
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "Clear, concrete, bounded task involving a common data science activity."
+        "_screen_reason": "Clear, concrete, bounded task involving a common data science activity.",
+        "_tool_original_task_statement": "Write SQL queries to retrieve and analyze data for operational tasks.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "Build dashboards to visualize data and support operational work.",
+        "task_statement": "Create visual representations of data to support operational work.",
         "action": "Build",
         "object": "dashboards",
         "purpose": "to visualize data and support operational work",
@@ -3205,7 +3779,11 @@
         },
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "Uses a specific action on a concrete artifact and describes a typical task for data scientists."
+        "_screen_reason": "Uses a specific action on a concrete artifact and describes a typical task for data scientists.",
+        "_tool_original_task_statement": "Build dashboards to visualize data and support operational work.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
         "task_statement": "Synthesize data from multiple sources to inform complex strategic decisions.",
@@ -3234,7 +3812,10 @@
         },
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "Describes a coherent and common analytical task with a specific action and object."
+        "_screen_reason": "Describes a coherent and common analytical task with a specific action and object.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
         "task_statement": "Adapt visualization methodologies to data sets to support relevant and timely decisions.",
@@ -3260,7 +3841,10 @@
         },
         "_original_statement": "Adapt novel visualization methodologies to interesting data sets to support relevant and timely decisions.",
         "_screen_status": "rewritten",
-        "_screen_reason": "Removed subjective wording like 'novel' and 'interesting' to make the object more concrete, but the original phrasing was somewhat idiosyncratic."
+        "_screen_reason": "Removed subjective wording like 'novel' and 'interesting' to make the object more concrete, but the original phrasing was somewhat idiosyncratic.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       }
     ],
     "rejected_tasks": [
@@ -3307,34 +3891,56 @@
     "category": "Sales & Business Development",
     "tasks": [
       {
-        "task_statement": "[Business Development Associate (Automotive EV)] Gather and summarize daily sales data for each store to provide an overview of sales performance.",
+        "task_statement": "Gather and summarize daily sales data for each store to provide an overview of sales performance.",
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "Concrete, observable reporting task on specific sales data; a typical sales-related activity."
+        "_screen_reason": "Concrete, observable reporting task on specific sales data; a typical sales-related activity.",
+        "_tool_original_task_statement": "[Business Development Associate (Automotive EV)] Gather and summarize daily sales data for each store to provide an overview of sales performance.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "Translate documents between Chinese, English, and Indonesian using AI translation tools to facilitate communication and documentation.",
+        "task_statement": "Translate documents between Chinese, English, and Indonesian to facilitate communication and documentation.",
         "_original_statement": "[Business Development Associate (Automotive EV)] Translate documents between Chinese, English, and Indonesian to facilitate communication and documentation.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The task itself is clear, but multilingual document translation is not common to most wholesale/manufacturing sales representatives; rewritten only to preserve the concrete activity and tool."
+        "_screen_reason": "The task itself is clear, but multilingual document translation is not common to most wholesale/manufacturing sales representatives; rewritten only to preserve the concrete activity and tool.",
+        "_tool_original_task_statement": "Translate documents between Chinese, English, and Indonesian using AI translation tools to facilitate communication and documentation.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
         "task_statement": "Negotiate business-to-business agreements such as MOUs, work contracts, and NDAs to support company operations.",
         "_original_statement": "[Business Development Associate (Automotive EV)] Handle business-to-business deals and negotiate agreements such as MOUs, work contracts, and NDAs to support company operations.",
         "_screen_status": "rewritten",
-        "_screen_reason": "Replaced vague verb 'handle' with the more specific observable action 'negotiate.'"
+        "_screen_reason": "Replaced vague verb 'handle' with the more specific observable action 'negotiate.'",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
         "task_statement": "Translate spoken communication during large meetings or presentations in real time to ensure accurate understanding among stakeholders.",
         "_original_statement": "[Business Development Associate (Automotive EV)] Translate spoken communication in real-time during large meetings or presentations to ensure accurate understanding among stakeholders.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The activity is specific and bounded, but real-time interpreting is not common to most workers in this occupation."
+        "_screen_reason": "The activity is specific and bounded, but real-time interpreting is not common to most workers in this occupation.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
         "task_statement": "Track and record the number of customers entering stores to provide footfall data for leadership.",
         "_original_statement": "[Business Development Associate (Automotive EV)] Manually track and record the number of customers entering stores to provide footfall data for leadership.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The task is concrete and bounded, but manual footfall counting is not a common duty for most wholesale/manufacturing sales representatives."
+        "_screen_reason": "The task is concrete and bounded, but manual footfall counting is not a common duty for most wholesale/manufacturing sales representatives.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       }
     ],
     "rejected_tasks": []
@@ -3350,28 +3956,48 @@
     "category": "Design",
     "tasks": [
       {
-        "task_statement": "[Graphic Designer (Advertising)] Generate image elements for photography concepts using AI tools and refine them with Adobe Photoshop and Adobe Illustrator to prepare for final concept realization.",
+        "task_statement": "Generate and refine image elements for photography concepts to prepare for final concept realization.",
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "This is a specific, bounded design task focused on creating and refining concept imagery, which is common graphic design work."
+        "_screen_reason": "This is a specific, bounded design task focused on creating and refining concept imagery, which is common graphic design work.",
+        "_tool_original_task_statement": "[Graphic Designer (Advertising)] Generate image elements for photography concepts using AI tools and refine them with Adobe Photoshop and Adobe Illustrator to prepare for final concept realization.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "[Graphic Designer (Advertising)] Use Adobe Firefly to generate concept images and, if results are unsatisfactory after several attempts, switch to manual image creation by sourcing and combining stock images.",
+        "task_statement": "Generate concept images and, if results are unsatisfactory after several attempts, create images manually by sourcing and combining stock images.",
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "This is a coherent image-development task with clear actions, objects, and tools, and it fits common concept development work in graphic design."
+        "_screen_reason": "This is a coherent image-development task with clear actions, objects, and tools, and it fits common concept development work in graphic design.",
+        "_tool_original_task_statement": "[Graphic Designer (Advertising)] Use Adobe Firefly to generate concept images and, if results are unsatisfactory after several attempts, switch to manual image creation by sourcing and combining stock images.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "Revise concept writing for projects using AI tools to improve the quality and clarity of creative concepts.",
+        "task_statement": "Revise concept writing for projects to improve the quality and clarity of creative concepts.",
         "_original_statement": "[Graphic Designer (Advertising)] Use AI tools to finesse concept writing for projects in order to improve the quality and clarity of creative concepts.",
         "_screen_status": "rewritten",
-        "_screen_reason": "Replaced the vague verb \"finesse\" with the more observable action \"revise.\" Also marked as not common because concept writing with AI is not a typical task for most graphic designers."
+        "_screen_reason": "Replaced the vague verb \"finesse\" with the more observable action \"revise.\" Also marked as not common because concept writing with AI is not a typical task for most graphic designers.",
+        "_tool_original_task_statement": "Revise concept writing for projects using AI tools to improve the quality and clarity of creative concepts.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "Share AI prompt examples with team members to foster collaboration and skill development around AI usage.",
+        "task_statement": "Share drafting examples with team members to foster collaboration and skill development.",
         "_original_statement": "[Graphic Designer (Advertising)] Discuss AI prompt words and share examples with team members to foster collaboration and skill development around AI usage.",
         "_screen_status": "rewritten",
-        "_screen_reason": "Simplified the statement to one coherent activity. Team discussion of AI prompts is a real activity but not a common core task for most graphic designers."
+        "_screen_reason": "Simplified the statement to one coherent activity. Team discussion of AI prompts is a real activity but not a common core task for most graphic designers.",
+        "_tool_original_task_statement": "Share AI prompt examples with team members to foster collaboration and skill development around AI usage.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       }
     ],
     "rejected_tasks": [
@@ -3394,34 +4020,59 @@
     "category": "Design",
     "tasks": [
       {
-        "task_statement": "[Assistant Technical Designer (Fashion)] Develop digital samples of hospitality uniforms using 3D rendering software to visualize patterns created for new clothing lines. | action: Develop digital samples | object: hospitality uniforms | purpose: to visualize patterns created for new clothing lines | tools: 3D rendering software | frequency: 20% of an 8-hour workday",
+        "task_statement": "Develop digital samples of hospitality uniforms to visualize patterns created for new clothing lines.",
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "Concrete task with a specific action, clear object, and recognizable patternmaking activity."
+        "_screen_reason": "Concrete task with a specific action, clear object, and recognizable patternmaking activity.",
+        "_tool_original_task_statement": "[Assistant Technical Designer (Fashion)] Develop digital samples of hospitality uniforms using 3D rendering software to visualize patterns created for new clothing lines. | action: Develop digital samples | object: hospitality uniforms | purpose: to visualize patterns created for new clothing lines | tools: 3D rendering software | frequency: 20% of an 8-hour workday",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "[Assistant Technical Designer (Fashion)] Create and modify digital patterns for hospitality uniforms using pattern making software to ensure fit consistency and compliance with company and client standards. | action: Create and modify digital patterns | object: hospitality uniforms | purpose: to ensure fit consistency and compliance with company and client standards | tools: digital pattern making software, VStitcher software from Browzwear | frequency: 60% of an 8-hour workday",
+        "task_statement": "Create and modify digital patterns for hospitality uniforms to ensure fit consistency and compliance with company and client standards.",
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "This is a standard patternmaking task focused on creating and adjusting garment patterns."
+        "_screen_reason": "This is a standard patternmaking task focused on creating and adjusting garment patterns.",
+        "_tool_original_task_statement": "[Assistant Technical Designer (Fashion)] Create and modify digital patterns for hospitality uniforms using pattern making software to ensure fit consistency and compliance with company and client standards. | action: Create and modify digital patterns | object: hospitality uniforms | purpose: to ensure fit consistency and compliance with company and client standards | tools: digital pattern making software, VStitcher software from Browzwear | frequency: 60% of an 8-hour workday",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "[Assistant Technical Designer (Fashion)] Independently modify digital patterns to ensure fit consistency for hospitality uniforms. | action: Modify digital patterns | object: hospitality uniforms | purpose: to ensure fit consistency",
+        "task_statement": "Independently modify digital patterns to ensure fit consistency for hospitality uniforms.",
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "Specific, bounded, and typical pattern adjustment work for this occupation."
+        "_screen_reason": "Specific, bounded, and typical pattern adjustment work for this occupation.",
+        "_tool_original_task_statement": "[Assistant Technical Designer (Fashion)] Independently modify digital patterns to ensure fit consistency for hospitality uniforms. | action: Modify digital patterns | object: hospitality uniforms | purpose: to ensure fit consistency",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "[Assistant Technical Designer (Fashion)] Consult with manager to determine which style to use as a base pattern for new hospitality uniform designs. | action: Consult with manager to determine base pattern style | object: hospitality uniform designs | purpose: to select the appropriate base pattern for new designs",
+        "task_statement": "Consult with manager to determine which style to use as a base pattern for new hospitality uniform designs.",
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "A clear consultation task tied directly to selecting a base pattern, which is relevant to patternmaking work."
+        "_screen_reason": "A clear consultation task tied directly to selecting a base pattern, which is relevant to patternmaking work.",
+        "_tool_original_task_statement": "[Assistant Technical Designer (Fashion)] Consult with manager to determine which style to use as a base pattern for new hospitality uniform designs. | action: Consult with manager to determine base pattern style | object: hospitality uniform designs | purpose: to select the appropriate base pattern for new designs",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "Compile and update monthly and daily work progress reports in Excel by entering and copying data from paper sources to maintain records and communicate progress to internal and external departments.",
+        "task_statement": "Compile and update monthly and daily work progress reports by entering and copying data from paper sources to maintain records and communicate progress to internal and external departments.",
         "_original_statement": "[Assistant Technical Designer (Fashion)] Compile and update a sample library, monthly reports, and daily work progress reports in Excel by manually entering and copying data from paper sources. | action: Compile and update reports and sample library | object: sample library, monthly reports, daily work progress reports | purpose: to maintain records and communicate progress to internal and external departments | tools: Excel | frequency: 20% of an 8-hour workday",
         "_screen_status": "rewritten",
-        "_screen_reason": "Original statement bundles multiple recordkeeping activities; rewritten to the most coherent single task. Reporting and sample-library maintenance are less central to patternmaking than pattern development tasks."
+        "_screen_reason": "Original statement bundles multiple recordkeeping activities; rewritten to the most coherent single task. Reporting and sample-library maintenance are less central to patternmaking than pattern development tasks.",
+        "_tool_original_task_statement": "Compile and update monthly and daily work progress reports in Excel by entering and copying data from paper sources to maintain records and communicate progress to internal and external departments.",
+        "_tool_original_tools": "",
+        "tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       }
     ],
     "rejected_tasks": []
@@ -3437,11 +4088,11 @@
     "category": "Students & Researchers in Training",
     "tasks": [
       {
-        "task_statement": "Prototype AI-assisted interfaces for querying experiment data in natural language to reduce user friction and speed up data access.",
+        "task_statement": "Prototype interfaces for querying experiment data in natural language to reduce user friction and speed up data access.",
         "action": "prototype",
         "object": "AI-assisted interfaces for querying experiment data in natural language",
         "purpose": "reduce user friction and speed up data access",
-        "tools": "AI-assisted interface",
+        "tools": "",
         "information_sources": "early feedback from users",
         "method": "adding guardrails, tightening data sources, and getting early feedback from users",
         "judgment": "deciding to prototype an AI-assisted interface that let users ask questions in natural language instead of digging through dashboards; making sure the AI responses were accurate and trustworthy, not just convenient",
@@ -3465,7 +4116,11 @@
         },
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "Specific prototyping task with a concrete object and clear purpose; this is plausibly common research-oriented computing work."
+        "_screen_reason": "Specific prototyping task with a concrete object and clear purpose; this is plausibly common research-oriented computing work.",
+        "_tool_original_task_statement": "Prototype AI-assisted interfaces for querying experiment data in natural language to reduce user friction and speed up data access.",
+        "_tool_original_tools": "AI-assisted interface",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
         "task_statement": "Break down ambiguous or messy technical problems into structured components to enable problem-solving and system design.",
@@ -3493,7 +4148,10 @@
         },
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "This is a concrete analytical task with a clear object and purpose, and it is common in research and advanced computing work."
+        "_screen_reason": "This is a concrete analytical task with a clear object and purpose, and it is common in research and advanced computing work.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
         "task_statement": "Write and review code for distributed systems to improve scalability and reliability.",
@@ -3522,7 +4180,10 @@
         },
         "_original_statement": "Write and review code for distributed systems to improve scalability and reliability.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The task itself is clear and well-formed, but it is more typical of software engineering than of most Computer and Information Research Scientists."
+        "_screen_reason": "The task itself is clear and well-formed, but it is more typical of software engineering than of most Computer and Information Research Scientists.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
         "task_statement": "Debug issues in large-scale distributed systems to ensure reliability and efficiency.",
@@ -3550,14 +4211,17 @@
         },
         "_original_statement": "Debug issues in large-scale distributed systems to ensure reliability and efficiency.",
         "_screen_status": "rewritten",
-        "_screen_reason": "This is a valid, specific task, but debugging distributed systems is not common to most workers in the Computer and Information Research Scientists occupation."
+        "_screen_reason": "This is a valid, specific task, but debugging distributed systems is not common to most workers in the Computer and Information Research Scientists occupation.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
-        "task_statement": "Use AI tools to explore data to work more efficiently and focus on higher-level problem solving.",
+        "task_statement": "Explore data to work more efficiently and focus on higher-level problem solving.",
         "action": "use",
         "object": "AI tools",
         "purpose": "explore data, prototype solutions, and understand complex system behavior to work more efficiently and focus on higher-level problem solving",
-        "tools": "AI tools",
+        "tools": "",
         "information_sources": "",
         "method": "",
         "judgment": "",
@@ -3579,7 +4243,11 @@
         },
         "_original_statement": "Use AI tools to explore data, prototype solutions, and understand complex system behavior to work more efficiently and focus on higher-level problem solving.",
         "_screen_status": "rewritten",
-        "_screen_reason": "The original bundles multiple activities (explore data, prototype solutions, understand system behavior). Rewritten to a single coherent task using only details from the statement."
+        "_screen_reason": "The original bundles multiple activities (explore data, prototype solutions, understand system behavior). Rewritten to a single coherent task using only details from the statement.",
+        "_tool_original_task_statement": "Use AI tools to explore data to work more efficiently and focus on higher-level problem solving.",
+        "_tool_original_tools": "AI tools",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       }
     ],
     "rejected_tasks": []
@@ -3595,7 +4263,7 @@
     "category": "Research",
     "tasks": [
       {
-        "task_statement": "Develop new methods in large language model (LLM) training and inference, with a special focus on agentic workflow, to drive AI innovation.",
+        "task_statement": "Develop new methods in large language model training and inference, with a special focus on agentic workflow, to drive innovation.",
         "action": "Develop",
         "object": "new methods in LLM training and inference, especially agentic workflow",
         "purpose": "to drive AI innovation",
@@ -3618,10 +4286,14 @@
         },
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "Concrete research and development task on LLM methods; typical for computer and information research scientists."
+        "_screen_reason": "Concrete research and development task on LLM methods; typical for computer and information research scientists.",
+        "_tool_original_task_statement": "Develop new methods in large language model (LLM) training and inference, with a special focus on agentic workflow, to drive AI innovation.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "Review pull requests (PR reviews), a repetitive and less enjoyable task, and identify opportunities where AI assistance could improve manageability.",
+        "task_statement": "Review pull requests, a repetitive and less enjoyable task, and identify opportunities to improve manageability.",
         "action": "Review",
         "object": "pull requests (PR reviews)",
         "purpose": "to identify opportunities where AI assistance could improve manageability",
@@ -3644,7 +4316,11 @@
         },
         "_original_statement": "",
         "_screen_status": "pass",
-        "_screen_reason": "Coherent task centered on reviewing pull requests to assess where AI could help; recognizable activity in research/software-oriented computing roles."
+        "_screen_reason": "Coherent task centered on reviewing pull requests to assess where AI could help; recognizable activity in research/software-oriented computing roles.",
+        "_tool_original_task_statement": "Review pull requests (PR reviews), a repetitive and less enjoyable task, and identify opportunities where AI assistance could improve manageability.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
         "task_statement": "Design agentic workflows to support scaling across different applications.",
@@ -3671,14 +4347,17 @@
         },
         "_original_statement": "Design agentic workflows to ensure they can be scaled up easily across different applications.",
         "_screen_status": "rewritten",
-        "_screen_reason": "Task is valid, but the original purpose used vague outcome language ('ensure'). Rewritten for clearer task phrasing. Agentic workflows are somewhat specialized rather than common to most workers in this occupation."
+        "_screen_reason": "Task is valid, but the original purpose used vague outcome language ('ensure'). Rewritten for clearer task phrasing. Agentic workflows are somewhat specialized rather than common to most workers in this occupation.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": false
       },
       {
-        "task_statement": "Build conversation agents using agentic workflow and a proprietary framework.",
+        "task_statement": "Create conversation agents through agentic workflow design.",
         "action": "Use",
         "object": "agentic workflow",
         "purpose": "to build conversation agents",
-        "tools": "a proprietary framework",
+        "tools": "",
         "information_sources": "",
         "method": "",
         "judgment": "",
@@ -3698,10 +4377,14 @@
         },
         "_original_statement": "Use agentic workflow to build conversation agents using a proprietary framework.",
         "_screen_status": "rewritten",
-        "_screen_reason": "Replaced vague action 'Use' with the more concrete implied action 'Build.' Proprietary framework and conversation-agent work are somewhat specialized rather than common to most workers in this occupation."
+        "_screen_reason": "Replaced vague action 'Use' with the more concrete implied action 'Build.' Proprietary framework and conversation-agent work are somewhat specialized rather than common to most workers in this occupation.",
+        "_tool_original_task_statement": "Build conversation agents using agentic workflow and a proprietary framework.",
+        "_tool_original_tools": "a proprietary framework",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       },
       {
-        "task_statement": "Write code to solve problems in the context of AI research and product development.",
+        "task_statement": "Solve problems in the context of AI research and product development.",
         "action": "Perform",
         "object": "coding tasks",
         "purpose": "to solve problems in the context of AI research and product development",
@@ -3725,7 +4408,11 @@
         },
         "_original_statement": "Perform coding tasks to solve problems in the context of AI research and product development.",
         "_screen_status": "rewritten",
-        "_screen_reason": "Original wording was vague ('Perform coding tasks'). Rewritten with a more specific action while preserving the stated purpose."
+        "_screen_reason": "Original wording was vague ('Perform coding tasks'). Rewritten with a more specific action while preserving the stated purpose.",
+        "_tool_original_task_statement": "Write code to solve problems in the context of AI research and product development.",
+        "_tool_original_tools": "",
+        "_tool_rewrite_model": "gpt-4.1-mini",
+        "_tool_rewrite_changed": true
       }
     ],
     "rejected_tasks": []

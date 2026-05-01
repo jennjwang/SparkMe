@@ -482,6 +482,8 @@ class SessionAgenda:
                 output.append(f"    Subtopic ID: {subtopic.subtopic_id}")
                 output.append(f"    Subtopic Description: {subtopic.description}")
                 output.append(f"    Subtopic Priority Weight: {subtopic.priority_weight}")
+                if subtopic.max_followups is not None:
+                    output.append(f"    Max Follow-ups: {subtopic.max_followups} — ask one open question, then at most {subtopic.max_followups} follow-up(s) before moving on. Prioritize breadth over depth here.")
                 if subtopic.coverage_criteria:
                     output.append(f"    Coverage Criteria:")
                     statuses = subtopic.criteria_coverage

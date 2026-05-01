@@ -13,5 +13,20 @@
         ]
       }
     ]
+  },
+  {
+    "topic": "Typical Week and Regular Activities",
+    "allow_strategic_planner": false,
+    "allow_emergent": false,
+    "subtopics": [
+      {
+        "description": "Get a broad, open picture of what the participant's regular work week looks like — the recurring activities, tasks, and responsibilities they do most weeks. Ask openly and let them describe freely before probing for specifics.",
+        "max_followups": 1,
+        "coverage_criteria": [
+          "The participant has described at least a few of the regular activities or tasks they do most weeks — any level of detail counts. A general overview ('I mostly write reports and attend meetings') is sufficient to satisfy this criterion.",
+          "The participant has mentioned at least one concrete type of task or activity (e.g., a meeting, a recurring deliverable, a tool they use, a person they coordinate with)."
+        ]
+      }
+    ]
   }
 ]

@@ -128,17 +128,26 @@ class ClaudeDirectEngine:
             raise ImportError("Install the 'anthropic' package: pip install anthropic")
 
         self.model_name = model_name
-        self.max_tokens = kwargs.get("max_tokens_to_sample", 4096)
+        self.max_tokens = kwargs.pop("max_tokens_to_sample", 4096)
+        timeout = kwargs.pop("timeout", os.getenv("ANTHROPIC_TIMEOUT_SECONDS", None))
+        max_retries = int(kwargs.pop("max_retries", os.getenv("ANTHROPIC_MAX_RETRIES", "2")))
+        self.kwargs = kwargs
         api_key = os.getenv("ANTHROPIC_API_KEY")
         if not api_key:
             raise ValueError("ANTHROPIC_API_KEY environment variable is not set")
-        self.client = Anthropic(api_key=api_key)
+
+        client_kwargs = {"api_key": api_key, "max_retries": max_retries}
+        if timeout is not None:
+            client_kwargs["timeout"] = float(timeout)
+        self.client = Anthropic(**client_kwargs)
 
     def invoke(self, prompt, **kwargs) -> ModelResponse:
+        request_kwargs = {**self.kwargs, **kwargs}
         response = self.client.messages.create(
             model=self.model_name,
             max_tokens=self.max_tokens,
             messages=[{"role": "user", "content": prompt}],
+            **request_kwargs,
         )
         content = response.content[0].text if response.content else ""
         model_response = ModelResponse(content)
