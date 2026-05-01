@@ -1665,8 +1665,8 @@ class Interviewer(BaseAgent, Participant):
         # opening question immediately without waiting for an LLM round-trip.
         if message is None and self._is_fresh_intake_session():
             opening_question = (
-                "Thanks for making time today. "
-                "Could you briefly describe your job, what you do for work, and how long you've been in this profession?"
+                "Hi, thanks for chatting with me. "
+                "To start, could you briefly describe your job, what you do for work, and how long you've been in this profession?"
             )
             SessionLogger.log_to_file(
                 "execution_log",
