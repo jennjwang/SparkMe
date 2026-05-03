@@ -39,9 +39,6 @@ class SessionAgenda:
             self.interview_topic_manager = raw_manager
         self.current_snapshot: int = 0
 
-        # Weekly check-in: raw previous snapshot loaded at startup (static for session)
-        self.last_week_snapshot: dict = data.get("last_week_snapshot", {})
-
         # Strategic planning data (updated by StrategicPlanner)
         self.strategic_priorities: Dict[str, dict] = data.get("strategic_priorities", {})
         self.emergent_insights: List[dict] = data.get("emergent_insights", [])
@@ -156,14 +153,21 @@ class SessionAgenda:
             fresh.session_id = prior.session_id
             return fresh
 
-        # No session_agenda.json: fall back to fresh agenda, but load the saved
-        # per-user portrait from the user directory so tasks from a prior session
-        # are preserved across restarts.
+        # No session_agenda.json in the latest dir: fall back to fresh agenda,
+        # but preserve the session_id inferred from the directory name so the
+        # counter keeps advancing instead of resetting to 0 every restart.
+        inferred_session_id = int(session_dirs[0].split('_')[1])
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            f"[SESSION_AGENDA] No session_agenda.json found in {latest_dir}. "
+            f"Inferring session_id={inferred_session_id} from directory name."
+        )
         fresh = cls.initialize_session_agenda(user_id=user_id,
                                               initial_user_portrait_path=initial_user_portrait_path,
                                               interview_plan_path=interview_plan_path,
                                               interview_description=interview_description,
                                               interview_evaluation=interview_evaluation)
+        fresh.session_id = inferred_session_id
         saved_portrait_path = os.path.join(LOGS_DIR, user_id, "user_portrait.json")
         if os.path.exists(saved_portrait_path):
             try:
@@ -325,7 +329,6 @@ class SessionAgenda:
             "interview_description": self.interview_description,
             "additional_notes": self.additional_notes,
             "interview_topic_manager": self.interview_topic_manager.to_dict(),
-            "last_week_snapshot": self.last_week_snapshot,
             "strategic_priorities": self.strategic_priorities,
             "emergent_insights": self.emergent_insights,
             "end_reason": self.end_reason,
@@ -364,51 +367,6 @@ class SessionAgenda:
             return ""
         return self.last_meeting_summary
 
-    def get_last_week_snapshot_str(self) -> str:
-        """Returns a formatted string of last week's raw snapshot."""
-        if not self.last_week_snapshot:
-            return ""
-
-        lines = []
-        snap = self.last_week_snapshot
-
-        if snap.get("week_number"):
-            lines.append(f"Week {snap['week_number']} snapshot:")
-
-        if snap.get("tasks"):
-            lines.append("\nTasks last week:")
-            for t in snap["tasks"]:
-                time_str = f" (~{t['time_share']:.0%})" if t.get("time_share") else ""
-                ai_str = ""
-                if t.get("ai_involved"):
-                    ai_str = f" [AI: {t.get('ai_tool', '?')} — {t.get('ai_purpose', '')}]"
-                lines.append(f"  - {t['description']}{time_str}{ai_str}")
-
-        if snap.get("tools"):
-            lines.append(f"\nTools and methods: {', '.join(snap['tools'])}")
-
-        if snap.get("ai_tools"):
-            lines.append(f"AI tools: {', '.join(snap['ai_tools'])}")
-
-        if snap.get("collaborators"):
-            lines.append(f"\nCollaborators: {', '.join(snap['collaborators'])}")
-
-        if snap.get("pain_points"):
-            lines.append("\nPain points:")
-            for pp in snap["pain_points"]:
-                lines.append(f"  - {pp}")
-
-        if snap.get("notable_changes"):
-            lines.append("\nNotable changes:")
-            for nc in snap["notable_changes"]:
-                lines.append(f"  - {nc}")
-
-        if snap.get("session_summary"):
-            lines.append(f"\nSummary: {snap['session_summary']}")
-
-        return "\n".join(lines)
-
-        
     def update_user_portrait_str(self, new_user_portrait: str):
         parsed_user_portrait = safe_parse_json(new_user_portrait)
         if parsed_user_portrait:

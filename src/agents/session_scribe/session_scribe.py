@@ -8,13 +8,12 @@ import os
 from src.agents.base_agent import BaseAgent
 from src.agents.session_scribe.prompts import get_prompt
 from src.agents.session_scribe.tools import UpdateSessionNote, UpdateSubtopicNotes, UpdateSubtopicCoverage, FeedbackSubtopicCoverage, \
-    UpdateMemoryBankAndSession, UpdateExistingMemory, AddHistoricalQuestion, IdentifyEmergentInsights, AddSnapshotSubtopic, \
+    UpdateMemoryBankAndSession, UpdateExistingMemory, AddHistoricalQuestion, IdentifyEmergentInsights, AddClarificationSubtopic, \
     UpdateCriteriaCoverage, AddTaskDeepDiveTopic
 from src.agents.shared.memory_tools import Recall
 from src.agents.shared.note_tools import AddInterviewQuestion
 from src.agents.shared.feedback_prompts import SIMILAR_QUESTIONS_WARNING, QUESTION_WARNING_OUTPUT_FORMAT
 from src.content.question_bank.question import QuestionSearchResult, SimilarQuestionsGroup
-from src.content.weekly_snapshot.snapshot_manager import SnapshotManager
 from src.utils.data_process import read_from_pdf
 from src.utils.llm.prompt_utils import format_prompt
 from src.utils.llm.xml_formatter import extract_tool_arguments, extract_tool_calls_xml
@@ -66,7 +65,6 @@ class SessionScribe(BaseAgent, Participant):
         self._coverage_pending_tasks = 0
         self._notes_lock = asyncio.Lock()   # Lock for _write_notes_and_questions
         self._session_agenda_lock = asyncio.Lock()  # Lock for session agenda
-        self._snapshot_lock = asyncio.Lock()  # Lock for snapshot comparison findings
         self._tasks_lock = asyncio.Lock()   # Lock for updating task counter
 
         # Tools agent can use
@@ -119,7 +117,7 @@ class SessionScribe(BaseAgent, Participant):
             "recall": Recall(
                 memory_bank=self.interview_session.memory_bank
             ),
-            "add_snapshot_subtopic": AddSnapshotSubtopic(
+            "add_clarification_subtopic": AddClarificationSubtopic(
                 session_agenda=self.interview_session.session_agenda
             ),
             "add_task_deep_dive_topic": AddTaskDeepDiveTopic(
@@ -198,85 +196,6 @@ class SessionScribe(BaseAgent, Participant):
             await self._update_list_of_subtopics(additional_context=additional_context)
             await self._update_subtopic_coverage()
 
-        # For weekly check-ins: load the previous snapshot for turn-by-turn comparison
-        if self.interview_session.session_type == "weekly":
-            await self._load_last_week_snapshot()
-
-    async def _load_last_week_snapshot(self):
-        """Load the previous weekly snapshot onto the session agenda and
-        inject each task as a subtopic so the interviewer covers them."""
-        user_id = self.interview_session.user_id
-        manager = SnapshotManager(user_id)
-        prev_snapshot = manager.load_latest_snapshot()
-
-        if prev_snapshot is None:
-            SessionLogger.log_to_file(
-                "execution_log",
-                "[SNAPSHOT] No previous snapshot found — skipping."
-            )
-            return
-
-        self.interview_session.session_agenda.last_week_snapshot = prev_snapshot.to_dict()
-
-        injected_count = 0
-
-        # Topic 1: Tasks and Deliverables
-        for task in prev_snapshot.tasks:
-            time_pct = f" (~{task.time_share:.0%})" if task.time_share else ""
-            ai_str = f", used {task.ai_tool}" if task.ai_involved and task.ai_tool else ""
-            description = (
-                f"Last week: {task.description}{time_pct}{ai_str} "
-                f"— is this still part of your week? What changed?"
-            )
-            if self.interview_session.session_agenda.add_emergent_subtopic(
-                topic_id="1", subtopic_description=description
-            ):
-                injected_count += 1
-
-        # Topic 2: Tools and Methods
-        for tool in prev_snapshot.tools:
-            description = f"Last week you used {tool} — are you still using it? Any changes in how you use it?"
-            if self.interview_session.session_agenda.add_emergent_subtopic(
-                topic_id="2", subtopic_description=description
-            ):
-                injected_count += 1
-
-        for ai_tool in prev_snapshot.ai_tools:
-            description = f"Last week you used AI tool {ai_tool} — still using it? How has your trust or usage changed?"
-            if self.interview_session.session_agenda.add_emergent_subtopic(
-                topic_id="2", subtopic_description=description
-            ):
-                injected_count += 1
-
-        # Topic 3: Collaboration
-        for collaborator in prev_snapshot.collaborators:
-            description = f"Last week you worked with {collaborator} — any updates on that collaboration?"
-            if self.interview_session.session_agenda.add_emergent_subtopic(
-                topic_id="3", subtopic_description=description
-            ):
-                injected_count += 1
-
-        # Topic 4: Pain Points and Bright Spots
-        for pain_point in prev_snapshot.pain_points:
-            description = f"Last week you mentioned this frustration: {pain_point} — has it improved or is it still an issue?"
-            if self.interview_session.session_agenda.add_emergent_subtopic(
-                topic_id="4", subtopic_description=description
-            ):
-                injected_count += 1
-
-        for change in prev_snapshot.notable_changes:
-            description = f"Last week you noted: {change} — any follow-up on that?"
-            if self.interview_session.session_agenda.add_emergent_subtopic(
-                topic_id="4", subtopic_description=description
-            ):
-                injected_count += 1
-
-        SessionLogger.log_to_file(
-            "execution_log",
-            f"[SNAPSHOT] Loaded week {prev_snapshot.week_number} snapshot onto session agenda "
-            f"({injected_count} subtopics injected across all topics)."
-        )
-
     def _add_question_to_session_agenda(self):
         """Synchronous variant. Kept for non-async callers and tests; calls a
         blocking embedding HTTP request. Async callers (e.g. `on_message`)
@@ -300,7 +219,7 @@ class SessionScribe(BaseAgent, Participant):
                     rubric=rubric
                 )
 
-            if not adding_status:
+            if not adding_status and subtopic_id:
                 SessionLogger.log_to_file(
                     "execution_log",
                     f"[NOTIFY] SessionAgenda failed/skipped to add question to session agenda.",
@@ -348,7 +267,7 @@ class SessionScribe(BaseAgent, Participant):
                     rubric=rubric,
                 )
 
-            if not adding_status:
+            if not adding_status and subtopic_id:
                 SessionLogger.log_to_file(
                     "execution_log",
                     f"[NOTIFY] SessionAgenda failed/skipped to add question to session agenda.",
@@ -379,11 +298,6 @@ class SessionScribe(BaseAgent, Participant):
                 self._locked_write_memory_notes_and_question_bank(interviewer_message, user_message),
                 self._locked_update_subtopic_coverage(interviewer_message, user_message),
             ]
-            if (getattr(self.interview_session, "session_type", "intake") == "weekly"
-                    and self.interview_session.session_agenda.last_week_snapshot):
-                parallel_tasks.append(
-                    self._locked_compare_against_snapshot(interviewer_message, user_message)
-                )
             await asyncio.gather(*parallel_tasks)
 
         finally:
@@ -393,22 +307,21 @@ class SessionScribe(BaseAgent, Participant):
         # doesn't block the Interviewer from asking the next question.
         # Screening runs as a separate follow-on task so it never competes
         # with the interviewer's LLM call.
-        if getattr(self.interview_session, "session_type", "intake") == "intake":
-            async def _portrait_task():
-                # Skip portrait re-extraction when no new memories were added since
-                # the last update — the LLM would produce a near-identical portrait
-                # (modulo phrasing noise).
-                current_count = len(self.interview_session.memory_bank.memories)
-                if current_count <= self.interview_session._portrait_update_memory_count:
-                    return
-                try:
-                    await self.interview_session._generate_and_save_user_portrait()
-                except Exception as e:
-                    SessionLogger.log_to_file(
-                        "execution_log", f"[PORTRAIT] Error updating user portrait: {e}"
-                    )
+        async def _portrait_task():
+            # Skip portrait re-extraction when no new memories were added since
+            # the last update — the LLM would produce a near-identical portrait
+            # (modulo phrasing noise).
+            current_count = len(self.interview_session.memory_bank.memories)
+            if current_count <= self.interview_session._portrait_update_memory_count:
+                return
+            try:
+                await self.interview_session._generate_and_save_user_portrait()
+            except Exception as e:
+                SessionLogger.log_to_file(
+                    "execution_log", f"[PORTRAIT] Error updating user portrait: {e}"
+                )
 
-            asyncio.create_task(_portrait_task())
+        asyncio.create_task(_portrait_task())
 
     async def _locked_write_memory_notes_and_question_bank(self, interviewer_message: Message, user_message: Message) -> None:
         """Wrapper to handle update_memory_bank_and_session with lock"""
@@ -481,36 +394,6 @@ class SessionScribe(BaseAgent, Participant):
                         tag="agenda_lock_message",
                         content=user_message.content)
             await self._identify_emergent_insights()
-
-    async def _locked_compare_against_snapshot(self, interviewer_message: Message, user_message: Message) -> None:
-        """Wrapper to handle snapshot comparison with its own lock (separate from session agenda)"""
-        async with self._snapshot_lock:
-            self.add_event(sender=interviewer_message.role,
-                        tag="snapshot_lock_message",
-                        content=interviewer_message.content)
-            self.add_event(sender=user_message.role,
-                        tag="snapshot_lock_message",
-                        content=user_message.content)
-            await self._compare_against_snapshot()
-
-    async def _compare_against_snapshot(self) -> None:
-        """Compare the latest user response against last week's snapshot.
-        Uses an LLM call to detect inconsistencies, confirmations, and unmentioned items."""
-        prompt = self._get_formatted_prompt("compare_against_snapshot")
-        self.add_event(
-            sender=self.name,
-            tag="compare_against_snapshot_prompt",
-            content=prompt
-        )
-        response = await self.call_engine_async(prompt)
-        self.add_event(
-            sender=self.name,
-            tag="compare_against_snapshot_response",
-            content=response
-        )
-
-        # Handle tool calls (LLM decides whether to call add_snapshot_finding or not)
-        self.handle_tool_calls(response)
 
     async def _identify_emergent_insights(self) -> None:
         """
@@ -976,7 +859,6 @@ class SessionScribe(BaseAgent, Participant):
 
             task_deep_dive_enabled = (
                 os.getenv("ENABLE_TASK_DEEP_DIVE", "false").lower() == "true"
-                and getattr(self.interview_session, "session_type", "intake") != "weekly"
             )
 
             # Build widget task context when processing a widget submission.
@@ -990,7 +872,7 @@ class SessionScribe(BaseAgent, Participant):
                     f"The participant just submitted the time-allocation widget. "
                     f"The following task names were included in the submission — "
                     f"check each one for clear action+object format (objective optional) "
-                    f"and call `add_snapshot_subtopic` for any that are bare verbs, "
+                    f"and call `add_clarification_subtopic` for any that are bare verbs, "
                     f"bare nouns, or missing a clear object:\n"
                     f"{names_list}\n"
                     f"\n⚠️ SCOPE RESTRICTION: In this evaluation round, ONLY assess "
@@ -1041,7 +923,7 @@ class SessionScribe(BaseAgent, Participant):
                 else ["update_criteria_coverage", "update_subtopic_coverage"]
             )
             if widget_task_names:
-                selected_tools = selected_tools + ["add_snapshot_subtopic"]
+                selected_tools = selected_tools + ["add_clarification_subtopic"]
 
             formatted_prompt = format_prompt(prompt, {
                 "user_portrait": self.interview_session.session_agenda.user_portrait,
@@ -1084,24 +966,6 @@ class SessionScribe(BaseAgent, Participant):
                 "user_portrait": self.interview_session.session_agenda.user_portrait,
                 "additional_context": kwargs.get("additional_context"),
                 "interview_description": self.interview_session.session_agenda.interview_description,
-            })
-        elif prompt_type == "compare_against_snapshot":
-            events = self.get_event_stream_str(
-                filter=[{"tag": "snapshot_lock_message"}], as_list=True)
-            current_qa = events[-2:] if len(events) >= 2 else []
-
-            snapshot_str = self.interview_session.session_agenda.get_last_week_snapshot_str()
-            coverage_str = self.interview_session.session_agenda.get_questions_and_notes_str(
-                hide_answered="all", active_topics_only=True
-            )
-
-            return format_prompt(prompt, {
-                "current_qa": "\n".join(current_qa),
-                "last_week_snapshot": snapshot_str,
-                "topic_coverage": coverage_str,
-                "tool_descriptions": self.get_tools_description(
-                    selected_tools=["add_snapshot_subtopic", "recall"]
-                )
             })
         elif prompt_type == "identify_emergent_insights":
             events = self.get_event_stream_str(

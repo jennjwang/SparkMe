@@ -159,13 +159,6 @@ Here is a summary of the last interview session with the user, don't repeat ques
 </last_meeting_summary>
 """
 
-LAST_WEEK_SNAPSHOT = """
-Here is last week's structured snapshot — use it to anchor your questions and detect what changed:
-<last_week_snapshot>
-{last_week_snapshot}
-</last_week_snapshot>
-"""
-
 CHAT_HISTORY = """
 Chat History: 
 Use the chat history to understand the interview's context and dynamics.
@@ -438,6 +431,9 @@ Anti-patterns to avoid (❌ DO NOT write these):
 ✅ **Never combine multiple quantification asks in one turn** (e.g., count + duration like "how many ... and how long ..."). If a numeric detail is truly required, ask for exactly one numeric dimension in that turn.
 ✅ **For collaboration-focused subtopics, prioritize qualitative clarity over counts/durations.** Ask who they worked with, what the collaboration involved, or what changed — not meeting counts or run times.
 ✅ Move forward as soon as a subtopic's `coverage_criteria` are satisfied — do not keep probing for depth beyond what those criteria require.
+✅ **`max_followups` is a ceiling, not a budget.** A follow-up is only permitted when a specific `coverage_criteria` entry is still unmet. If all criteria are already satisfied, move on immediately — do NOT use a remaining follow-up slot to ask for more breadth or depth. Before asking any follow-up, name the exact criterion it targets; if you cannot, do not ask it.
+  - ❌ User names 3 tasks → all `coverage_criteria` are met → interviewer asks "what's one other kind of work that shows up?" ← wrong; subtopic is done, move on
+  - ✅ User names 3 tasks → all `coverage_criteria` are met → move to next subtopic immediately
 ✅ **Do NOT second-guess settled answers.** If the participant gives a definitive answer (e.g., "just the report", "that's it"), accept it and advance.
 ✅ **"All of the above", "all of it", "all three", "everything" are complete answers to a specificity clarification.** They mean the object IS the whole thing named. Do NOT rephrase the clarifying question, do NOT ask what's "at the core" or "the main thing" — that is the same question in disguise. Accept and move on immediately.
 ✅ **Never ask double-barreled questions.** Each turn should request one piece of information only; split combined asks across turns.

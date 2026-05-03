@@ -2,8 +2,10 @@
 from datetime import datetime
 from typing import Dict, List
 import asyncio
+import contextvars
 from functools import partial
 import os
+import threading
 import time
 
 # Third-party imports
@@ -23,10 +25,40 @@ class BaseAgent:
 
     # Class variable shared by all instances
     use_baseline: bool = False
-    # Shared token tracker across all agents (set by InterviewSession)
-    token_tracker = None
-    # Shared turn counter (set by InterviewSession)
-    current_turn = 0
+    # Per-thread token tracker and turn counter (set by InterviewSession)
+    _thread_local = threading.local()
+    _token_tracker_var = contextvars.ContextVar(
+        "base_agent_token_tracker",
+        default=None,
+    )
+    _current_turn_var = contextvars.ContextVar(
+        "base_agent_current_turn",
+        default=None,
+    )
+
+    @classmethod
+    def _get_token_tracker(cls):
+        tracker = cls._token_tracker_var.get()
+        if tracker is not None:
+            return tracker
+        return getattr(cls._thread_local, 'token_tracker', None)
+
+    @classmethod
+    def _set_token_tracker(cls, tracker):
+        cls._thread_local.token_tracker = tracker
+        cls._token_tracker_var.set(tracker)
+
+    @classmethod
+    def _get_current_turn(cls):
+        turn = cls._current_turn_var.get()
+        if turn is not None:
+            return turn
+        return getattr(cls._thread_local, 'current_turn', 0)
+
+    @classmethod
+    def _set_current_turn(cls, turn):
+        cls._thread_local.current_turn = turn
+        cls._current_turn_var.set(turn)
 
     class Event(BaseModel):
         """Event class for all events. All events inherits from this class."""
@@ -66,11 +98,12 @@ class BaseAgent:
                 response = invoke_engine(self.engine, prompt)
 
                 # Track token usage if tracker is available
-                if BaseAgent.token_tracker is not None:
+                token_tracker = BaseAgent._get_token_tracker()
+                if token_tracker is not None:
                     usage = response.get_token_usage()
-                    BaseAgent.token_tracker.record_usage(
+                    token_tracker.record_usage(
                         agent_name=self.name,
-                        turn=BaseAgent.current_turn,
+                        turn=BaseAgent._get_current_turn(),
                         usage=usage
                     )
 
@@ -104,9 +137,12 @@ class BaseAgent:
         '''Asynchronously call the LLM engine with the given prompt.'''
         # Run call_engine in a thread pool since it's a blocking operation
         loop = asyncio.get_running_loop()
+        context = contextvars.copy_context()
+        func = partial(self._call_engine, prompt)
         return await loop.run_in_executor(
             None,
-            partial(self._call_engine, prompt)
+            context.run,
+            func,
         )
         
     def add_event(self, sender: str, tag: str, content: str):

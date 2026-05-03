@@ -59,7 +59,7 @@ from src.content.session_agenda.session_agenda import normalize_user_portrait
 
 SESSION_TIMEOUT_SECONDS = 3600  # 1 hour
 START_TIME = time.time()
-DEFAULT_AVAILABLE_TIME_MINUTES = 10
+DEFAULT_AVAILABLE_TIME_MINUTES = 60
 MIN_AVAILABLE_TIME_MINUTES = 5
 MAX_AVAILABLE_TIME_MINUTES = 120
 
@@ -230,6 +230,8 @@ class SessionWrapper:
 
 active_sessions: Dict[str, SessionWrapper] = {}
 session_audio_cache: Dict[str, Dict[str, object]] = {}
+# Legacy message cache kept so cleanup/tests can clear the same module state.
+last_messages_by_session: Dict[str, list[dict]] = {}
 # Rolling dialogue state for /api/task-followup, keyed by session + phase.
 task_followup_history_by_session: Dict[str, Dict[str, list[Dict[str, str]]]] = {}
 # Tracks follow-up turn count since last task extraction, per session per phase
@@ -241,8 +243,47 @@ pending_turns_by_session: Dict[str, OrderedDict[str, Dict[str, object]]] = {}
 # Guards against duplicate latency rows when messages are replayed.
 delivered_turn_messages_by_session: Dict[str, set[str]] = {}
 
+_TASK_HIERARCHY_MODEL_NAME = os.getenv("TASK_HIERARCHY_MODEL_NAME", "gpt-5.4")
+_TASK_TREE_CACHE: Dict[tuple, list[dict]] = {}
+_TASK_TREE_INFLIGHT: Dict[tuple, object] = {}
+_TASK_TREE_CACHE_LOCK = threading.Lock()
 
 _TASK_FOLLOWUP_HISTORY_MAX_MESSAGES = 12
+
+
+def _organize_tasks_cached(
+    tasks: list[str],
+    grouping_feedback: str = "",
+) -> tuple[list[dict], bool]:
+    """Organize task strings into a tree with a small in-process cache."""
+    cleaned_tasks = [str(t).strip() for t in tasks if str(t).strip()]
+    normalized_feedback = " ".join(str(grouping_feedback or "").split())
+    cache_key = (tuple(cleaned_tasks), normalized_feedback)
+
+    with _TASK_TREE_CACHE_LOCK:
+        cached_tree = _TASK_TREE_CACHE.get(cache_key)
+        if cached_tree is not None:
+            return cached_tree, True
+        _TASK_TREE_INFLIGHT[cache_key] = True
+
+    try:
+        from src.utils.task_hierarchy import organize_tasks
+
+        tree = organize_tasks(
+            cleaned_tasks,
+            model_name=_TASK_HIERARCHY_MODEL_NAME,
+            screen=True,
+            grouping_feedback=normalized_feedback,
+            append_uncovered_tasks=False,
+        )
+    finally:
+        with _TASK_TREE_CACHE_LOCK:
+            _TASK_TREE_INFLIGHT.pop(cache_key, None)
+
+    with _TASK_TREE_CACHE_LOCK:
+        _TASK_TREE_CACHE[cache_key] = tree
+
+    return tree, False
 
 
 def _normalize_task_followup_phase(raw_phase: object) -> str:
@@ -633,23 +674,21 @@ def create_interview_session(user_id: str, session_type: str = "intake",
 
     Args:
         user_id: User identifier (for agent mode, use the sample profile user_id).
-        session_type: "intake" for initial profiling, "weekly" for recurring check-ins.
+        session_type: Deprecated. Sessions are intake-only.
         interaction_mode: 'api' for human-via-web, 'agent' for simulated user.
         available_time: Participant's available time in minutes (from pre-interview question).
     """
     session_token = str(uuid.uuid4())
 
-    if session_type == "weekly":
-        interview_plan_path = os.getenv('INTERVIEW_PLAN_PATH_WEEKLY',
-                                        'configs/topics_weekly.json')
-        interview_description = "Weekly work check-in: tracking how your tasks and work are evolving"
-    else:
-        interview_plan_path = os.getenv('INTERVIEW_PLAN_PATH_INTAKE',
-                                        'configs/topics_intake.json')
-        interview_description = os.getenv(
-            'INTERVIEW_DESCRIPTION',
-            "Initial intake interview: understanding your role, tasks, and work patterns"
-        )
+    if session_type != "intake":
+        app.logger.info("Ignoring deprecated session_type=%r; using intake.", session_type)
+    session_type = "intake"
+    interview_plan_path = os.getenv('INTERVIEW_PLAN_PATH_INTAKE',
+                                    'configs/topics_intake.json')
+    interview_description = os.getenv(
+        'INTERVIEW_DESCRIPTION',
+        "Initial intake interview: understanding your role, tasks, and work patterns"
+    )
 
     interview_session = InterviewSession(
         interaction_mode=interaction_mode,
@@ -945,6 +984,188 @@ def pilot_viewer():
     return render_template('pilot.html', username=get_current_user().username)
 
 PILOT_DIR = os.path.join(_root, 'pilot')
+PROLIFIC_LOGS_DIR = os.path.join(_root, 'prolific', 'gcp_logs', 'logs')
+PROLIFIC_EXCLUDED_DIR = os.path.join(_root, 'prolific', 'gcp_logs', 'excluded')
+
+
+@app.route('/api/replay-state', methods=['GET'])
+@agent_or_login_required
+def replay_state():
+    """Return session-state shape from static prolific logs for visualizer replay mode.
+
+    Without user_id: returns {participants: [...]} list.
+    With user_id:    returns the same shape as /api/session-state.
+    """
+    user_id = request.args.get('user_id')
+
+    if not user_id:
+        participants, excluded_ids = [], []
+        for base_dir, bucket in ((PROLIFIC_LOGS_DIR, False), (PROLIFIC_EXCLUDED_DIR, True)):
+            if os.path.isdir(base_dir):
+                for d in sorted(os.listdir(base_dir)):
+                    if os.path.isdir(os.path.join(base_dir, d)):
+                        participants.append(d)
+                        if bucket:
+                            excluded_ids.append(d)
+        return jsonify({'success': True, 'participants': participants, 'excluded_ids': excluded_ids})
+
+    # Check both logs/ and excluded/
+    user_dir = os.path.join(PROLIFIC_LOGS_DIR, user_id)
+    excluded = False
+    if not os.path.isdir(user_dir):
+        user_dir = os.path.join(PROLIFIC_EXCLUDED_DIR, user_id)
+        excluded = True
+    if not os.path.isdir(user_dir):
+        return jsonify({'success': False, 'error': 'Participant not found'}), 404
+
+    session_dir = os.path.join(user_dir, 'execution_logs', 'session_1')
+
+    def _load(path):
+        try:
+            with open(path) as f:
+                return json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            return None
+
+    agenda       = _load(os.path.join(session_dir, 'session_agenda.json'))
+    memory_bank  = _load(os.path.join(user_dir, 'memory_bank_content.json'))
+    transcript   = _load(os.path.join(session_dir, 'chat_transcript.json')) or []
+    portrait_raw = _load(os.path.join(user_dir, 'user_portrait.json')) or {}
+
+    # ── Topics ──────────────────────────────────────────────────────────────
+    topics = []
+    if agenda:
+        itm = agenda.get('interview_topic_manager') or {}
+        for topic in (itm.get('core_topic_dict') or {}).values():
+            subtopics = []
+            for st in (topic.get('required_subtopics') or {}).values():
+                subtopics.append({
+                    'id': st['subtopic_id'],
+                    'description': st.get('description', ''),
+                    'is_covered': st.get('is_covered', False),
+                    'notes': list(st.get('notes') or []),
+                    'notes_count': len(st.get('notes') or []),
+                    'questions_count': len(st.get('questions') or []),
+                    'emergent_insights_count': len(st.get('emergent_insights') or []),
+                    'final_summary': st.get('final_summary', ''),
+                    'is_emergent': False,
+                    'coverage_criteria': list(st.get('coverage_criteria') or []),
+                    'criteria_coverage': list(st.get('criteria_coverage') or []),
+                })
+            for st in (topic.get('emergent_subtopics') or {}).values():
+                subtopics.append({
+                    'id': st['subtopic_id'],
+                    'description': st.get('description', ''),
+                    'is_covered': st.get('is_covered', False),
+                    'notes': list(st.get('notes') or []),
+                    'notes_count': len(st.get('notes') or []),
+                    'questions_count': len(st.get('questions') or []),
+                    'emergent_insights_count': len(st.get('emergent_insights') or []),
+                    'final_summary': st.get('final_summary', ''),
+                    'is_emergent': True,
+                    'coverage_criteria': list(st.get('coverage_criteria') or []),
+                    'criteria_coverage': list(st.get('criteria_coverage') or []),
+                })
+            topics.append({
+                'id': topic['topic_id'],
+                'description': topic.get('description', ''),
+                'subtopics': subtopics,
+            })
+
+    # ── Memories ─────────────────────────────────────────────────────────────
+    all_memories = (memory_bank or {}).get('memories') or []
+    memories = []
+    for mem in all_memories[-20:]:
+        memories.append({
+            'id': mem.get('id', ''),
+            'title': mem.get('title', ''),
+            'text': (mem.get('text') or '')[:250],
+            'timestamp': mem.get('timestamp', ''),
+            'subtopic_links': mem.get('subtopic_links') or [],
+            'transcript_references': [
+                {
+                    'interview_response': (ref.get('interview_response') or '')[:200],
+                    'timestamp': ref.get('timestamp'),
+                }
+                for ref in (mem.get('transcript_references') or [])
+            ],
+        })
+
+    # ── Turns ────────────────────────────────────────────────────────────────
+    turns = [
+        {
+            'id': f'replay_{i}',
+            'role': msg.get('role', ''),
+            'content': msg.get('content', ''),
+            'timestamp': msg.get('timestamp', ''),
+        }
+        for i, msg in enumerate(transcript)
+    ]
+
+    # ── Portrait / strategic ─────────────────────────────────────────────────
+    user_portrait        = (agenda or {}).get('user_portrait') or portrait_raw
+    strategic_priorities = (agenda or {}).get('strategic_priorities') or {}
+    emergent_insights    = (agenda or {}).get('emergent_insights') or []
+    end_reason           = (agenda or {}).get('end_reason', '')
+
+    # ── Task widgets ─────────────────────────────────────────────────────────
+    eval_dir     = os.path.join(user_dir, 'evaluations')
+    task_widget    = _load(os.path.join(eval_dir, 'task_widget_data.json')) or {}
+    ai_task_widget = _load(os.path.join(eval_dir, 'ai_task_widget_data.json')) or {}
+
+    # Build ai_type lookup from listed items so selected tasks carry their type
+    ai_type_map = {item['text']: item.get('ai_type', 'capability')
+                   for item in (ai_task_widget.get('listed') or [])
+                   if isinstance(item, dict)}
+
+    ai_selected_set = set(ai_task_widget.get('selected') or [])
+    tasks_data = {
+        'confirmed':  list(task_widget.get('selected') or []),
+        'removed':    list(task_widget.get('removed') or []),
+        'edited':     list(task_widget.get('edited') or []),
+        'ai_selected': [
+            {'text': t, 'ai_type': ai_type_map.get(t, 'capability')}
+            for t in (ai_task_widget.get('selected') or [])
+        ],
+        'ai_removed': [
+            {'text': item['text'], 'ai_type': item.get('ai_type', 'capability')}
+            for item in (ai_task_widget.get('listed') or [])
+            if isinstance(item, dict) and item.get('text') not in ai_selected_set
+        ],
+        'ai_extras': list(ai_task_widget.get('extras') or []),
+        'attn_failed': (task_widget.get('attn_failed') or 0) + (ai_task_widget.get('attn_failed') or 0),
+        'attn_total':  (task_widget.get('attn_total') or 0) + (ai_task_widget.get('attn_total') or 0),
+        'attn_failures': [
+            *(
+                [{'widget': 'Task widget', 'failed': task_widget['attn_failed'], 'total': task_widget['attn_total']}]
+                if task_widget.get('attn_failed') else []
+            ),
+            *(
+                [{'widget': 'AI task widget', 'failed': ai_task_widget['attn_failed'], 'total': ai_task_widget['attn_total']}]
+                if ai_task_widget.get('attn_failed') else []
+            ),
+        ],
+    }
+
+    return jsonify({
+        'success': True,
+        'topics': topics,
+        'memories': memories,
+        'memory_count': len(all_memories),
+        'turns': turns,
+        'turn_count': len(turns),
+        'user_portrait': user_portrait,
+        'strategic_priorities': strategic_priorities,
+        'rollout_predictions': [],
+        'emergent_insights': emergent_insights,
+        'tasks': tasks_data,
+        'excluded': excluded,
+        'session_type': 'intake',
+        'session_completed': end_reason in ('completed', 'timeout'),
+        'session_in_progress': False,
+        'timestamp': __import__('datetime').datetime.now().isoformat(),
+    })
+
 
 @app.route('/api/pilot-data', methods=['GET'])
 @login_required
@@ -1066,9 +1287,17 @@ def start_session():
                 'session_started_at_epoch_ms': session_started_at_epoch_ms,
             })
     
+    # Block previously disqualified users from starting a new session
+    attn_max = int(os.getenv('ATTN_CHECK_MAX_FAILS', '1'))
+    users = load_users()
+    user_record = users.get(str(user_id), {})
+    if (user_record.get('attn_failed', 0) > attn_max or
+            user_record.get('ai_attn_failed', 0) > attn_max):
+        app.logger.info(f"[start-session] Blocked disqualified user {user_id}")
+        return jsonify({'success': False, 'disqualified': True}), 403
+
     # Create new session only if none exists
     data = request.get_json(silent=True) or {}
-    session_type = data.get("session_type", os.getenv("SESSION_TYPE", "intake"))
     raw_available_time = data.get("available_time")  # minutes, from pre-interview question
     available_time = _normalize_available_time_minutes(
         raw_available_time,
@@ -1081,8 +1310,10 @@ def start_session():
             available_time,
             get_current_user().username,
         )
-    interview_session, session_token = create_interview_session(user_id=user_id, session_type=session_type,
-                                                                 available_time=available_time)
+    interview_session, session_token = create_interview_session(
+        user_id=user_id,
+        available_time=available_time,
+    )
 
     app.logger.info(f"Session created: {session_token} | User: {get_current_user().username} ({user_id})")
     print(f"[Session] Created NEW session {session_token} for user {get_current_user().username}")
@@ -1108,7 +1339,6 @@ def start_session():
 def start_agent_session():
     """Start an autonomous session with a simulated user (UserAgent) for testing/visualization."""
     data = request.get_json(silent=True) or {}
-    session_type = data.get("session_type", os.getenv("SESSION_TYPE", "intake"))
 
     viewer = get_current_user().username if current_user.is_authenticated else 'agent'
 
@@ -1134,7 +1364,6 @@ def start_agent_session():
 
     interview_session, session_token = create_interview_session(
         user_id=sim_user_id,
-        session_type=session_type,
         interaction_mode='agent',
     )
 
@@ -1355,7 +1584,6 @@ def get_messages():
         'ai_usage_widget',
         'ai_task_widget',
         'feedback_widget',
-        'profile_confirm_widget',
         'task_validation_widget',
     }
     if has_user_buffer and full_history:
@@ -1924,7 +2152,6 @@ def session_state():
         'turns': turns,
         'turn_count': len(iv.chat_history),
         'user_portrait': agenda.user_portrait if agenda else {},
-        'last_week_snapshot': agenda.last_week_snapshot if agenda else {},
         'strategic_priorities': strategic_priorities,
         'rollout_predictions': rollout_predictions,
         'emergent_insights': emergent_insights,
@@ -2583,7 +2810,7 @@ def ai_era_tasks():
 @app.route('/api/attention-check-tasks', methods=['POST'])
 @agent_or_login_required
 def attention_check_tasks():
-    """Generate 2–3 tasks that are clearly unrelated to the user's profession (attention checks)."""
+    """Generate attention-check tasks that are clearly unrelated to the user's profession."""
     from src.utils.llm.engines import get_engine, invoke_engine
 
     data = request.get_json(silent=True) or {}
@@ -2600,7 +2827,7 @@ def attention_check_tasks():
 
     prompt = (
         f"Occupation context: \"{job_description}\"\n\n"
-        "Generate exactly 8 work tasks that are CLEARLY AND OBVIOUSLY unrelated to this occupation — "
+        "Generate exactly 4 work tasks that are CLEARLY AND OBVIOUSLY unrelated to this occupation —"
         "tasks someone in this role would never do as part of their job. "
         "These are attention-check items to verify the participant is reading carefully.\n\n"
         "Rules:\n"
@@ -2647,7 +2874,7 @@ def ai_attention_check_tasks():
 
     prompt = (
         f"Occupation context: \"{job_description}\"\n\n"
-        "Generate exactly 3 AI-related tasks that someone in a COMPLETELY DIFFERENT occupation would do — "
+        "Generate exactly 4 AI-related tasks that someone in a COMPLETELY DIFFERENT occupation would do — "
         "tasks that involve AI but would make no sense for the role described above. "
         "These are attention-check items: the participant should NOT select them because they don't apply to their job.\n\n"
         "Rules:\n"
@@ -3314,25 +3541,83 @@ def task_followup():
     return jsonify({'success': True, 'reply': reply, 'task_name': task_name, 'done': done})
 
 
-@app.route('/api/submit-task-validation', methods=['POST'])
+@app.route('/api/organize-tasks', methods=['POST'])
 @agent_or_login_required
-def submit_task_validation():
-    """Store the validated task list and trigger session end (feedback widget)."""
+def organize_tasks_api():
+    """Organize validated tasks into a review tree for the task widget."""
     data = request.get_json(silent=True) or {}
     session_token = data.get('session_token')
-    validated_tasks = data.get('tasks') or []
-    extra_tasks = data.get('extra_tasks') or []
-    attn_failed = int(data.get('attn_failed', 0))
-    attn_total = int(data.get('attn_total', 0))
+    tasks = data.get('tasks')
+    grouping_feedback = str(data.get('grouping_feedback') or '').strip()
 
-    if not isinstance(validated_tasks, list):
+    if not isinstance(tasks, list):
         return jsonify({'success': False, 'error': 'tasks must be a list'}), 400
 
     wrapper = get_session_wrapper(session_token)
     if not wrapper:
         return jsonify({'success': False, 'error': 'Invalid or expired session'}), 400
 
+    try:
+        tree, cached = _organize_tasks_cached(
+            [str(t).strip() for t in tasks if str(t).strip()],
+            grouping_feedback=grouping_feedback,
+        )
+    except Exception as e:
+        app.logger.error(f"[organize_tasks] Error organizing tasks: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+    feedback_applied = bool(grouping_feedback)
+    acknowledgement = (
+        "Thanks - I regrouped the subtasks using your feedback."
+        if feedback_applied
+        else "Thanks - I organized your subtasks."
+    )
+
+    return jsonify({
+        'success': True,
+        'tree': tree,
+        'cached': cached,
+        'grouping_feedback_applied': feedback_applied,
+        'acknowledgement': acknowledgement,
+        'message': acknowledgement,
+    })
+
+
+@app.route('/api/submit-task-validation', methods=['POST'])
+@agent_or_login_required
+def submit_task_validation():
+    """Store the validated task list and start the post-validation probing flow."""
+    data = request.get_json(silent=True) or {}
+    session_token = data.get('session_token')
+    validated_tasks = data.get('tasks') or []
+    extra_tasks = data.get('extra_tasks') or []
+    listed_tasks = data.get('listed_tasks') or []
+    attn_failed = int(data.get('attn_failed', 0))
+    attn_total = int(data.get('attn_total', 0))
+    attn_items = data.get('attn_items') or []
+
+    if not isinstance(validated_tasks, list):
+        return jsonify({'success': False, 'error': 'tasks must be a list'}), 400
+    if not isinstance(listed_tasks, list):
+        return jsonify({'success': False, 'error': 'listed_tasks must be a list'}), 400
+
+    wrapper = get_session_wrapper(session_token)
+    if not wrapper:
+        return jsonify({'success': False, 'error': 'Invalid or expired session'}), 400
+
     iv = wrapper.interview_session
+    missing_recency = [
+        t for t in listed_tasks
+        if isinstance(t, dict)
+        and str(t.get('status', '')).strip().lower() in {'confirmed', 'edited'}
+        and not str(t.get('recency') or '').strip()
+    ]
+    if missing_recency:
+        return jsonify({
+            'success': False,
+            'error': 'recency required for confirmed or edited tasks',
+        }), 400
+
     # Reset post-validation probing dialogue state for this session.
     task_followup_history_by_session.pop(session_token, None)
     task_followup_turns_by_session.pop(session_token, None)
@@ -3357,7 +3642,6 @@ def submit_task_validation():
 
 
     # Save task widget data snapshot as JSON (don't overwrite a prior submission that had tasks)
-    listed_tasks = data.get('listed_tasks') or []
     eval_dir = Path(os.getenv('LOGS_DIR', 'logs')) / iv.user_id / 'evaluations'
     eval_dir.mkdir(parents=True, exist_ok=True)
     task_snapshot_path = eval_dir / 'task_widget_data.json'
@@ -3365,7 +3649,9 @@ def submit_task_validation():
     if task_snapshot_path.exists():
         try:
             prior = json.loads(task_snapshot_path.read_text())
-            prior_has_tasks = bool(prior.get('selected') or prior.get('listed'))
+            # A stub written at widget-emit time should always be overwritten by the real submission
+            is_stub = prior.get('status') == 'shown_not_submitted'
+            prior_has_tasks = not is_stub and bool(prior.get('selected') or prior.get('listed'))
         except Exception:
             pass
     if not prior_has_tasks:
@@ -3374,6 +3660,7 @@ def submit_task_validation():
             'session_id': str(getattr(iv, 'session_id', '')),
             'attn_failed': attn_failed,
             'attn_total': attn_total,
+            'attn_items': attn_items,
             'listed': listed_tasks,
             'selected': [str(t).strip() for t in validated_tasks if str(t).strip()],
             'removed': [
@@ -3406,6 +3693,8 @@ def submit_task_validation():
             attn_disqualified = True
 
     if attn_disqualified:
+        iv._ai_task_widget_sent = True
+        iv._ai_task_widget_submitted = True
         # End the session now — skip probing loop and AI tasks
         def _end_early():
             iv.end_with_thankyou(send_message=False)
@@ -3414,6 +3703,19 @@ def submit_task_validation():
         else:
             _end_early()
         return jsonify({'success': True, 'task_count': len(all_tasks), 'attn_disqualified': True})
+
+    initial_probe = (
+        "Before we move on — are there any tasks or responsibilities we haven't "
+        "covered yet that you'd like to add?"
+    )
+
+    def _send_initial_probe():
+        iv.add_message_to_chat_history(role="Interviewer", content=initial_probe)
+
+    if hasattr(wrapper, 'loop'):
+        wrapper.loop.call_soon_threadsafe(_send_initial_probe)
+    else:
+        _send_initial_probe()
 
     return jsonify({'success': True, 'task_count': len(all_tasks)})
 
@@ -3432,6 +3734,7 @@ def submit_ai_tasks():
     listed_tasks = data.get('listed_tasks') or []
     ai_attn_failed = int(data.get('attn_failed', 0))
     ai_attn_total = int(data.get('attn_total', 0))
+    ai_attn_items = data.get('attn_items') or []
 
     wrapper = get_session_wrapper(session_token)
     if not wrapper:
@@ -3474,6 +3777,7 @@ def submit_ai_tasks():
             'session_id': str(getattr(iv, 'session_id', '')),
             'attn_failed': ai_attn_failed,
             'attn_total': ai_attn_total,
+            'attn_items': ai_attn_items,
             'listed': listed_tasks,
             'selected': selected_texts,
             'extras': extra_texts,
@@ -3481,6 +3785,7 @@ def submit_ai_tasks():
         with open(ai_snapshot_path, 'w') as f:
             json.dump(ai_snapshot, f, indent=2)
 
+    iv._ai_task_widget_submitted = True
     app.logger.info(f"[submit_ai_tasks] Saved {len(all_ai_tasks)} AI tasks for user {iv.user_id}")
 
     # Persist AI attention check result and disqualify if needed
@@ -3665,6 +3970,7 @@ def cleanup_old_sessions():
         if age > SESSION_TIMEOUT_SECONDS:
             to_remove.append(token)
             session_audio_cache.pop(token, None)
+            last_messages_by_session.pop(token, None)
             task_followup_history_by_session.pop(token, None)
             task_followup_turns_by_session.pop(token, None)
             pending_turns_by_session.pop(token, None)

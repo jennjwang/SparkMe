@@ -628,29 +628,27 @@ class AddTaskDeepDiveTopic(BaseTool):
             raise ToolException(f"Error adding task deep dive topic: {e}")
 
 
-class AddSnapshotSubtopicInput(BaseModel):
+class AddClarificationSubtopicInput(BaseModel):
     topic_id: str = Field(
-        description="The ID of the weekly topic this subtopic belongs under (e.g., '1' for This Week's Tasks)."
+        description="The ID of the topic this clarification subtopic belongs under."
     )
     description: str = Field(
         description=(
-            "Description of what needs to be explored. Be specific about what changed or is missing. "
-            "Example: 'Client deck prep was ~30% of time last week but not mentioned — check if still ongoing or wrapped up'"
+            "Description of what needs to be clarified. Be specific about what is missing. "
+            "Example: \"Clarify task 'experiments': ask what specific action they do on experiments.\""
         )
     )
 
 
-class AddSnapshotSubtopic(BaseTool):
-    """Tool for adding snapshot-driven subtopics that the Interviewer should cover."""
-    name: str = "add_snapshot_subtopic"
+class AddClarificationSubtopic(BaseTool):
+    """Tool for adding clarification subtopics that the Interviewer should cover."""
+    name: str = "add_clarification_subtopic"
     description: str = (
-        "Add a new subtopic based on a comparison against last week's snapshot. "
-        "Use this when you detect an inconsistency (user contradicts the snapshot) "
-        "or an unmentioned item (something from the snapshot the user hasn't discussed and "
-        "the related subtopic is NOT COVERED). The Interviewer will cover this subtopic "
-        "like any other uncovered subtopic."
+        "Add a new subtopic when a captured task or answer needs more clarification. "
+        "Use this when a task is too vague, lacks a clear action, or lacks a clear object. "
+        "The Interviewer will cover this subtopic like any other uncovered subtopic."
     )
-    args_schema: Type[BaseModel] = AddSnapshotSubtopicInput
+    args_schema: Type[BaseModel] = AddClarificationSubtopicInput
     session_agenda: SessionAgenda = Field(...)
 
     def _run(
@@ -665,8 +663,8 @@ class AddSnapshotSubtopic(BaseTool):
                 subtopic_description=description
             )
             if added:
-                return f"Added snapshot subtopic under topic {topic_id}: {description}"
+                return f"Added clarification subtopic under topic {topic_id}: {description}"
             else:
                 return f"Subtopic not added (may be duplicate or topic not found): {description}"
         except Exception as e:
-            raise ToolException(f"Error adding snapshot subtopic: {e}")
+            raise ToolException(f"Error adding clarification subtopic: {e}")

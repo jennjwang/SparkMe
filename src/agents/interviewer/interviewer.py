@@ -177,8 +177,11 @@ class Interviewer(BaseAgent, Participant):
         self._last_sent_message_text = delivered
         return delivered
 
-    def _guarded_send_goodbye(self, goodbye: str) -> None:
-        """Gate: only the first message per turn reaches the user (for end_conversation)."""
+    def _guarded_send_goodbye(self, goodbye: str) -> bool:
+        """Gate: only the first message per turn reaches the user (for end_conversation).
+
+        Returns True if the goodbye was sent, False if it was blocked.
+        """
         if self._message_sent_this_turn:
             SessionLogger.log_to_file(
                 "execution_log",
@@ -186,7 +189,27 @@ class Interviewer(BaseAgent, Participant):
                 f"{goodbye[:150]}",
                 log_level="warning"
             )
-            return
+            return False
+        # Safety net: never send a goodbye before the AI task widget has been
+        # submitted. Block any premature end_conversation call and trigger the
+        # task validation widget if it hasn't been shown yet, so the full
+        # TVW → probing → ai_open → AI widget flow always completes first.
+        if not getattr(self.interview_session, '_ai_task_widget_submitted', False):
+            if not getattr(self.interview_session, '_task_validation_widget_sent', False):
+                SessionLogger.log_to_file(
+                    "execution_log",
+                    "[GUARD] end_conversation blocked — task validation widget not yet shown. "
+                    "Triggering widget instead.",
+                    log_level="warning",
+                )
+                self.interview_session.trigger_task_validation_widget()
+            else:
+                SessionLogger.log_to_file(
+                    "execution_log",
+                    "[GUARD] end_conversation blocked — AI task widget not yet submitted.",
+                    log_level="warning",
+                )
+            return False
         self._message_sent_this_turn = True
         # Mark session ending immediately so concurrent on_message tasks don't
         # start new turns during the 1-second sleep in EndConversation._run.
@@ -195,6 +218,7 @@ class Interviewer(BaseAgent, Participant):
         self.add_event(sender=self.name, tag="goodbye", content=goodbye)
         self.interview_session.add_message_to_chat_history(
             role=self.title, content=goodbye)
+        return True
 
     def _last_sent_message_is_question(self) -> bool:
         """Return True when the interviewer's last delivered message is a question."""
@@ -308,8 +332,6 @@ class Interviewer(BaseAgent, Participant):
 
     def _default_completion_goodbye(self) -> str:
         """Deterministic close used when agenda is complete before an LLM turn."""
-        if getattr(self.interview_session, "session_type", "intake") == "weekly":
-            return "That’s everything I needed for this week — we’ll wrap here."
         return "That’s everything I needed — we’ll wrap here."
 
     def _normalize_text(self, text: str) -> str:
@@ -1259,25 +1281,6 @@ class Interviewer(BaseAgent, Participant):
                 f" response_preview={quantified_question[:60].replace(chr(10), ' ')!r}"
             )
 
-        # Emit the profile confirm widget before the first non-first-topic question
-        # (intake sessions only; only fires once via the _profile_confirm_widget_sent flag).
-        # Coverage can lag briefly while scribe processing finishes, so also trigger
-        # when the selected subtopic is already outside the first topic.
-        outgoing_topic_index = self._topic_index_for_subtopic(subtopic_id)
-        if (getattr(self.interview_session, 'session_type', 'intake') == 'intake'
-                and not getattr(self.interview_session, '_profile_confirm_widget_sent', False)
-                and (
-                    self._is_first_topic_covered()
-                    or (outgoing_topic_index is not None and outgoing_topic_index > 0)
-                )):
-            self.interview_session.trigger_profile_confirm_widget()
-            asyncio.create_task(
-                self._refresh_portrait_before_widget(
-                    widget_context="profile_confirm",
-                    max_scribe_wait_s=2.0,
-                )
-            )
-
         # Mark that an AI adoption question has been sent so the widget fires
         # after the user's answer (not alongside the question).
         if (
@@ -1487,8 +1490,6 @@ class Interviewer(BaseAgent, Participant):
 
     def _is_fresh_intake_session(self) -> bool:
         """Return True for a brand-new intake session with no prior summary context."""
-        if getattr(self.interview_session, "session_type", "intake") != "intake":
-            return False
         if self.interview_session.chat_history:
             return False
         summary = (
@@ -1518,6 +1519,27 @@ class Interviewer(BaseAgent, Participant):
     async def on_message(self, message: Message):
 
         if getattr(self.interview_session, '_session_ending', False):
+            return
+
+        # Once the task-validation widget has been emitted and until the AI task
+        # widget has been submitted, the post-TVW flow (probing → ai_open →
+        # AI widget → ai_extras → end-session) is handled entirely by the
+        # /api/task-followup and /api/end-session endpoints.
+        # Any user message that leaks through the main interview channel during
+        # this window (e.g. a race between the frontend restoring the chat form
+        # and the AI widget rendering) must be silently dropped so the session
+        # doesn't send a spurious goodbye.
+        if (
+            message is not None
+            and getattr(self.interview_session, '_task_validation_widget_sent', False)
+            and not getattr(self.interview_session, '_ai_task_widget_submitted', False)
+        ):
+            SessionLogger.log_to_file(
+                "execution_log",
+                f"[GUARD] Dropping post-TVW message from {getattr(message, 'role', '?')!r} "
+                f"— task validation widget already sent.",
+                log_level="warning",
+            )
             return
 
         if self._response_lock.locked():
@@ -1621,8 +1643,8 @@ class Interviewer(BaseAgent, Participant):
                     f" reason={_probe_classification.get('reason', '')!r}"
                 )
                 if _decision == "closure":
-                    self._guarded_send_goodbye(self._default_completion_goodbye())
-                    if not getattr(self.interview_session, "_feedback_widget_sent", False):
+                    _sent = self._guarded_send_goodbye(self._default_completion_goodbye())
+                    if _sent and not getattr(self.interview_session, "_feedback_widget_sent", False):
                         self.interview_session.trigger_feedback_widget()
                     self._turn_to_respond = False
                     return
@@ -1650,14 +1672,11 @@ class Interviewer(BaseAgent, Participant):
                 and getattr(self.interview_session, "_post_probe_followup_pending", False)
             ):
                 self.interview_session._post_probe_followup_pending = False
-                self._guarded_send_goodbye(self._default_completion_goodbye())
-                if not getattr(self.interview_session, "_feedback_widget_sent", False):
+                _sent = self._guarded_send_goodbye(self._default_completion_goodbye())
+                if _sent and not getattr(self.interview_session, "_feedback_widget_sent", False):
                     self.interview_session.trigger_feedback_widget()
                 self._turn_to_respond = False
                 return
-
-        # Opening turn of a fresh session with no prior summary: let LLM generate first question
-        is_weekly = getattr(self.interview_session, "session_type", "intake") == "weekly"
 
         # If session is paused, wait until resumed or a step is requested
         await self.interview_session.wait_if_paused()
@@ -1703,10 +1722,6 @@ class Interviewer(BaseAgent, Participant):
         _scribe_waited = False
         _scribe_wait_mode = "none"
         _scribe_wait_exit = "not_needed"
-        profile_confirm_pending = (
-            getattr(self.interview_session, "session_type", "intake") == "intake"
-            and not getattr(self.interview_session, "_profile_confirm_widget_sent", False)
-        )
 
         if message is not None:
             scribe = getattr(self.interview_session, 'session_scribe', None)
@@ -1718,15 +1733,13 @@ class Interviewer(BaseAgent, Participant):
                 # user turn before we inspect them. Without this grace tick, the
                 # interviewer can reuse a stale speculative answer.
                 await asyncio.sleep(0)
-                _scribe_wait_mode = (
-                    "coverage_only" if profile_confirm_pending else "full_scribe"
-                )
+                _scribe_wait_mode = "full_scribe"
                 _last_seen_coverage = pre_scribe_coverage
                 _coverage_stable_ticks = 0
                 _loop_timed_out = True
                 _poll_s = 0.1
                 try:
-                    _max_wait_s = float(os.getenv("INTERVIEWER_MAX_SCRIBE_WAIT_S", "6.0"))
+                    _max_wait_s = float(os.getenv("INTERVIEWER_MAX_SCRIBE_WAIT_S", "12.0"))
                 except (TypeError, ValueError):
                     _max_wait_s = 6.0
                 _max_wait_s = max(0.5, _max_wait_s)
@@ -1739,23 +1752,7 @@ class Interviewer(BaseAgent, Participant):
                 _coverage_stable_required_ticks = max(1, _coverage_stable_required_ticks)
                 _max_ticks = max(1, int(_max_wait_s / _poll_s))
                 for _ in range(_max_ticks):
-                    if profile_confirm_pending:
-                        # During the profile-confirm transition we only need
-                        # coverage updates to be complete; memory-writing tail
-                        # should not block the next interviewer turn.
-                        _processing_busy = bool(
-                            getattr(scribe, 'processing_in_progress', False)
-                        )
-                        _coverage_busy = getattr(
-                            scribe, 'coverage_processing_in_progress', None
-                        )
-                        _scribe_busy = (
-                            _coverage_busy
-                            if isinstance(_coverage_busy, bool)
-                            else _processing_busy
-                        )
-                    else:
-                        _scribe_busy = getattr(scribe, 'processing_in_progress', False)
+                    _scribe_busy = getattr(scribe, 'processing_in_progress', False)
                     if not _scribe_busy:
                         _scribe_wait_exit = "scribe_idle"
                         _loop_timed_out = False
@@ -1770,7 +1767,6 @@ class Interviewer(BaseAgent, Participant):
                     if (
                         _ % 5 == 4
                         and speculative_task is not None
-                        and not profile_confirm_pending
                     ):
                         curr = self._get_coverage_snapshot()
                         if curr == _last_seen_coverage:
@@ -1885,8 +1881,8 @@ class Interviewer(BaseAgent, Participant):
                     "execution_log",
                     "[GUARD] No active topics remain after task validation — ending session."
                 )
-                self._guarded_send_goodbye(self._default_completion_goodbye())
-                if not getattr(self.interview_session, "_feedback_widget_sent", False):
+                _sent = self._guarded_send_goodbye(self._default_completion_goodbye())
+                if _sent and not getattr(self.interview_session, "_feedback_widget_sent", False):
                     self.interview_session.trigger_feedback_widget()
             self._turn_to_respond = False
             return
@@ -2101,15 +2097,6 @@ class Interviewer(BaseAgent, Participant):
             # For baseline mode, remove recall tool
             tools_set.discard("recall")
 
-
-        # For weekly sessions, provide the snapshot for prompt formatting
-        last_week_snapshot_str = ""
-        if getattr(self.interview_session, "session_type", "intake") == "weekly":
-            last_week_snapshot_str = (
-                self.interview_session.session_agenda
-                .get_last_week_snapshot_str()
-            )
-
         # Provide dynamic remaining time so the LLM can pace topic selection.
         # Time checks are handled by the session layer — the LLM must never
         # mention time or ask the user about extending.
@@ -2138,7 +2125,6 @@ class Interviewer(BaseAgent, Participant):
             "interview_description": self.interview_description,
             "available_time_context": available_time_context,
             "last_meeting_summary": last_meeting_summary_str,
-            "last_week_snapshot": last_week_snapshot_str,
             "chat_history": '\n'.join(recent_events),
             "current_events": '\n'.join(current_events),
             "recent_interviewer_messages": '\n'.join(
@@ -2161,17 +2147,12 @@ class Interviewer(BaseAgent, Participant):
                 strategic_questions_str = self._format_strategic_questions()
                 format_params["strategic_questions"] = strategic_questions_str
 
-        # Select prompt variant based on session type and conversation state
-        is_weekly = getattr(self.interview_session, "session_type", "intake") == "weekly"
-
         if len(all_interviewer_messages) == 0 and len(last_meeting_summary_str) == 0:
-            main_prompt = get_prompt("weekly_introduction" if is_weekly else "introduction")
+            main_prompt = get_prompt("introduction")
         elif len(all_interviewer_messages) == 0:
-            main_prompt = get_prompt("weekly_introduction" if is_weekly else "introduction_continue_session")
+            main_prompt = get_prompt("introduction_continue_session")
         elif self.use_baseline:
             main_prompt = get_prompt("baseline")
-        elif is_weekly:
-            main_prompt = get_prompt("weekly_normal")
         else:
             main_prompt = get_prompt("normal")
 

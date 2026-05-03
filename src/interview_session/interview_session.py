@@ -30,8 +30,6 @@ from src.content.memory_bank.memory import Memory
 from src.content.question_bank.question_bank_vector_db import QuestionBankVectorDB
 from src.interview_session.prompts.conversation_summarize import summarize_conversation
 from src.utils.token_tracker import TokenUsageTracker
-from src.content.weekly_snapshot.snapshot_manager import SnapshotManager
-from src.content.weekly_snapshot.weekly_snapshot import WeeklySnapshot, TaskEntry
 
 
 import re as _re
@@ -134,7 +132,7 @@ class InterviewConfig(TypedDict, total=False):
     interview_evaluation: str
     additional_context_path: str
     initial_user_portrait_path: str
-    session_type: str  # "intake" (default) or "weekly"
+    session_type: str  # intake-only
 
 class BankConfig(TypedDict, total=False):
     """Configuration for memory and question banks."""
@@ -180,7 +178,7 @@ class InterviewSession:
         self._initial_additional_context_path = interview_config.get("additional_context_path", None)
         self._interview_description = interview_config.get("interview_description", "any topic")
         self._available_time = interview_config.get("available_time")  # minutes
-        self.session_type = interview_config.get("session_type", "intake")
+        self.session_type = "intake"
 
         # Session agenda setup
         self.session_agenda = SessionAgenda.get_last_session_agenda(self.user_id,
@@ -213,8 +211,11 @@ class InterviewSession:
                 f"Unknown question bank type: {historical_question_bank_type}")
 
         # Logger setup
-        setup_logger(self.user_id, self.session_id,
-                     console_output_files=["execution_log"])
+        self.session_logger = setup_logger(
+            self.user_id,
+            self.session_id,
+            console_output_files=["execution_log"],
+        )
         EvaluationLogger.setup_logger(self.user_id, self.session_id)
 
         # Token usage tracking setup
@@ -222,8 +223,8 @@ class InterviewSession:
             session_id=str(self.session_id),
             user_id=self.user_id
         )
-        # Set the class variable so all agents can access it
-        BaseAgent.token_tracker = self.token_tracker
+        # Bind the tracker so all agents in this context can access it.
+        BaseAgent._set_token_tracker(self.token_tracker)
 
         # Chat history
         self.chat_history: list[Message] = []
@@ -242,9 +243,6 @@ class InterviewSession:
         self._feedback_widget_sent = False
         self._feedback_submitted = False
 
-        # Profile confirm widget (shown after first topic is covered)
-        self._profile_confirm_widget_sent = False
-
         # Task validation widget (shown after job-description answer in intake)
         self._task_validation_widget_sent = False
 
@@ -253,6 +251,8 @@ class InterviewSession:
 
         # AI task widget (shown immediately after task inventory is complete)
         self._ai_task_widget_sent = False
+        # Set to True once the user submits the AI task widget
+        self._ai_task_widget_submitted = False
 
         # Report auto-update states
         self.auto_report_update_in_progress = False
@@ -266,6 +266,7 @@ class InterviewSession:
         self._user_message_count = 0
         self._check_interval = max(1, self.memory_threshold // 5)
         self._accumulated_auto_update_time = 0
+        self._bind_thread_context()
 
         # Last message timestamp tracking for session timeout
         self._last_message_time = datetime.now()
@@ -447,6 +448,12 @@ class InterviewSession:
         
         self.tokenizer = get_encoding("cl100k_base")
 
+    def _bind_thread_context(self) -> None:
+        """Bind per-session logger and token state to this execution context."""
+        SessionLogger.bind_logger(self.session_logger)
+        BaseAgent._set_token_tracker(self.token_tracker)
+        BaseAgent._set_current_turn(getattr(self, "_user_message_count", 0))
+
     async def wait_if_paused(self):
         """Block the calling coroutine while the session is paused."""
         while self.paused and not self.step_requested:
@@ -455,6 +462,8 @@ class InterviewSession:
 
     async def _notify_participants(self, message: Message):
         """Notify subscribers asynchronously"""
+        self._bind_thread_context()
+
         # Gets subscribers for the user that sent the message.
         subscribers = self._subscriptions.get(message.role, [])
         SessionLogger.log_to_file(
@@ -471,7 +480,7 @@ class InterviewSession:
         if message.role == "User":
             self._last_user_message = message
             self._user_message_count += 1
-            BaseAgent.current_turn = self._user_message_count
+            BaseAgent._set_current_turn(self._user_message_count)
 
             snapshot_path = self.token_tracker.save_snapshot()
             SessionLogger.log_to_file(
@@ -535,6 +544,7 @@ class InterviewSession:
                                     message_type: str = MessageType.CONVERSATION,
                                     metadata: Optional[dict] = None):
         """Add a message to the chat history"""
+        self._bind_thread_context()
 
         # Reject messages if session is not in progress
         if not self.session_in_progress:
@@ -594,7 +604,6 @@ class InterviewSession:
             MessageType.AI_USAGE_WIDGET,
             MessageType.AI_TASK_WIDGET,
             MessageType.FEEDBACK_WIDGET,
-            MessageType.PROFILE_CONFIRM_WIDGET,
             MessageType.TASK_VALIDATION_WIDGET,
         ):
             save_feedback_to_csv(
@@ -608,7 +617,6 @@ class InterviewSession:
             MessageType.AI_USAGE_WIDGET,
             MessageType.AI_TASK_WIDGET,
             MessageType.FEEDBACK_WIDGET,
-            MessageType.PROFILE_CONFIRM_WIDGET,
             MessageType.TASK_VALIDATION_WIDGET,
         ):
 
@@ -619,7 +627,6 @@ class InterviewSession:
                 MessageType.AI_USAGE_WIDGET,
                 MessageType.AI_TASK_WIDGET,
                 MessageType.FEEDBACK_WIDGET,
-                MessageType.PROFILE_CONFIRM_WIDGET,
                 MessageType.TASK_VALIDATION_WIDGET,
             ):
                 SessionLogger.log_to_file(
@@ -639,6 +646,8 @@ class InterviewSession:
 
     async def run(self):
         """Run the interview session"""
+        self._bind_thread_context()
+
         # Start the opening question LLM call concurrently with agenda augmentation so
         # the first question is ready as soon as possible after the session is created.
         # For fresh sessions augmentation is a no-op, so there is no trade-off.
@@ -727,95 +736,30 @@ class InterviewSession:
                 SessionLogger.log_to_file(
                     "execution_log", f"[COMPLETED] Question bank saved")
 
-                # Generate and persist weekly snapshot for weekly sessions
-                if self.session_type == "weekly":
-                    try:
-                        await self._generate_and_save_weekly_snapshot()
-                    except Exception as snap_err:
-                        SessionLogger.log_to_file(
-                            "execution_log",
-                            f"[SNAPSHOT] Error generating weekly snapshot: {snap_err}"
-                        )
-
-                # Generate and save user portrait from memories for intake sessions
-                if self.session_type == "intake":
-                    try:
-                        await self._generate_and_save_user_portrait()
-                    except Exception as portrait_err:
-                        SessionLogger.log_to_file(
-                            "execution_log",
-                            f"[PORTRAIT] Error generating user portrait: {portrait_err}"
-                        )
+                try:
+                    await self._generate_and_save_user_portrait()
+                except Exception as portrait_err:
+                    SessionLogger.log_to_file(
+                        "execution_log",
+                        f"[PORTRAIT] Error generating user portrait: {portrait_err}"
+                    )
 
                 # Save chat transcript
                 self._save_chat_transcript()
 
+                # Always advance the session ID so a future reconnect never
+                # resets to session 1 due to a missing session_agenda.json.
+                try:
+                    self.session_agenda.save(save_type="next_version")
+                except Exception as agenda_err:
+                    SessionLogger.log_to_file(
+                        "execution_log",
+                        f"[COMPLETED] Error saving next session agenda: {agenda_err}"
+                    )
+
                 self.session_completed = True
                 SessionLogger.log_to_file(
                     "execution_log", f"[COMPLETED] Session completed")
-
-    async def _generate_and_save_weekly_snapshot(self):
-        """Extract a structured WeeklySnapshot from session memories and save it."""
-        from src.agents.session_scribe.prompts import get_prompt as scribe_get_prompt
-        from src.utils.llm.engines import get_engine, invoke_engine
-
-        memories = await self.get_session_memories(include_processed=True)
-        if not memories:
-            SessionLogger.log_to_file(
-                "execution_log", "[SNAPSHOT] No memories to extract snapshot from."
-            )
-            return
-
-        memories_text = "\n".join(
-            f"- [{m.title}] {m.text}" for m in memories
-        )
-        portrait = self.session_agenda.user_portrait
-
-        prompt_template = scribe_get_prompt("extract_weekly_snapshot")
-        prompt = prompt_template.format(
-            memories=memories_text,
-            user_portrait=str(portrait),
-        )
-
-        engine = get_engine(os.getenv("MODEL_NAME", "gpt-4.1-mini"))
-        response = invoke_engine(engine, prompt)
-        text = response.content if hasattr(response, "content") else str(response)
-
-        # Strip markdown fences
-        text = text.strip()
-        if text.startswith("```"):
-            text = text.split("\n", 1)[-1]
-            text = text.rsplit("```", 1)[0]
-
-        try:
-            import json
-            data = json.loads(text.strip())
-        except Exception:
-            SessionLogger.log_to_file(
-                "execution_log", "[SNAPSHOT] Failed to parse snapshot JSON."
-            )
-            return
-
-        tasks = [TaskEntry(**t) for t in data.get("tasks", [])]
-        snapshot = WeeklySnapshot(
-            user_id=self.user_id,
-            session_id=self.session_id,
-            week_number=SnapshotManager.current_week_number(),
-            tasks=tasks,
-            tools=data.get("tools", []),
-            ai_tools=data.get("ai_tools", []),
-            collaborators=data.get("collaborators", []),
-            time_allocation=data.get("time_allocation", {}),
-            pain_points=data.get("pain_points", []),
-            notable_changes=data.get("notable_changes", []),
-            session_summary=data.get("session_summary", ""),
-        )
-
-        manager = SnapshotManager(self.user_id)
-        path = manager.save_snapshot(snapshot)
-        SessionLogger.log_to_file(
-            "execution_log", f"[SNAPSHOT] Weekly snapshot saved to {path}"
-        )
 
     async def ensure_user_portrait_fresh(
         self,
@@ -856,9 +800,6 @@ class InterviewSession:
 
     def _task_inventory_stage_started(self) -> bool:
         """Return True once interviewer turns have reached the Task Inventory topic."""
-        if getattr(self, "session_type", "intake") != "intake":
-            return True
-
         agenda = getattr(self, "session_agenda", None)
         topic_manager = getattr(agenda, "interview_topic_manager", None) if agenda else None
         if topic_manager is None:
@@ -962,10 +903,7 @@ class InterviewSession:
 
         portrait_data = normalize_user_portrait(portrait_data)
 
-        freeze_task_fields = (
-            getattr(self, "session_type", "intake") == "intake"
-            and not self._task_inventory_stage_started()
-        )
+        freeze_task_fields = not self._task_inventory_stage_started()
         if freeze_task_fields and isinstance(portrait_data, dict):
             task_fields = (
                 "Task Inventory",
@@ -1285,6 +1223,7 @@ class InterviewSession:
 
         Safe to call multiple times — only the first call emits the widget.
         """
+        self._bind_thread_context()
         if self._feedback_widget_sent:
             return
         self._feedback_widget_sent = True
@@ -1310,6 +1249,7 @@ class InterviewSession:
 
         Safe to call multiple times — only the first call emits the widget.
         """
+        self._bind_thread_context()
         if self._task_validation_widget_sent:
             return
         self._task_validation_widget_sent = True
@@ -1323,9 +1263,41 @@ class InterviewSession:
             "execution_log",
             "[TASK_VALIDATION] Task validation widget emitted."
         )
+        # Write a stub so we have a record of which tasks were shown even if
+        # the user abandons before submitting the widget.
+        try:
+            portrait = getattr(self.session_agenda, 'user_portrait', {}) or {}
+            raw_tasks = portrait.get('Task Inventory') or []
+            tasks = [str(t).strip() for t in raw_tasks if str(t).strip()]
+            eval_dir = os.path.join(os.getenv('LOGS_DIR', 'logs'), self.user_id, 'evaluations')
+            os.makedirs(eval_dir, exist_ok=True)
+            stub_path = os.path.join(eval_dir, 'task_widget_data.json')
+            if not os.path.exists(stub_path):
+                stub = {
+                    'status': 'shown_not_submitted',
+                    'timestamp': datetime.now().isoformat(),
+                    'session_id': str(self.session_id),
+                    'listed': [
+                        {'text': t, 'original_text': t, 'status': 'unreviewed', 'recency': None}
+                        for t in tasks
+                    ],
+                    'selected': [],
+                    'removed': [],
+                    'edited': [],
+                    'attn_failed': 0,
+                    'attn_total': 0,
+                }
+                with open(stub_path, 'w') as f:
+                    json.dump(stub, f, indent=2)
+        except Exception as stub_err:
+            SessionLogger.log_to_file(
+                "execution_log",
+                f"[TASK_VALIDATION] Failed to write widget stub: {stub_err}"
+            )
 
     def _save_chat_transcript(self) -> None:
         """Write chat_transcript.json for the current session. Safe to call multiple times."""
+        self._bind_thread_context()
         try:
             logs_dir = os.getenv("LOGS_DIR", "logs")
             session_log_dir = os.path.join(
@@ -1355,6 +1327,7 @@ class InterviewSession:
         Pass send_message=False to end silently (e.g. when the frontend already
         showed a goodbye message directly and a second one would be a duplicate).
         """
+        self._bind_thread_context()
         self._session_ending = True
         self._feedback_widget_sent = True  # prevent feedback widget from firing later
         if send_message:
@@ -1378,6 +1351,7 @@ class InterviewSession:
 
         Safe to call multiple times — only the first call emits the widget.
         """
+        self._bind_thread_context()
         if self._ai_usage_widget_sent:
             return
         self._ai_usage_widget_sent = True
@@ -1397,6 +1371,7 @@ class InterviewSession:
 
         Safe to call multiple times — only the first call emits the widget.
         """
+        self._bind_thread_context()
         if self._ai_task_widget_sent:
             return
         self._ai_task_widget_sent = True
@@ -1411,31 +1386,13 @@ class InterviewSession:
             "[AI_TASK] AI task widget emitted."
         )
 
-    def trigger_profile_confirm_widget(self):
-        """Emit the post-first-topic profile review widget.
-
-        Safe to call multiple times — only the first call emits the widget.
-        """
-        if self._profile_confirm_widget_sent:
-            return
-        self._profile_confirm_widget_sent = True
-        self._last_message_time = datetime.now()
-        self.add_message_to_chat_history(
-            role="Interviewer",
-            content="",
-            message_type=MessageType.PROFILE_CONFIRM_WIDGET,
-        )
-        SessionLogger.log_to_file(
-            "execution_log",
-            "[PROFILE_CONFIRM] Profile confirm widget emitted."
-        )
-
     def submit_feedback(self, feedback: dict):
         """Persist end-of-session feedback and finalize session completion.
 
         Called by the /api/submit-feedback endpoint after the participant
         fills the feedback widget.
         """
+        self._bind_thread_context()
         self._feedback_submitted = True
         try:
             logs_dir = os.getenv("LOGS_DIR", "logs")
@@ -1473,6 +1430,7 @@ class InterviewSession:
 
     def end_session(self):
         """End the session without triggering report update"""
+        self._bind_thread_context()
         self.session_in_progress = False
 
         # Save final token usage summary

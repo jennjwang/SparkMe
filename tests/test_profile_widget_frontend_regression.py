@@ -88,6 +88,54 @@ class TestFeedbackWidgetSaveRegression:
         assert "const checkedTasks = new Set(tasks);" in text
 
 
+class TestTaskValidationRecencyRegression:
+    def test_task_validation_continue_and_done_share_recency_gate(self):
+        text = _chat_template_text()
+        assert "function taskHasRequiredReview(t)" in text
+        assert "function taskHasSubmittedRecency(t, idx)" in text
+        assert 'const allowed = ["past", "current", "new"];' in text
+        assert "allowed.includes(t.recency)" in text
+        assert '.tvw-recency-btn.tvw-recency-active' in text
+        assert "active?.dataset.recency === t.recency" in text
+        assert "t.recency !== null" not in text
+        assert text.count("recency: null") >= 2
+        assert "function isCurrentPageComplete()" in text
+        assert "function guardCurrentPageComplete()" in text
+        assert 'id="tvw-skip" ${allReviewed ? "" : "disabled"}' in text
+        assert text.count("if (!guardCurrentPageComplete()) return;") >= 2
+
+    def test_task_validation_probe_is_not_appended_locally(self):
+        text = _chat_template_text()
+        assert '"probe-open-" + Date.now()' not in text
+        assert "the prompt itself is delivered by polling" in text
+
+
+class TestTaskValidationAttentionCheckRegression:
+    def test_task_validation_distributes_all_loaded_attention_checks(self):
+        text = _chat_template_text()
+        assert "const _TARGET_ATTENTION_CHECKS = 4;" in text
+        assert "_TARGET_REAL_TASKS + _TARGET_ATTENTION_CHECKS" in text
+        assert "function insertAvailableAttentionChecks()" in text
+        assert "function scatteredAttentionCheckInsertIndex()" in text
+        assert "(_TARGET_ATTENTION_CHECKS + 1)" in text
+        assert "currentAttentionCheckCount() < targetAttentionCheckCount()" in text
+        assert "function hasShownRequiredAttentionChecks()" in text
+        assert "shownAttentionCheckCount() >= requiredAttentionChecksBeforeDone()" in text
+        assert "if (!_attentionChecksLoaded) return _TARGET_ATTENTION_CHECKS;" in text
+
+    def test_task_validation_no_longer_uses_interval_slots_for_attention_checks(self):
+        text = _chat_template_text()
+        receive_batch = re.search(
+            r"async function receiveBatch\(batch\) \{(?P<body>.*?)\n        \}",
+            text,
+            re.DOTALL,
+        )
+        assert receive_batch is not None
+        body = receive_batch.group("body")
+        assert "insertAvailableAttentionChecks();" in body
+        assert "realCount % _ATTN_INTERVAL" not in body
+
+
 class TestProfileWidgetRoleFirstRenderingRegression:
     def test_profile_confirm_sets_gate_before_reveal(self):
         text = _chat_template_text()

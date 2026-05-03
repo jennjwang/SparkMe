@@ -269,6 +269,38 @@ class TestSubmitTaskValidationApi:
         assert body.get("attn_disqualified") is not True
         session.add_message_to_chat_history.assert_called_once()
 
+    def test_rejects_confirmed_tasks_without_recency(self, client):
+        token = "tok-task-recency-required"
+        session = SimpleNamespace(
+            session_id=3003,
+            user_id="u3003",
+            session_agenda=None,
+            add_message_to_chat_history=MagicMock(),
+        )
+        _register_session(token, session, with_loop=False)
+
+        res = client.post(
+            "/api/submit-task-validation",
+            json={
+                "session_token": token,
+                "tasks": ["Real task"],
+                "listed_tasks": [
+                    {
+                        "text": "Real task",
+                        "original_text": "Real task",
+                        "status": "confirmed",
+                        "recency": None,
+                    }
+                ],
+            },
+        )
+        body = res.get_json()
+
+        assert res.status_code == 400
+        assert body["success"] is False
+        assert "recency required" in body["error"]
+        session.add_message_to_chat_history.assert_not_called()
+
 
 class TestOrganizeTasksApi:
     def test_organize_tasks_rejects_non_list_tasks(self, client):

@@ -27,17 +27,12 @@ async def run_terminal_mode(args):
         args.voice_input = False
         args.voice_output = False
     
-    # Select topic plan and description based on session type
-    session_type = args.session_type
-    if session_type == "weekly":
-        interview_plan_path = os.getenv('INTERVIEW_PLAN_PATH_WEEKLY',
-                                        'configs/topics_weekly.json')
-        interview_description = "Weekly work check-in: tracking how your tasks and work are evolving"
-    else:
-        interview_plan_path = os.getenv('INTERVIEW_PLAN_PATH_INTAKE',
-                                        'configs/topics_intake.json')
-        interview_description = os.getenv('INTERVIEW_DESCRIPTION',
-                                          "Initial intake interview: understanding your role, tasks, and work patterns")
+    interview_plan_path = os.getenv('INTERVIEW_PLAN_PATH_INTAKE',
+                                    'configs/topics_intake.json')
+    interview_description = os.getenv(
+        'INTERVIEW_DESCRIPTION',
+        "Initial intake interview: understanding your role, tasks, and work patterns"
+    )
 
     interview_session = InterviewSession(
         interaction_mode='agent' if args.user_agent else 'terminal',
@@ -53,7 +48,7 @@ async def run_terminal_mode(args):
             "interview_evaluation": os.getenv('COMPLETION_METRIC'),
             "additional_context_path": args.additional_context_path,
             "initial_user_portrait_path": os.getenv('USER_PORTRAIT_PATH'),
-            "session_type": session_type,
+            "session_type": "intake",
         },
         max_turns=args.max_turns
     )
@@ -80,9 +75,6 @@ if __name__ == "__main__":
                         help='Restart the session')
     parser.add_argument('--max_turns', type=int, default=None,
                         help='Maximum number of turns before ending the session')
-    parser.add_argument('--session_type', default='intake',
-                        choices=['intake', 'weekly'],
-                        help='Session type: "intake" for initial profiling (default), "weekly" for recurring check-ins')
     args = parser.parse_args()
     
     # Run the appropriate mode

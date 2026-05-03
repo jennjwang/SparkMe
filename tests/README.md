@@ -179,7 +179,6 @@ subtopic objects, but all LLM and I/O calls are mocked.
 | `test_fires_when_first_topic_covered` | Widget fires when the first topic's subtopics are all marked covered |
 | `test_does_not_fire_when_first_topic_not_covered` | Widget doesn't fire when coverage is incomplete |
 | `test_widget_appears_before_conversation_message` | The widget message is inserted before the interviewer's next conversation message |
-| `test_does_not_fire_for_weekly_session` | Profile widget is intake-only; weekly sessions never trigger it |
 | `test_fires_only_once_across_multiple_calls` | Widget fires at most once even if `_handle_response` is called multiple times |
 
 **`TestTimeSplitWidget`** — integration: time-allocation subtopic triggers the time-split widget:

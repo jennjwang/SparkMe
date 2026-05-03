@@ -88,116 +88,17 @@
 
 ---
 
-## New SparkMe — Weekly Work Tracking
+## SparkMe — Intake-Only Work Profiling
 
-Same architecture, with changes marked `◄── NEW`:
+SparkMe now runs intake sessions only. Runtime entry points always load
+`topics_intake.json`; the older recurring check-in and snapshot comparison flow
+is not part of active session creation.
 
-### Data model
+**Active session design decisions:**
 
-```
-user_portrait.json (stable, LLM-updated)     WeeklySnapshot (volatile, overwritten each week)
-┌──────────────────────────────────────┐     ┌──────────────────────────────────────┐
-│ role:                                │     │ week_number: 14                      │
-│   functional_role: "..."             │     │ tasks:                               │
-│   collaboration_structure: {...}     │     │   - description: "client deck prep"  │
-│   primary_tools: []                  │     │     time_share: 0.30                 │
-│   motivations_and_goals: []          │     │     ai_involved: true                │
-│                                      │     │     ai_tool: "ChatGPT"               │
-│ ai_relationship:                     │     │     ai_purpose: "first drafts"       │
-│   trust_by_task_type: [...]          │     │ collaborators_this_week: []          │
-│   preferred_interaction_style: "..." │     │ notable_events: "..."                │
-│   known_pain_points: []              │     └──────────────────────────────────────┘
-│   known_bright_spots: []             │       saved to: snapshot_week_N.json
-└──────────────────────────────────────┘       loaded next week for Scribe comparison
-  updated by: SessionCoordinator (LLM)
-  evolves slowly across sessions
-```
-
-### Architecture
-
-```
-╔══════════════════════════════════════════════════════════════════════════╗
-║  STARTUP                                                                 ║
-║                                                                          ║
-║  ▶ topics_intake.json OR topics_weekly.json  ◄── NEW: selected by        ║
-║    session_type="intake"|"weekly"                session_type at init    ║
-║                                                                          ║
-║  ▶ user_portrait.json  ◄── NEW: stable profile only                      ║
-║                                                                          ║
-║  [weekly only]  SnapshotManager.load_latest_snapshot()                   ║
-║    └── snapshot_week_N-1.json → session_agenda.last_week_snapshot        ║
-╚══════════════════════════════════════════════════════════════════════════╝
-                                    │
-                                    ▼
-╔══════════════════════════════════════════════════════════════════════════╗
-║  TURN LOOP                                                               ║
-╠══════════════════════════════════════════════════════════════════════════╣
-║                                                                          ║
-║   ┌───────────────────────────────────────────────────────────┐          ║
-║   │  INTERVIEWER                                              │          ║
-║   │  ▶ "weekly_introduction" / "weekly_normal" prompt ◄── NEW │          ║
-║   │  ▶ covers snapshot-driven subtopics like any other        │          ║
-║   │  ▶ aims to wrap ~10 min, no hard turn cap                 │          ║
-║   └──────────────────────────┬────────────────────────────────┘          ║
-║                              │                                           ║
-║                   [MESSAGE BUS — unchanged]                              ║
-║                              │                                           ║
-║           ┌──────────────────┴──────────────────┐                        ║
-║           │                                     │                        ║
-║   ┌───────────────┐     ┌─────────────────────────────────────┐          ║
-║   │     USER      │     │  SESSION SCRIBE                     │          ║
-║   └───────┬───────┘     │  • extract memories  (unchanged)    │          ║
-║           │             │  • mark coverage     (unchanged)    │          ║
-║           │  answer     │                                     │          ║
-║           │             │  NEW (weekly only):                 │          ║
-║           │             │  • _compare_against_snapshot()      │          ║
-║           │             │    Q&A vs last_week_snapshot → LLM  │          ║
-║           │             │    uses Recall for memory grounding │          ║
-║           │             │    adds emergent subtopics for:     │          ║
-║           │             │      - inconsistencies              │          ║
-║           │             │      - unmentioned items            │          ║
-║           │             │    (runs parallel with coverage)    │          ║
-║           │             └─────────────────────────────────────┘          ║
-║           │                                                              ║
-║           └──────────────────────────────────────────────────────────►   ║
-║                               [STRATEGIC PLANNER — unchanged]            ║
-╚══════════════════════════════════════════════════════════════════════════╝
-                                    │
-                                    ▼
-╔══════════════════════════════════════════════════════════════════════════╗
-║  SHUTDOWN                                                                ║
-║                                                                          ║
-║  1. UpdateUserPortrait  ◄── updated                                      ║
-║     merges dicts + deduplicates lists  ◄── NEW                           ║
-║     (was: always overwrote with cleaned string)                          ║
-║                                                                          ║
-║  2. memory_bank.save_to_file()  — unchanged                              ║
-║     session_agenda saved         — unchanged                             ║
-║                                                                          ║
-║  3. [weekly only]  _generate_and_save_weekly_snapshot()  ◄── NEW         ║
-║     session memories → LLM → WeeklySnapshot                              ║
-║     → logs/{user_id}/weekly_snapshots/snapshot_week_N.json               ║
-║       (loaded at STARTUP next week)                                      ║
-╚══════════════════════════════════════════════════════════════════════════╝
-```
-
-**What changed, by phase:**
-
-| Phase            | What changed                                                                        |
-| ---------------- | ----------------------------------------------------------------------------------- |
-| Startup          | Two topic files, new portrait schema (stable only), raw snapshot loaded for Scribe  |
-| Interviewer      | Weekly prompts, covers snapshot-driven subtopics alongside regular ones             |
-| SessionScribe    | NEW `_compare_against_snapshot()`: adds emergent subtopics for inconsistencies/gaps |
-| StrategicPlanner | Completely unchanged                                                                |
-| Memory bank      | Completely unchanged                                                                |
-| Shutdown         | Portrait updates stable fields only; snapshot generated separately as its own file  |
-
-**Key design decisions:**
-
-1. **Portrait and snapshot are separate concerns.** The portrait holds stable, slowly-evolving profile data (role, AI trust, tools). The snapshot holds volatile weekly data (tasks, time shares, collaborators this week). They never overlap — the portrait is LLM-updated, the snapshot is LLM-extracted and overwritten each week.
-2. **Snapshot-driven items are subtopics, not a separate data path.** When the Scribe detects an inconsistency or unmentioned item vs. last week's snapshot, it adds an emergent subtopic. The Interviewer covers it like any other uncovered subtopic. Coverage tracking handles "addressed" status.
-3. **Scribe uses recall for memory grounding.** Before adding a subtopic, the Scribe can search prior memories to include the user's original words, making the subtopic description specific (e.g., "user said 'the quarterly deck was eating my Fridays' but hasn't mentioned it").
-4. **Snapshot comparison runs in parallel** with subtopic coverage updates (separate locks, `asyncio.gather`). One-turn delay — same pattern as memory extraction.
+1. Sessions are intake-only and always use the intake topic plan.
+2. The portrait is the durable cross-session profile and is refreshed from memories.
+3. The task-validation and AI-task widgets handle late-session task review and probing.
 
 ---
 
@@ -213,7 +114,7 @@ Extends the intake interview with explicit task collection and AI usage probing.
 ║                                                                          ║
 ║  User logs in → / (landing page, enters available_time in minutes)      ║
 ║  POST /api/start-session  →  session_token                               ║
-║  session_type = "intake" (default) | "weekly"                           ║
+║  session_type = "intake"                                                 ║
 ╚══════════════════════════════════════════════════════════════════════════╝
                                     │
                                     ▼
@@ -355,7 +256,7 @@ user_portrait.json
 | `GET /api/stream-voice-response` | Interview | Stream TTS audio chunks |
 | `POST /api/generate-tasks` | TVW | Generate task batch (3 at a time) |
 | `POST /api/regenerate-task-description` | TVW | Rewrite task descriptions |
-| `POST /api/attention-check-tasks` | TVW | 8 unrelated distractor tasks |
+| `POST /api/attention-check-tasks` | TVW | 4 unrelated distractor tasks |
 | `POST /api/ai-era-tasks` | AITW | AI-era task batches |
 | `POST /api/ai-attention-check-tasks` | AITW | 3 non-AI distractors |
 | `POST /api/submit-task-validation` | TVW | Store tasks, start probing |

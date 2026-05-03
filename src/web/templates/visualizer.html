@@ -699,6 +699,45 @@
     .portrait-val ul li::before { content: '›  '; color: var(--muted); }
 
     /* =========================================================
+       TASKS TAB
+    ========================================================= */
+    .tasks-section { margin-bottom: 20px; }
+    .tasks-section-label {
+      font-size: 11px; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .07em; margin-bottom: 10px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .tasks-count-badge {
+      font-size: 10px; font-weight: 600; padding: 1px 6px;
+      border-radius: 99px; background: var(--surface2); color: var(--muted);
+      border: 1px solid var(--border);
+    }
+    .tasks-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .task-chip {
+      font-size: 12px; line-height: 1.4;
+      padding: 4px 10px; border-radius: 6px;
+      border: 1px solid transparent;
+    }
+    .task-chip.confirmed  { background: #f3f4f6; color: #374151; border-color: #e5e7eb; }
+    .task-chip.removed    { background: #fef2f2; color: #dc2626; border-color: #fecaca; text-decoration: line-through; }
+    .task-chip.capability { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
+    .task-chip.governance { background: #fffbeb; color: #d97706; border-color: #fde68a; }
+    .task-chip.extra      { background: #faf5ff; color: #7c3aed; border-color: #e9d5ff; }
+    .task-chip.removed-ai { background: #f9fafb; color: #9ca3af; border-color: #e5e7eb; text-decoration: line-through; }
+    .tasks-empty { font-size: 13px; color: var(--muted); font-style: italic; }
+    .tasks-subsection-label {
+      font-size: 10px; font-weight: 600; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .06em;
+      margin: 10px 0 6px;
+    }
+    .attn-fail-banner {
+      background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px;
+      color: #991b1b; font-size: 13px; padding: 10px 12px; margin-bottom: 16px;
+      line-height: 1.5;
+    }
+    .attn-fail-note { font-size: 11px; color: #b91c1c; margin-top: 3px; }
+
+    /* =========================================================
        SNAPSHOT TAB
     ========================================================= */
     .snapshot-header {
@@ -1013,9 +1052,10 @@
   </div>
 
   <div class="topbar-right">
+    <select id="replay-user-select" style="display:none;padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;cursor:pointer;max-width:200px;"></select>
+    <span id="replay-user-id" style="display:none;font-size:12px;font-family:monospace;color:var(--muted);letter-spacing:0.02em;"></span>
     <select id="session-type-select" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;cursor:pointer;">
       <option value="intake">Intake</option>
-      <option value="weekly">Weekly</option>
     </select>
     <div id="agent-controls">
       <button class="btn-ctrl" id="btn-pause" title="Pause after next user response">⏸ Pause</button>
@@ -1065,7 +1105,7 @@
       <button class="tab-btn active" data-tab="coverage">Coverage</button>
       <button class="tab-btn" data-tab="memories">Memories</button>
       <button class="tab-btn" data-tab="portrait">Work Profile</button>
-      <button class="tab-btn" data-tab="snapshot">Snapshot</button>
+      <button class="tab-btn" data-tab="tasks" id="tab-btn-tasks" style="display:none">Tasks</button>
       <button class="tab-btn" data-tab="strategic">Strategic</button>
       <button class="tab-btn" data-tab="timeline">Timeline</button>
     </div>
@@ -1109,10 +1149,10 @@
         <div id="portrait-container"></div>
       </div>
 
-      <!-- ── SNAPSHOT TAB ── -->
-      <div class="tab-pane" id="tab-snapshot">
-        <div id="snapshot-container">
-          <div class="empty-state"><div class="icon">📸</div>Last week's snapshot will appear here during weekly sessions.</div>
+      <!-- ── TASKS TAB (replay only) ── -->
+      <div class="tab-pane" id="tab-tasks">
+        <div id="tasks-container">
+          <div class="empty-state"><div class="icon">📋</div>Task data not available.</div>
         </div>
       </div>
 
@@ -1167,6 +1207,7 @@ let statePollTimer = null;
 let isSessionDone  = false;
 let awaitingFeedback = false;
 let feedbackSubmitted = false;
+let replayMode = false;
 
 // Track what we've already rendered to avoid unnecessary DOM thrash
 let lastMemoryIds   = [];
@@ -1184,12 +1225,15 @@ window.addEventListener('DOMContentLoaded', initSession);
 
 async function initSession() {
   const params = new URLSearchParams(window.location.search);
+
+  if (params.has('replay')) {
+    await initReplayMode(params.get('replay') || '');
+    return;
+  }
+
   const agentMode = params.get('mode') === 'agent';
   const simUserId = params.get('sim_user_id') || null;
-  const sessionTypeParam = params.get('session_type');
   const selectEl = document.getElementById('session-type-select');
-  if (sessionTypeParam) selectEl.value = sessionTypeParam;
-  const sessionType = selectEl.value;
 
   if (agentMode) {
     document.getElementById('brand-mode').textContent = '/ Agent Simulation';
@@ -1204,7 +1248,7 @@ async function initSession() {
 
   try {
     const endpoint = agentMode ? '/api/start-agent-session' : '/api/start-session';
-    const reqBody = { session_type: sessionType };
+    const reqBody = {};
     if (agentMode && simUserId) reqBody.sim_user_id = simUserId;
     const res = await fetch(endpoint, {
       method: 'POST',
@@ -1225,6 +1269,92 @@ async function initSession() {
     }
   } catch(e) {
     console.error('initSession error', e);
+  }
+}
+
+/* ================================================================
+   REPLAY MODE
+================================================================ */
+async function initReplayMode(userId) {
+  replayMode = true;
+  document.getElementById('brand-mode').textContent = '/ Replay';
+  document.getElementById('chat-input-area').style.display = 'none';
+  document.getElementById('btn-end-session').style.display = 'none';
+  document.getElementById('session-type-select').style.display = 'none';
+  document.getElementById('agent-controls').style.display = 'none';
+  const liveDot = document.querySelector('.live-dot');
+  if (liveDot) liveDot.style.display = 'none';
+  const liveLabel = document.querySelector('.live-label');
+  if (liveLabel) liveLabel.textContent = 'REPLAY';
+
+  // Populate participant selector
+  try {
+    const listRes  = await fetch('/api/replay-state');
+    const listData = await listRes.json();
+    if (listData.success && listData.participants && listData.participants.length) {
+      const excludedSet = new Set(listData.excluded_ids || []);
+      const sel = document.getElementById('replay-user-select');
+      sel.innerHTML = listData.participants.map(pid => {
+        const label = pid + (excludedSet.has(pid) ? ' ⚠' : '');
+        return `<option value="${pid}">${label}</option>`;
+      }).join('');
+      if (userId) sel.value = userId;
+      sel.style.display = '';
+      sel.addEventListener('change', () => {
+        const u = new URLSearchParams(window.location.search);
+        u.set('replay', sel.value);
+        window.location.search = u.toString();
+      });
+    }
+  } catch(e) { console.warn('replay list error', e); }
+
+  if (!userId) return;
+
+  try {
+    const res  = await fetch(`/api/replay-state?user_id=${encodeURIComponent(userId)}`);
+    const data = await res.json();
+    if (!data.success) {
+      document.getElementById('chat-messages').innerHTML =
+        `<div class="empty-state"><div class="icon">⚠️</div>${escHtml(data.error || 'Failed to load')}</div>`;
+      return;
+    }
+
+    const idEl = document.getElementById('replay-user-id');
+    idEl.textContent = userId;
+    idEl.style.display = '';
+
+    renderState(data);
+    renderTasks(data.tasks || null);
+    if (data.excluded) {
+      document.getElementById('brand-mode').textContent = '/ Replay — EXCLUDED';
+      document.getElementById('brand-mode').style.color = 'var(--red)';
+    }
+
+    // Render chat transcript directly (no polling, no acking)
+    const container = document.getElementById('chat-messages');
+    container.innerHTML = '';
+    for (const turn of (data.turns || [])) {
+      const isBot = turn.role !== 'User';
+      const wrap  = document.createElement('div');
+      wrap.className = `msg ${isBot ? 'bot' : 'user'}`;
+      const ts = turn.timestamp
+        ? new Date(turn.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
+        : '';
+      wrap.innerHTML = `
+        <div class="avatar ${isBot ? 'bot' : 'user'}">${isBot ? 'AI' : 'U'}</div>
+        <div>
+          <div class="bubble">${escHtml(turn.content)}</div>
+          <div class="msg-meta">${ts}</div>
+        </div>`;
+      container.appendChild(wrap);
+    }
+    container.scrollTop = 0;
+
+    document.getElementById('typing-row').style.display = 'none';
+    isSessionDone = true;
+    markSessionDone();
+  } catch(e) {
+    console.error('initReplayMode error', e);
   }
 }
 
@@ -1334,7 +1464,6 @@ function renderState(data) {
   renderCoverage(data.topics || []);
   renderMemories(data.memories || [], data.memory_count || 0);
   renderPortrait(data.user_portrait || {});
-  renderSnapshot(data.last_week_snapshot || {});
   renderStrategic(data.strategic_priorities || {}, data.rollout_predictions || [], data.emergent_insights || []);
   renderTimeline(data.turns || []);
 
@@ -1566,7 +1695,7 @@ function renderSnapshot(snapshot) {
   const container = document.getElementById('snapshot-container');
   const keys = Object.keys(snapshot);
   if (keys.length === 0) {
-    container.innerHTML = '<div class="empty-state"><div class="icon">📸</div>Last week\'s snapshot will appear here during weekly sessions.</div>';
+    container.innerHTML = '<div class="empty-state"><div class="icon">📸</div>No session snapshot is available.</div>';
     return;
   }
 
@@ -1721,6 +1850,97 @@ function renderTimeline(turns) {
   });
   // Scroll to bottom
   container.scrollTop = container.scrollHeight;
+}
+
+/* ================================================================
+   TASKS (replay only)
+================================================================ */
+function renderTasks(tasks) {
+  const container = document.getElementById('tasks-container');
+  if (!tasks) return;
+
+  const confirmed  = tasks.confirmed  || [];
+  const removed    = tasks.removed    || [];
+  const edited     = tasks.edited     || [];
+  const aiSelected = tasks.ai_selected || [];
+  const aiExtras   = tasks.ai_extras  || [];
+
+  const aiRemoved  = tasks.ai_removed  || [];
+  const capability = aiSelected.filter(t => t.ai_type === 'capability');
+  const governance = aiSelected.filter(t => t.ai_type === 'governance');
+  const removedCap = aiRemoved.filter(t => t.ai_type === 'capability');
+  const removedGov = aiRemoved.filter(t => t.ai_type === 'governance');
+
+  function chips(items, cls) {
+    if (!items.length) return '<span class="tasks-empty">None</span>';
+    return `<div class="tasks-chips">${items.map(t =>
+      `<span class="task-chip ${cls}">${escHtml(typeof t === 'string' ? t : t.text)}</span>`
+    ).join('')}</div>`;
+  }
+
+  let html = '';
+
+  // ── Attention check flag ───────────────────────────────────────────────────
+  if (tasks.attn_failed > 0) {
+    const detail = (tasks.attn_failures || [])
+      .map(f => `${f.widget}: ${f.failed}/${f.total}`)
+      .join(', ');
+    html += `<div class="attn-fail-banner">
+      ⚠️ <strong>Failed attention check</strong> — ${detail}
+      <div class="attn-fail-note">This participant's data was moved to excluded/.</div>
+    </div>`;
+  }
+
+  // ── Work tasks ────────────────────────────────────────────────────────────
+  html += `<div class="tasks-section">
+    <div class="tasks-section-label">
+      Work Tasks
+      <span class="tasks-count-badge">${confirmed.length + edited.length} confirmed</span>
+      ${removed.length ? `<span class="tasks-count-badge">${removed.length} removed</span>` : ''}
+    </div>
+    ${chips([...confirmed, ...edited], 'confirmed')}`;
+
+  if (removed.length) {
+    html += `<div class="tasks-subsection-label">Removed as not applicable</div>
+    ${chips(removed, 'removed')}`;
+  }
+  html += `</div>`;
+
+  // ── AI-related tasks ──────────────────────────────────────────────────────
+  html += `<div class="tasks-section">
+    <div class="tasks-section-label">
+      AI-Related Tasks
+      <span class="tasks-count-badge">${aiSelected.length} selected</span>
+      ${aiRemoved.length ? `<span class="tasks-count-badge">${aiRemoved.length} removed</span>` : ''}
+    </div>`;
+
+  if (capability.length) {
+    html += `<div class="tasks-subsection-label">Capability — using AI to get work done</div>
+    ${chips(capability, 'capability')}`;
+  }
+  if (governance.length) {
+    html += `<div class="tasks-subsection-label">Governance — overseeing AI outputs</div>
+    ${chips(governance, 'governance')}`;
+  }
+  if (!aiSelected.length) {
+    html += '<span class="tasks-empty">No AI tasks selected</span>';
+  }
+  if (aiRemoved.length) {
+    html += `<div class="tasks-subsection-label">Not applicable to this role</div>`;
+    if (removedCap.length) html += chips(removedCap, 'removed-ai');
+    if (removedGov.length) html += chips(removedGov, 'removed-ai');
+    if (!removedCap.length && !removedGov.length) html += chips(aiRemoved, 'removed-ai');
+  }
+  if (aiExtras.length) {
+    html += `<div class="tasks-subsection-label">Added by participant</div>
+    ${chips(aiExtras, 'extra')}`;
+  }
+  html += `</div>`;
+
+  container.innerHTML = html;
+
+  // Show the tab button
+  document.getElementById('tab-btn-tasks').style.display = '';
 }
 
 /* ================================================================

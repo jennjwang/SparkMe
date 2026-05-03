@@ -3,6 +3,7 @@ import pathlib
 import os
 from typing import List, Optional
 
+import contextvars
 import threading
 
 LOGS_DIR = os.getenv("LOGS_DIR")
@@ -25,8 +26,18 @@ LOG_LEVELS = {
 class SessionLogger:
     _file_locks = {}
     _locks_lock = threading.Lock()
-    _current_logger = None
-    
+    _thread_local = threading.local()
+    _current_logger_var = contextvars.ContextVar(
+        "current_session_logger",
+        default=None,
+    )
+
+    @classmethod
+    def bind_logger(cls, logger: "SessionLogger") -> None:
+        """Bind a logger to the current thread and async context."""
+        cls._thread_local.current_logger = logger
+        cls._current_logger_var.set(logger)
+
     @classmethod
     def log_to_file(cls, file_name: str, message: str, log_level: str = "info") -> None:
         """
@@ -92,7 +103,10 @@ class SessionLogger:
 
     @classmethod
     def get_current_logger(cls):
-        return cls._current_logger
+        current_logger = cls._current_logger_var.get()
+        if current_logger is not None:
+            return current_logger
+        return getattr(cls._thread_local, 'current_logger', None)
 
     def __init__(self, user_id: str, session_id: Optional[int] = None, log_type: str = None, 
                  log_level=logging.INFO, console_output_files: List[str] = None):
@@ -103,8 +117,8 @@ class SessionLogger:
         self.log_dir = pathlib.Path(LOGS_DIR) / user_id
         self.console_output_files = console_output_files        
         
-        # Store this instance as the current logger
-        SessionLogger._current_logger = self
+        # Store this instance as the current logger for this thread/context
+        SessionLogger.bind_logger(self)
         
         # Setup base logger
         logger_id = f"{'session' if session_id else log_type}_{user_id}_{session_id or ''}"

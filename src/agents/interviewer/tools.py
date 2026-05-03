@@ -94,11 +94,14 @@ class EndConversation(BaseTool):
         goodbye: str,
         run_manager: Optional[CallbackManagerForToolRun] = None,
     ) -> Any:
-        self.on_goodbye(goodbye)
+        goodbye_sent = self.on_goodbye(goodbye)
 
         await asyncio.sleep(1)
 
-        # Call the end callback if provided
-        self.on_end()
+        # Only trigger the end callback if the goodbye was actually delivered.
+        # on_goodbye returns False when the message was blocked (e.g. TVW not
+        # yet shown), in which case the session should not end here.
+        if goodbye_sent is not False:
+            self.on_end()
 
         return "Conversation ended successfully."

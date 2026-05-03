@@ -160,13 +160,6 @@ class TestHandleResponseProfileConfirm:
         assert widget_idx < conv_indices[-1]
 
     @pytest.mark.asyncio
-    async def test_does_not_fire_for_weekly_session(self, interviewer, fake_session, topic_manager):
-        fake_session.session_type = "weekly"
-        mark_first_topic_covered(topic_manager)
-        await interviewer._handle_response("What did you work on this week?", subtopic_id="2.1")
-        assert MessageType.PROFILE_CONFIRM_WIDGET not in widget_types(fake_session)
-
-    @pytest.mark.asyncio
     async def test_fires_only_once_across_multiple_calls(self, interviewer, fake_session, topic_manager):
         mark_first_topic_covered(topic_manager)
         await interviewer._handle_response("Walk me through a typical week.", subtopic_id="2.1")

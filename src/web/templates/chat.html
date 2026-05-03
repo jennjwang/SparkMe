@@ -2835,8 +2835,12 @@
         text-decoration: underline;
         transition: color 0.15s;
       }
-      .tvw-skip-btn:hover {
+      .tvw-skip-btn:hover:not(:disabled) {
         color: #374151;
+      }
+      .tvw-skip-btn:disabled {
+        color: #d1d5db;
+        cursor: not-allowed;
       }
       /* Missing / summary screen */
       .tvw-section-label {
@@ -3523,8 +3527,13 @@
         text-decoration: underline;
         transition: color 0.15s;
       }
-      .aitw-skip-btn:hover {
+      .aitw-skip-btn:hover:not(:disabled) {
         color: #374151;
+      }
+      .aitw-skip-btn:disabled {
+        color: #d1d5db;
+        cursor: not-allowed;
+        pointer-events: none;
       }
       .aitw-submit-btn {
         background: #111827;
@@ -4180,12 +4189,8 @@
       let sessionRecoverAttempts = 0;
       const MAX_SESSION_RECOVER_ATTEMPTS = 1;
       const MIN_SESSION_DURATION_MS = 0;
-      let profileConfirmPending = false;
-      let profileConfirmWidgetSeen = false;
+
       let attnFailed = 0;
-      let botMessageBuffer = [];
-      let profilePanelRevealInFlight = false;
-      let profileConfirmSnapshot = null;
       let sendInFlight = false;
       let _tvwBatch0Promise = null; // prefetch fired as soon as occupation is captured (job_description_ready)
 
@@ -5152,11 +5157,12 @@
         scrollToBottom();
 
         const _PAGE_SIZE = 3; // tasks shown per page (server returns 6 per batch = 2 pages)
-        const _MIN_DONE_SHOWN_TASKS = 9;
+        const _MIN_DONE_SHOWN_TASKS = 12;
         const _ATTN_INTERVAL = 5; // inject one attention check per N real tasks
         const _TARGET_REAL_TASKS = regularTaskTarget(_PAGE_SIZE);
+        const _TARGET_ATTENTION_CHECKS = Math.max(1, Math.floor(_TARGET_REAL_TASKS / _ATTN_INTERVAL));
         const _TARGET_DISPLAYED_TASKS = roundUpToPageSize(
-          _TARGET_REAL_TASKS + Math.floor(_TARGET_REAL_TASKS / _ATTN_INTERVAL),
+          _TARGET_REAL_TASKS + _TARGET_ATTENTION_CHECKS,
           _PAGE_SIZE,
         );
         const _TARGET_AI_TASKS = aiTaskTarget(_PAGE_SIZE);
@@ -5169,6 +5175,7 @@
         let prefetchPromise = null; // promise that eagerly loads + adds the next batch to allTasks
         let pendingAttentionChecks = [];
         let _attnChecksFetching = null; // promise tracking fetchAttentionChecks
+        let _attentionChecksLoaded = false;
         let _conversationTaskTexts = []; // tasks mentioned in interview — used as prior_tasks but not displayed
 
         function esc(s) {
@@ -5220,6 +5227,7 @@
             text: typeof t === "string" ? t : t.name || "",
             originalText: typeof t === "string" ? t : t.name || "",
             status: "unreviewed",
+            recency: null,
             isAttentionCheck: false,
           }));
 
@@ -5237,11 +5245,14 @@
                 });
                 const data = await res.json();
                 if (data.success && data.tasks?.length) {
-                  pendingAttentionChecks = (data.tasks || []).map((t) => ({
+                  pendingAttentionChecks.push(...(data.tasks || []).map((t) => ({
                     text: t.name || "",
                     status: "unreviewed",
+                    recency: null,
                     isAttentionCheck: true,
-                  }));
+                  })));
+                  insertAvailableAttentionChecks();
+                  updateFooter();
                   return;
                 }
               } catch (_) {}
@@ -5251,6 +5262,9 @@
           _attnChecksFetching = p;
           await p;
           _attnChecksFetching = null;
+          _attentionChecksLoaded = true;
+          insertAvailableAttentionChecks();
+          updateFooter();
         }
 
         // AI task widget state — managed inside renderAiTaskWidget, kept here for scope
@@ -5272,10 +5286,10 @@
               });
               const data = await res.json();
               if (data.success) {
-                _aiPendingDistractors = (data.tasks || []).map((t) => ({
+                _aiPendingDistractors.push(...(data.tasks || []).map((t) => ({
                   text: t.name || "",
                   isAttentionCheck: true,
-                }));
+                })));
               }
             } catch (_) {}
             _aiDistractorsFetching = null;
@@ -5321,20 +5335,20 @@
               const realCount = _aiWidgetTasks.filter(
                 (x) => !x.isAttentionCheck,
               ).length;
-              if (
-                _aiPendingDistractors.length &&
-                realCount > 0 &&
-                realCount % _ATTN_INTERVAL === 0
-              ) {
-                const attn = _aiPendingDistractors.shift();
-                const pgStart =
-                  Math.floor(_aiWidgetTasks.length / _PAGE_SIZE) * _PAGE_SIZE;
-                const insertAt =
-                  pgStart +
-                  Math.floor(
-                    Math.random() * (_aiWidgetTasks.length - pgStart + 1),
-                  );
-                _aiWidgetTasks.splice(insertAt, 0, attn);
+              if (realCount > 0 && realCount % _ATTN_INTERVAL === 0) {
+                if (_aiPendingDistractors.length) {
+                  const attn = _aiPendingDistractors.shift();
+                  const pgStart =
+                    Math.floor(_aiWidgetTasks.length / _PAGE_SIZE) * _PAGE_SIZE;
+                  const insertAt =
+                    pgStart +
+                    Math.floor(
+                      Math.random() * (_aiWidgetTasks.length - pgStart + 1),
+                    );
+                  _aiWidgetTasks.splice(insertAt, 0, attn);
+                } else if (!_aiDistractorsFetching) {
+                  _fetchAiDistractors();
+                }
               }
             }
             _aiWidgetHasMore = !!data.has_more;
@@ -5416,23 +5430,126 @@
             txt.textContent = `${totalReviewed} of ${allTasks.length} reviewed`;
         }
 
+        function regularTaskCount() {
+          return allTasks.filter((t) => !t.isAttentionCheck && !t.isAiTask)
+            .length;
+        }
+
+        function currentAttentionCheckCount() {
+          return allTasks.filter((t) => t.isAttentionCheck).length;
+        }
+
+        function shownAttentionCheckCount() {
+          return allTasks
+            .slice(0, viewStart + _PAGE_SIZE)
+            .filter((t) => t.isAttentionCheck).length;
+        }
+
+        function targetAttentionCheckCount() {
+          const realCount = regularTaskCount();
+          return Math.floor(realCount / _ATTN_INTERVAL);
+        }
+
+        function scatteredAttentionCheckInsertIndex() {
+          const nextOrdinal = currentAttentionCheckCount() + 1;
+          const targetRegularBefore = nextOrdinal * _ATTN_INTERVAL;
+          let regularSeen = 0;
+          let desiredIndex = allTasks.length;
+          for (let i = 0; i < allTasks.length; i++) {
+            if (!allTasks[i].isAttentionCheck && !allTasks[i].isAiTask) {
+              regularSeen++;
+            }
+            if (regularSeen >= targetRegularBefore) {
+              desiredIndex = i + 1;
+              break;
+            }
+          }
+          const minInsertAt = Math.min(
+            allTasks.length,
+            viewStart + _PAGE_SIZE,
+          );
+          return Math.max(minInsertAt, desiredIndex);
+        }
+
+        function insertAvailableAttentionChecks() {
+          while (
+            pendingAttentionChecks.length &&
+            currentAttentionCheckCount() < targetAttentionCheckCount()
+          ) {
+            const attn = pendingAttentionChecks.shift();
+            allTasks.splice(scatteredAttentionCheckInsertIndex(), 0, attn);
+          }
+        }
+
+        function hasShownRequiredAttentionChecks() {
+          // Only checks within the visible window matter — future-page checks
+          // should not gate Done, since the user hasn't reached them yet.
+          return true;
+        }
+
         function updateFooter() {
           const footer = document.getElementById("tvw-widget-footer");
           if (!footer) return;
           const hasNext = !done || viewStart + _PAGE_SIZE < allTasks.length;
-          const canShowDone = viewStart >= 4 * _PAGE_SIZE;
-          const allReviewed = allTasks
-            .slice(viewStart, viewStart + _PAGE_SIZE)
-            .every((t) => t.status !== "unreviewed");
+          const canShowDone =
+            viewStart + _PAGE_SIZE >= _MIN_DONE_SHOWN_TASKS &&
+            hasShownRequiredAttentionChecks();
+          const allReviewed =
+            isCurrentPageComplete() && (hasNext || hasShownRequiredAttentionChecks());
           footer.innerHTML = `
-            ${canShowDone ? `<button class="tvw-skip-btn" id="tvw-skip">Done</button>` : ""}
+            ${canShowDone ? `<button class="tvw-skip-btn" id="tvw-skip" ${allReviewed ? "" : "disabled"}>Done</button>` : ""}
             <button class="tvw-continue-btn" id="tvw-continue" ${allReviewed ? "" : "disabled"}>${hasNext ? "Continue →" : "Finish →"}</button>`;
           footer
             .querySelector("#tvw-skip")
-            ?.addEventListener("click", renderMissing);
+            ?.addEventListener("click", (event) => {
+              if (!guardCurrentPageComplete()) {
+                event.preventDefault();
+                return;
+              }
+              renderMissing();
+            });
           footer
             .querySelector("#tvw-continue")
-            ?.addEventListener("click", hasNext ? handleNext : renderMissing);
+            ?.addEventListener("click", (event) => {
+              if (!guardCurrentPageComplete()) {
+                event.preventDefault();
+                return;
+              }
+              if (hasNext) {
+                handleNext();
+              } else {
+                renderMissing();
+              }
+            });
+        }
+
+        function taskHasRequiredReview(t) {
+          const idx = allTasks.indexOf(t);
+          return (
+            t.status !== "unreviewed" &&
+            (t.status === "removed" || taskHasSubmittedRecency(t, idx))
+          );
+        }
+
+        function taskHasSubmittedRecency(t, idx) {
+          const allowed = ["past", "current", "new"];
+          if (!allowed.includes(t.recency)) return false;
+          const card = document.getElementById(`tvw-card-${idx}`);
+          if (!card) return false;
+          const active = card.querySelector(".tvw-recency-btn.tvw-recency-active");
+          return active?.dataset.recency === t.recency;
+        }
+
+        function isCurrentPageComplete() {
+          return allTasks
+            .slice(viewStart, viewStart + _PAGE_SIZE)
+            .every(taskHasRequiredReview);
+        }
+
+        function guardCurrentPageComplete() {
+          if (isCurrentPageComplete()) return true;
+          updateFooter();
+          return false;
         }
 
         function showBatch(start) {
@@ -5474,7 +5591,18 @@
           }
         }
 
+        function maybeRefetchAttentionChecks() {
+          if (_attnChecksFetching) return;
+          const realShown = allTasks
+            .slice(0, viewStart + _PAGE_SIZE)
+            .filter((t) => !t.isAttentionCheck && !t.isAiTask).length;
+          const needed = Math.floor(realShown / _ATTN_INTERVAL);
+          const have = currentAttentionCheckCount() + pendingAttentionChecks.length;
+          if (have < needed) fetchAttentionChecks();
+        }
+
         async function handleNext() {
+          if (!guardCurrentPageComplete()) return;
           const nextStart = viewStart + _PAGE_SIZE;
           // If generation is done but the next page would be partial, try one more batch
           const remaining = allTasks.length - nextStart;
@@ -5494,8 +5622,8 @@
             return;
           }
           showBatch(nextStart);
-          // Start loading the batch after the one now visible
           prefetchAhead(batchesLoaded);
+          maybeRefetchAttentionChecks();
         }
 
         function prefetchAhead(idx) {
@@ -5630,6 +5758,7 @@
               allTasks[idx].recency = allTasks[idx].recency === r ? null : r;
               card.querySelectorAll(".tvw-recency-btn").forEach((b) => b.classList.remove("tvw-recency-active"));
               if (allTasks[idx].recency) btn.classList.add("tvw-recency-active");
+              updateFooter();
             });
           });
           card.querySelector(".tvw-wish-btn")?.addEventListener("click", () => {
@@ -5659,23 +5788,7 @@
             if (seenTexts.has(key)) continue;
             seenTexts.add(key);
             allTasks.push(task);
-            const realCount = allTasks.filter(
-              (t) => !t.isAttentionCheck && !t.isAiTask,
-            ).length;
-            // Inject attention check every _ATTN_INTERVAL real tasks —
-            // wait for distractors only at the moment of injection, not upfront
-            if (realCount > 0 && realCount % _ATTN_INTERVAL === 0) {
-              if (_attnChecksFetching) await _attnChecksFetching;
-              if (pendingAttentionChecks.length) {
-                const attn = pendingAttentionChecks.shift();
-                const pgStart =
-                  Math.floor(allTasks.length / _PAGE_SIZE) * _PAGE_SIZE;
-                const insertAt =
-                  pgStart +
-                  Math.floor(Math.random() * (allTasks.length - pgStart + 1));
-                allTasks.splice(insertAt, 0, attn);
-              }
-            }
+            insertAvailableAttentionChecks();
           }
           if (!batch.hasMore) done = true;
           batchesLoaded++;
@@ -5783,7 +5896,7 @@
             }
           }
 
-          const AITW_PAGE = 4;
+          const AITW_PAGE = 3;
           let pageStart = 0;
           const aiStatuses = {}; // idx → "accurate"|"removed"
 
@@ -5870,8 +5983,11 @@
           }
 
           function updateAiFooter() {
-            const btn = aiWidget.querySelector(".aitw-submit-btn");
-            if (btn) btn.disabled = !allCurrentReviewed();
+            const reviewed = allCurrentReviewed();
+            const submitBtn = aiWidget.querySelector(".aitw-submit-btn");
+            if (submitBtn) submitBtn.disabled = !reviewed;
+            const doneBtn = aiWidget.querySelector("#aitw-done");
+            if (doneBtn) doneBtn.disabled = !reviewed;
           }
 
           function startAiEdit(idx) {
@@ -5969,8 +6085,15 @@
                 text: t.text,
                 ai_type: t.aiType || "capability",
               }));
+            const aiAttnItems = shownTasks
+              .filter((t) => t.isAttentionCheck)
+              .map((t) => {
+                const idx = _aiWidgetTasks.indexOf(t);
+                const s = aiStatuses[idx];
+                return { text: t.text, status: s || "unreviewed", failed: s === "accurate" };
+              });
             aiWidget.remove();
-            onDone(selected, aiAttnFailed, listedTasks, aiAttnTotal);
+            onDone(selected, aiAttnFailed, listedTasks, aiAttnTotal, aiAttnItems);
           }
 
           function renderPage() {
@@ -5979,7 +6102,6 @@
             const isLast =
               !_aiWidgetHasMore && pageStart + AITW_PAGE >= tasks.length;
             const reviewed = allCurrentReviewed();
-            const canDone = pageStart >= 3 * AITW_PAGE;
 
             aiWidget.innerHTML = `
               <div class="aitw-header">
@@ -5990,7 +6112,7 @@
                 ${pageTasks.map((t, pi) => aiCardHTML(t, pageStart + pi)).join("")}
               </div>
               <div class="aitw-footer">
-                ${canDone ? `<button class="aitw-skip-btn" id="aitw-done">Done</button>` : ""}
+                <button class="aitw-skip-btn" id="aitw-done"${reviewed ? "" : " disabled"}>Done</button>
                 <button class="aitw-submit-btn"${reviewed ? "" : " disabled"}>${isLast ? "Continue →" : "Next →"}</button>
               </div>`;
 
@@ -6022,7 +6144,7 @@
 
             aiWidget
               .querySelector("#aitw-done")
-              ?.addEventListener("click", () => finishWidget());
+              ?.addEventListener("click", function() { if (!this.disabled) finishWidget(); });
 
             // Prefetch next batch in background while user reviews current page
             _ensureAiTaskBatch();
@@ -6031,7 +6153,13 @@
           renderPage();
         }
 
-        function renderMissing() {
+        async function renderMissing() {
+          if (!guardCurrentPageComplete()) return;
+          if (!hasShownRequiredAttentionChecks()) {
+            updateFooter();
+            return;
+          }
+
           const confirmed = allTasks.filter(
             (t) =>
               !t.isAttentionCheck &&
@@ -6062,47 +6190,56 @@
           attnFailed = attnChecks.filter(
             (t) => t.status === "confirmed" || t.status === "edited",
           ).length;
+          const attnItems = attnChecks.map((t) => ({
+            text: t.text,
+            status: t.status,
+            failed: t.status === "confirmed" || t.status === "edited",
+          }));
           const locallyDisqualified = attnFailed > ATTN_CHECK_MAX_FAILS;
 
-          // 1. Submit validation → backend injects "any tasks we missed?" question
-          fetch("/api/submit-task-validation", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              session_token: sessionToken,
-              tasks: validatedTasks,
-              extra_tasks: [],
-              attn_failed: attnFailed,
-              attn_total: attnChecks.length,
-              listed_tasks: allTasks
-                .filter((t) => !t.isAttentionCheck)
-                .map((t) => ({
-                  text: t.text,
-                  original_text: t.originalText || t.text,
-                  status: t.status,
-                  recency: t.recency || null,
-                })),
-            }),
-          })
-            .then((r) => r.json())
-            .then((result) => {
-              if (result.attn_disqualified) {
-                isSessionCompleted = true;
-                stopTimer();
-                updateEndSessionButton();
-                disableChatInputs();
-                showEndBanner();
-              }
-            })
-            .catch(() => {
-              if (locallyDisqualified) {
-                isSessionCompleted = true;
-                stopTimer();
-                updateEndSessionButton();
-                disableChatInputs();
-                showEndBanner();
-              }
+          // 1. Submit validation. The backend writes the initial missed-task
+          // probe into chat_history, so the polling loop displays the only copy.
+          try {
+            const submitResponse = await fetch("/api/submit-task-validation", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                session_token: sessionToken,
+                tasks: validatedTasks,
+                extra_tasks: [],
+                attn_failed: attnFailed,
+                attn_total: attnChecks.length,
+                attn_items: attnItems,
+                listed_tasks: allTasks
+                  .filter((t) => !t.isAttentionCheck)
+                  .map((t) => ({
+                    text: t.text,
+                    original_text: t.originalText || t.text,
+                    status: t.status,
+                    recency: t.recency || null,
+                  })),
+              }),
             });
+            const result = await submitResponse.json();
+            if (result.attn_disqualified) {
+              isSessionCompleted = true;
+              stopTimer();
+              updateEndSessionButton();
+              disableChatInputs();
+              showEndBanner();
+              return;
+            }
+            if (!submitResponse.ok || !result.success) return;
+          } catch (_) {
+            if (locallyDisqualified) {
+              isSessionCompleted = true;
+              stopTimer();
+              updateEndSessionButton();
+              disableChatInputs();
+              showEndBanner();
+            }
+            return;
+          }
 
           if (locallyDisqualified) {
             isSessionCompleted = true;
@@ -6113,13 +6250,7 @@
             return;
           }
 
-          // 2. Probing loop — open with a bot question so the user knows to respond
-          appendMessage(
-            "bot",
-            "Before we move on — are there any tasks or responsibilities we haven't covered yet that you'd like to add?",
-            "probe-open-" + Date.now(),
-          );
-          scrollToBottom();
+          // 2. Probing loop — the prompt itself is delivered by polling.
           startProbingLoop(function () {
             // 3. Transition message + open AI question
             appendMessage(
@@ -6218,6 +6349,7 @@
                   aiAttnFailed,
                   listedAiTasks,
                   aiAttnTotal,
+                  aiAttnItems,
                 ) {
                   // End session immediately if AI attention check was failed
                   if (aiAttnFailed > 0) {
@@ -6232,6 +6364,7 @@
                         listed_tasks: listedAiTasks || [],
                         attn_failed: aiAttnFailed,
                         attn_total: aiAttnTotal,
+                        attn_items: aiAttnItems || [],
                       }),
                     }).catch(() => {});
                     isSessionCompleted = true;
@@ -6324,6 +6457,7 @@
                             listed_tasks: listedAiTasks || [],
                             attn_failed: aiAttnFailed,
                             attn_total: aiAttnTotal,
+                            attn_items: aiAttnItems || [],
                           }),
                         }).catch(() => {});
                       } else {
@@ -6432,7 +6566,7 @@
 
         renderAiTaskWidget(
           confirmedNames,
-          function (selectedAiTasks, aiAttnFailed, listedAiTasks, aiAttnTotal) {
+          function (selectedAiTasks, aiAttnFailed, listedAiTasks, aiAttnTotal, aiAttnItems) {
             if (aiAttnFailed > 0) {
               attnFailed += aiAttnFailed;
               fetch("/api/submit-ai-tasks", {
@@ -6445,6 +6579,7 @@
                   listed_tasks: listedAiTasks || [],
                   attn_failed: aiAttnFailed,
                   attn_total: aiAttnTotal,
+                  attn_items: aiAttnItems || [],
                 }),
               }).catch(() => {});
               isSessionCompleted = true;
@@ -6527,6 +6662,7 @@
                       listed_tasks: listedAiTasks || [],
                       attn_failed: aiAttnFailed,
                       attn_total: aiAttnTotal,
+                      attn_items: aiAttnItems || [],
                     }),
                   }).catch(() => {});
                 } else {
@@ -6798,7 +6934,8 @@
           const uncheckedReasonOk =
             !hasUnchecked ||
             (widget._uncheckedReasonValue || "").trim().length > 0;
-          const canSubmit = rating !== null && uncheckedReasonOk;
+          const commentOk = (widget._commentValue || "").trim().length > 0;
+          const canSubmit = rating !== null && uncheckedReasonOk && commentOk;
           widget.innerHTML = `
                     <div class="fb-title">Before you go</div>
                     <div class="fb-intro">A couple of quick questions to help us improve.</div>
@@ -6822,8 +6959,8 @@
 
 
                     <div class="fb-section">
-                        <div class="fb-section-label">Anything else you'd like to share?</div>
-                        <textarea class="fb-comment" id="fb-comment" placeholder="Any comments or suggestions..." maxlength="1000"></textarea>
+                        <div class="fb-section-label">Why did you give this satisfaction rating? <span style="color:#ef4444;">*</span></div>
+                        <textarea class="fb-comment" id="fb-comment" placeholder="Please explain your rating..." maxlength="1000"></textarea>
                     </div>
 
                     <button class="fb-submit" id="fb-submit" ${canSubmit ? "" : "disabled"}>Submit & End Session</button>
@@ -6858,11 +6995,12 @@
           });
           function refreshSubmit() {
             const btn = widget.querySelector("#fb-submit");
-            if (btn) btn.disabled = rating === null;
+            if (btn) btn.disabled = rating === null || (widget._commentValue || "").trim().length === 0;
           }
           if (commentEl) {
             commentEl.addEventListener("input", () => {
               widget._commentValue = commentEl.value;
+              refreshSubmit();
             });
           }
           if (uncheckedEl) {
@@ -7027,6 +7165,12 @@
             body: body,
           });
           const data = await res.json();
+          if (!data.success && data.disqualified) {
+            isSessionCompleted = true;
+            disableChatInputs();
+            showEndBanner(true);
+            return;
+          }
           if (data.success) {
             sessionToken = data.session_token;
             pendingSessionRecovery = false;
@@ -7137,32 +7281,11 @@
           }
           if (data.success && data.messages) {
             const messages = data.messages;
-            // On reconnect/full-history replay, only re-open profile confirmation
-            // if it was never resolved (i.e., no later user reply in history).
-            const unresolvedProfileWidgetIds = new Set();
-            if (fullHistory) {
-              for (let i = 0; i < messages.length; i++) {
-                const m = messages[i];
-                if (m.type === "profile_confirm_widget") {
-                  const hasLaterUserReply = messages
-                    .slice(i + 1)
-                    .some((x) => x.role === "User" || x.role === "user");
-                  if (!hasLaterUserReply && m.id) {
-                    unresolvedProfileWidgetIds.add(m.id);
-                  }
-                }
-              }
-            }
 
             messages.forEach((msg) => {
               if (msg.type === "time_split_widget") {
                 if (!seenMessageIds.has(msg.id)) {
                   seenMessageIds.add(msg.id);
-                  // Flush any buffered Interviewer messages so the question
-                  // appears above the widget (profile review may have buffered it)
-                  if (profileConfirmPending) {
-                    resolveProfileConfirmGate();
-                  }
                   setTimeout(() => showTimeSplitWidget(), 50);
                 }
                 return;
@@ -7212,42 +7335,19 @@
                 }
                 return;
               }
-              if (msg.type === "profile_confirm_widget") {
-                profileConfirmWidgetSeen = true;
-                const shouldShow =
-                  !fullHistory || unresolvedProfileWidgetIds.has(msg.id);
-                if (!seenMessageIds.has(msg.id) && shouldShow) {
-                  seenMessageIds.add(msg.id);
-                  // Set the gate synchronously so subsequent Interviewer messages
-                  // in this same poll batch are buffered.
-                  profileConfirmPending = true;
-                  removeTyping();
-                  showProfileBuildingIndicator();
-                  showProfilePanelWhenRoleReady();
-                } else if (!seenMessageIds.has(msg.id) && msg.id) {
-                  seenMessageIds.add(msg.id);
-                }
-                return;
-              }
               if (msg.role === "Interviewer" || msg.role === "assistant") {
                 if (
                   seenMessageIds.has(msg.id) ||
                   pendingAudioMessages.has(msg.id)
                 )
                   return;
-                if (botMessageBuffer.some((m) => m.id === msg.id)) return;
-                if (profileConfirmPending) {
-                  botMessageBuffer.push(msg);
-                  return;
-                }
                 if (ttsEnabled && msg.id && !fullHistory) {
-                  if (!profileConfirmPending) removeProfileBuildingIndicator();
+                  removeProfileBuildingIndicator();
                   pendingAudioMessages.add(msg.id);
                   showMessageWithAudio(msg);
                 } else {
                   if (appendMessage("bot", msg.content, msg.id)) {
-                    if (!profileConfirmPending)
-                      removeProfileBuildingIndicator();
+                    removeProfileBuildingIndicator();
                     removeTyping();
                   }
                 }
@@ -7444,7 +7544,7 @@
 
       // Typing indicator
       function showTyping(loadingNote) {
-        if (!profileConfirmPending) removeProfileBuildingIndicator();
+        removeProfileBuildingIndicator();
         removeTyping();
         const box = document.getElementById("chat-box");
         const div = document.createElement("div");
@@ -7513,42 +7613,7 @@
       }
 
       async function maybeShowProfileBuildingIndicatorBeforeConfirm() {
-        return; // indicator hidden
-        const now = Date.now();
-        if (
-          preConfirmIndicatorProbeInFlight ||
-          now - preConfirmIndicatorLastProbeAt <
-            PRE_CONFIRM_INDICATOR_PROBE_INTERVAL_MS
-        ) {
-          return;
-        }
-        preConfirmIndicatorProbeInFlight = true;
-        preConfirmIndicatorLastProbeAt = now;
-        try {
-          const res = await fetch(
-            `/api/session-state?session_token=${sessionToken}`,
-          );
-          if (!res.ok) return;
-          const data = await res.json();
-          if (!data || !data.success) return;
-          if (String(data.session_type || "intake") !== "intake") return;
-          const portrait = data.user_portrait || {};
-          if (!profileHasRoleAndTenure(portrait)) return;
-          const topics = data.topics || [];
-          if (
-            !isFirstTopicCoveredForProfileConfirm(topics) &&
-            !isFirstTopicNearlyCoveredForProfileConfirm(topics)
-          ) {
-            return;
-          }
-          if (profileConfirmPending || profileConfirmWidgetSeen) return;
-          if (!document.getElementById("typing-indicator")) return;
-          removeTyping();
-          showProfileBuildingIndicator();
-        } catch (_) {
-        } finally {
-          preConfirmIndicatorProbeInFlight = false;
-        }
+        return;
       }
 
       function showEndBanner(forceDisqualify = false) {
@@ -7603,11 +7668,7 @@
         chatInput.style.height = "auto";
         stopCurrentAudio();
         appendMessage("user", text, "user-" + Date.now());
-        if (profileConfirmPending) {
-          resolveProfileConfirmGate();
-        }
         showTyping();
-        maybeShowProfileBuildingIndicatorBeforeConfirm();
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 20000);
         try {
@@ -7812,11 +7873,7 @@
           if (profileLoadSignalDepth > 0) return;
           if (profileBtn) profileBtn.classList.remove("loading");
           if (badge && badge.classList.contains("loading")) {
-            const portraitForRender =
-              profileConfirmPending && profileConfirmSnapshot
-                ? profileConfirmSnapshot
-                : lastPortrait;
-            renderProfile(portraitForRender);
+              renderProfile(lastPortrait);
           } else if (badge && profileLoadBadgeSnapshot) {
             badge.textContent = profileLoadBadgeSnapshot.textContent;
             badge.className = profileLoadBadgeSnapshot.className;
@@ -7874,7 +7931,6 @@
         const backdrop = document.getElementById("profile-backdrop");
         if (backdrop) backdrop.classList.add("visible");
         profileShown = true;
-        profileConfirmPending = true;
         scheduleProfileInputAutosizeRefresh();
         removeTyping();
         showProfileHint();
@@ -7894,71 +7950,13 @@
         return profileHasRole(portrait) && profileHasTenure(portrait);
       }
 
-      async function showProfilePanelWhenRoleReady() {
-        if (profilePanelRevealInFlight) return;
-        profilePanelRevealInFlight = true;
-        const stopLoadingSignal = beginProfileLoadingSignal();
-        try {
-          if (!profileConfirmPending) return;
-          // Keep the panel hidden until required confirm fields are populated.
-          for (let i = 0; i < 60; i++) {
-            if (!profileConfirmPending) return;
-            try {
-              const res = await fetch(
-                `/api/session-state?session_token=${sessionToken}`,
-              );
-              if (res.ok) {
-                const data = await res.json();
-                if (data.success) {
-                  lastPortrait = data.user_portrait || lastPortrait;
-                  if (profileConfirmSnapshot) {
-                    renderProfile(profileConfirmSnapshot);
-                  } else {
-                    renderProfile(lastPortrait);
-                  }
-                  if (
-                    !profileConfirmSnapshot &&
-                    profileHasRoleAndTenure(lastPortrait)
-                  ) {
-                    profileConfirmSnapshot = JSON.parse(
-                      JSON.stringify(lastPortrait || {}),
-                    );
-                    resolveProfileConfirmGate();
-                    break;
-                  }
-                }
-              }
-            } catch (_) {}
-            await new Promise((r) => setTimeout(r, 250));
-          }
-          // If still not ready, keep trying in the background while the gate is pending.
-          if (profileConfirmPending && !profileConfirmSnapshot) {
-            setTimeout(() => {
-              if (profileConfirmPending && !profileConfirmSnapshot) {
-                showProfilePanelWhenRoleReady();
-              }
-            }, 500);
-          }
-        } finally {
-          profilePanelRevealInFlight = false;
-          stopLoadingSignal();
-        }
-      }
-
       function resolveProfileConfirmGate() {
-        if (!profileConfirmPending) return;
-        profileConfirmPending = false;
-        profileConfirmSnapshot = null;
         removeProfileBuildingIndicator();
         document.getElementById("profile-panel").classList.remove("visible");
         document.getElementById("profile-btn").classList.remove("active");
         const backdrop = document.getElementById("profile-backdrop");
         if (backdrop) backdrop.classList.remove("visible");
         removeProfileHint();
-        const toFlush = botMessageBuffer.splice(0);
-        toFlush.forEach((msg) => {
-          if (appendMessage("bot", msg.content, msg.id)) removeTyping();
-        });
       }
 
       function showProfileHint() {
@@ -8021,24 +8019,6 @@
           const data = await res.json();
           if (!data.success) return;
           lastPortrait = data.user_portrait || {};
-          if (profileConfirmPending && profileConfirmSnapshot) {
-            renderProfile(profileConfirmSnapshot);
-            return;
-          }
-          if (
-            profileConfirmPending &&
-            !profileConfirmSnapshot &&
-            profileHasRoleAndTenure(lastPortrait)
-          ) {
-            profileConfirmSnapshot = JSON.parse(
-              JSON.stringify(lastPortrait || {}),
-            );
-            renderProfile(profileConfirmSnapshot);
-            await ensureProfileBuildingIndicatorLeadIn();
-            if (!profileConfirmPending) return;
-            showProfilePanel();
-            return;
-          }
           renderProfile(lastPortrait);
           const tasks = lastPortrait["Task Inventory"] || [];
           const otherFieldsFilled = [
@@ -8506,16 +8486,7 @@
           if (data.success) {
             lastPortrait = portrait;
             btn.textContent = "Saved ✓";
-            if (profileConfirmPending) {
-              resolveProfileConfirmGate();
-            } else {
-              document
-                .getElementById("profile-panel")
-                .classList.remove("visible");
-              document.getElementById("profile-btn").classList.remove("active");
-              const backdrop = document.getElementById("profile-backdrop");
-              if (backdrop) backdrop.classList.remove("visible");
-            }
+            resolveProfileConfirmGate();
             setTimeout(() => {
               btn.disabled = false;
               btn.textContent = "Save changes";
