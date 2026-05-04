@@ -2825,21 +2825,23 @@
         cursor: not-allowed;
       }
       .tvw-skip-btn {
-        background: transparent;
+        background: #111827;
         border: none;
-        color: #9ca3af;
-        font-size: 13px;
+        color: #fff;
+        font-size: 14px;
+        font-weight: 600;
         font-family: inherit;
         cursor: pointer;
-        padding: 0;
-        text-decoration: underline;
-        transition: color 0.15s;
+        padding: 10px 28px;
+        border-radius: 8px;
+        transition: background 0.15s;
       }
       .tvw-skip-btn:hover:not(:disabled) {
-        color: #374151;
+        background: #374151;
       }
       .tvw-skip-btn:disabled {
-        color: #d1d5db;
+        background: #d1d5db;
+        color: #fff;
         cursor: not-allowed;
       }
       /* Missing / summary screen */
@@ -3517,21 +3519,23 @@
         border-top: 1px solid #f3f4f6;
       }
       .aitw-skip-btn {
-        background: transparent;
+        background: #111827;
         border: none;
-        color: #9ca3af;
-        font-size: 13px;
+        color: #fff;
+        font-size: 14px;
+        font-weight: 600;
         font-family: inherit;
         cursor: pointer;
-        padding: 0;
-        text-decoration: underline;
-        transition: color 0.15s;
+        padding: 10px 28px;
+        border-radius: 8px;
+        transition: background 0.15s;
       }
       .aitw-skip-btn:hover:not(:disabled) {
-        color: #374151;
+        background: #374151;
       }
       .aitw-skip-btn:disabled {
-        color: #d1d5db;
+        background: #d1d5db;
+        color: #fff;
         cursor: not-allowed;
         pointer-events: none;
       }
@@ -3873,7 +3877,7 @@
         .aitw-skip-btn {
           width: 100%;
           text-align: center;
-          padding: 6px 0;
+          padding: 10px 0;
         }
 
         /* AI usage widget */
@@ -3937,7 +3941,7 @@
         .tvw-skip-btn {
           width: 100%;
           text-align: center;
-          padding: 8px 0;
+          padding: 10px 0;
         }
 
         /* Summary items */
@@ -4284,6 +4288,13 @@
         document.getElementById("chat-form").onsubmit = (e) => {
           e.preventDefault();
         };
+      }
+
+      function enableChatInputs() {
+        chatInput.disabled = false;
+        chatInput.placeholder = "Type your response…";
+        document.querySelector(".send-btn").disabled = false;
+        document.getElementById("record-toggle").disabled = false;
       }
 
       function appendMessage(role, text, messageId) {
@@ -5157,7 +5168,7 @@
         scrollToBottom();
 
         const _PAGE_SIZE = 3; // tasks shown per page (server returns 6 per batch = 2 pages)
-        const _MIN_DONE_SHOWN_TASKS = 12;
+        const _MIN_DONE_SHOWN_TASKS = 18;
         const _ATTN_INTERVAL = 5; // inject one attention check per N real tasks
         const _TARGET_REAL_TASKS = regularTaskTarget(_PAGE_SIZE);
         const _TARGET_ATTENTION_CHECKS = Math.max(1, Math.floor(_TARGET_REAL_TASKS / _ATTN_INTERVAL));
@@ -5567,6 +5578,13 @@
           updateFooter();
           updateProgress();
           scrollToBottom();
+          // Save progress so we have a record even if the widget is never submitted
+          const realTasks = allTasks.filter(t => !t.isAttentionCheck && !t.isAiTask);
+          fetch("/api/save-task-snapshot", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ session_token: sessionToken, listed_tasks: realTasks }),
+          }).catch(() => {});
         }
 
         // Fetch batches until allTasks has at least `needUpTo` tasks (or truly done).
@@ -5796,6 +5814,7 @@
         }
 
         function startProbingLoop(onDone) {
+          enableChatInputs();
           // --- Probing loop: intercept chat form and route through task-followup ---
           const chatForm = document.getElementById("chat-form");
           const probingTasks = []; // raw user text (for context)
@@ -5987,7 +6006,7 @@
             const submitBtn = aiWidget.querySelector(".aitw-submit-btn");
             if (submitBtn) submitBtn.disabled = !reviewed;
             const doneBtn = aiWidget.querySelector("#aitw-done");
-            if (doneBtn) doneBtn.disabled = !reviewed;
+            if (doneBtn) doneBtn.disabled = !reviewed || pageStart + AITW_PAGE < 18;
           }
 
           function startAiEdit(idx) {
@@ -6102,6 +6121,7 @@
             const isLast =
               !_aiWidgetHasMore && pageStart + AITW_PAGE >= tasks.length;
             const reviewed = allCurrentReviewed();
+            const canShowAiDone = pageStart + AITW_PAGE >= 18;
 
             aiWidget.innerHTML = `
               <div class="aitw-header">
@@ -6112,7 +6132,7 @@
                 ${pageTasks.map((t, pi) => aiCardHTML(t, pageStart + pi)).join("")}
               </div>
               <div class="aitw-footer">
-                <button class="aitw-skip-btn" id="aitw-done"${reviewed ? "" : " disabled"}>Done</button>
+                ${canShowAiDone ? `<button class="aitw-skip-btn" id="aitw-done"${reviewed ? "" : " disabled"}>Done</button>` : ""}
                 <button class="aitw-submit-btn"${reviewed ? "" : " disabled"}>${isLast ? "Continue →" : "Next →"}</button>
               </div>`;
 
@@ -6148,6 +6168,16 @@
 
             // Prefetch next batch in background while user reviews current page
             _ensureAiTaskBatch();
+
+            // Save progress so we have a record even if the widget is never submitted
+            fetch("/api/save-ai-task-snapshot", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                session_token: sessionToken,
+                listed_tasks: _aiWidgetTasks.slice(0, pageStart + AITW_PAGE),
+              }),
+            }).catch(() => {});
           }
 
           renderPage();
@@ -7309,6 +7339,7 @@
                       .then((r) => r.json())
                       .catch(() => null);
                   }
+                  disableChatInputs();
                   setTimeout(() => showTaskValidationWidget(), 50);
                 }
                 return;
@@ -7317,6 +7348,7 @@
                 if (!seenMessageIds.has(msg.id)) {
                   seenMessageIds.add(msg.id);
                   removeTyping();
+                  disableChatInputs();
                   setTimeout(() => showAiTaskWidget(), 50);
                 }
                 return;
@@ -7324,6 +7356,7 @@
               if (msg.type === "feedback_widget") {
                 if (!seenMessageIds.has(msg.id)) {
                   seenMessageIds.add(msg.id);
+                  disableChatInputs();
                   setTimeout(() => showFeedbackWidget(), 50);
                 }
                 return;

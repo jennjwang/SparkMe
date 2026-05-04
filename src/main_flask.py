@@ -2670,7 +2670,7 @@ def ai_era_tasks():
     from src.utils.llm.engines import get_engine, invoke_engine
 
     _AI_BATCH_SIZE = 3
-    _AI_MAX_BATCHES = 6   # up to 18 tasks total
+    _AI_MAX_BATCHES = 10
 
     data = request.get_json(silent=True) or {}
     session_token = data.get('session_token')
@@ -3581,6 +3581,87 @@ def organize_tasks_api():
         'acknowledgement': acknowledgement,
         'message': acknowledgement,
     })
+
+
+@app.route('/api/save-task-snapshot', methods=['POST'])
+@agent_or_login_required
+def save_task_snapshot():
+    """Persist an in-progress task widget snapshot without finalising the session."""
+    data = request.get_json(silent=True) or {}
+    session_token = data.get('session_token')
+    listed_tasks   = data.get('listed_tasks') or []
+
+    wrapper = get_session_wrapper(session_token)
+    if not wrapper:
+        return jsonify({'success': False, 'error': 'Invalid or expired session'}), 400
+
+    iv = wrapper.interview_session
+    eval_dir = Path(os.getenv('LOGS_DIR', 'logs')) / iv.user_id / 'evaluations'
+    eval_dir.mkdir(parents=True, exist_ok=True)
+    snapshot_path = eval_dir / 'task_widget_data.json'
+
+    # Never overwrite a real submission with an in-progress snapshot
+    if snapshot_path.exists():
+        try:
+            prior = json.loads(snapshot_path.read_text())
+            if prior.get('status') not in ('shown_not_submitted', 'in_progress'):
+                return jsonify({'success': True, 'skipped': True})
+        except Exception:
+            pass
+
+    snapshot = {
+        'status': 'in_progress',
+        'timestamp': datetime.now().isoformat(),
+        'session_id': str(getattr(iv, 'session_id', '')),
+        'listed': listed_tasks,
+        'selected': [],
+        'removed': [t.get('text', '') for t in listed_tasks if t.get('status') == 'removed'],
+        'edited': [t.get('text', '') for t in listed_tasks if t.get('status') == 'edited'],
+        'attn_failed': 0,
+        'attn_total': 0,
+    }
+    snapshot_path.write_text(json.dumps(snapshot, indent=2))
+    return jsonify({'success': True})
+
+
+@app.route('/api/save-ai-task-snapshot', methods=['POST'])
+@agent_or_login_required
+def save_ai_task_snapshot():
+    """Persist an in-progress AI task widget snapshot without finalising the session."""
+    data = request.get_json(silent=True) or {}
+    session_token = data.get('session_token')
+    listed_tasks  = data.get('listed_tasks') or []
+
+    wrapper = get_session_wrapper(session_token)
+    if not wrapper:
+        return jsonify({'success': False, 'error': 'Invalid or expired session'}), 400
+
+    iv = wrapper.interview_session
+    eval_dir = Path(os.getenv('LOGS_DIR', 'logs')) / iv.user_id / 'evaluations'
+    eval_dir.mkdir(parents=True, exist_ok=True)
+    snapshot_path = eval_dir / 'ai_task_widget_data.json'
+
+    # Never overwrite a real submission with an in-progress snapshot
+    if snapshot_path.exists():
+        try:
+            prior = json.loads(snapshot_path.read_text())
+            if prior.get('status') not in ('shown_not_submitted', 'in_progress'):
+                return jsonify({'success': True, 'skipped': True})
+        except Exception:
+            pass
+
+    snapshot = {
+        'status': 'in_progress',
+        'timestamp': datetime.now().isoformat(),
+        'session_id': str(getattr(iv, 'session_id', '')),
+        'listed': listed_tasks,
+        'selected': [t.get('text', '') for t in listed_tasks if t.get('selected')],
+        'extras': [],
+        'attn_failed': 0,
+        'attn_total': 0,
+    }
+    snapshot_path.write_text(json.dumps(snapshot, indent=2))
+    return jsonify({'success': True})
 
 
 @app.route('/api/submit-task-validation', methods=['POST'])
